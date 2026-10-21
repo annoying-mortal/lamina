@@ -26,7 +26,7 @@ npm run admin
 
 登录后使用 HttpOnly、SameSite=Strict cookie，最长有效期 12 小时；会话只保存在服务器内存，退出、到期或重启后台即失效。页面打开前的 CSRF token 与登录后的会话 token 独立，成功登录会轮换 token。登录失败使用统一提示；每个来源 15 分钟内最多 6 次失败尝试，并有全局限制。成功登录会清理相应失败计数。
 
-首次初始化只接受本机请求。Docker Compose 显式设置 `ADMIN_LOOPBACK_PUBLISHED=1`，允许本机经私有网桥访问初始化；此设置必须与 `127.0.0.1` 发布端口配合，并额外需要一次性初始化令牌。打开初始化页后在本机终端执行 `docker compose exec admin cat /app/.admin/setup-token`，将返回值填入页面；令牌存在非公开凭据卷，权限为 `0600`，不会经 API 返回，初始化成功后删除。本机直接启动 Node 时从 loopback 访问无需令牌。所有内容／设置／媒体／发布 API 均要求有效会话，上传同样需要登录。
+首次初始化默认接受本机访问；HTTPS 远程初始化见[运行配置](#运行配置)。Docker Compose 显式设置 `ADMIN_LOOPBACK_PUBLISHED=1`，允许本机经私有网桥访问初始化；此设置必须与 `127.0.0.1` 发布端口配合，并额外需要一次性初始化令牌。打开初始化页后在本机终端执行 `docker compose exec admin cat /app/.admin/setup-token`，将返回值填入页面；令牌存在非公开凭据卷，权限为 `0600`，不会经 API 返回，初始化成功后删除。本机直接启动 Node 时从 loopback 访问无需令牌。所有内容／设置／媒体／发布 API 均要求有效会话，上传同样需要登录。
 
 如忘记密码，没有在线重置接口。先停止后台，备份 `.admin/auth.json`（容器中位于 `blog-admin` 卷），然后由本机管理员移走该文件，再启动后台并亲自重新初始化。此操作不改动文章、收藏或素材；凭据备份需私密保存。
 
@@ -86,7 +86,7 @@ About 下的 Highlights 用于简短展示个人成就、教学实践、项目�
 ![Enter image description](<https://images.example.com/photo.webp>)
 ```
 
-收藏封面、友链头像、Logo 和 Favicon 共用同一个图片选择器，均可即时预览。空收藏封面显示文字封面，空友链头像显示文字标识，空 Logo 仅显示站名，不生成字母标识。自己的 SVG 可放在 `public/logo.svg`，Logo 地址填写 `/logo.svg`（也支持 SVG 外链）；前台与鉴权页共用此配置。Favicon 需保留有效地址，默认 `/favicon.svg` 为透明占位，可用自己的文件替换。
+收藏封面、友链头像、Logo 和 Favicon 共用同一个图片选择器，均可即时预览。空收藏封面显示文字封面，空友链头像显示文字标识，空 Logo 仅显示站名，不生成字母标识。自己的 SVG 可放在 `public/logo.svg`，Logo 地址填写 `/logo.svg`（也支持 SVG 外链）。首页圆环与登录页图形使用 Settings 中的圆环图片（`orbitImage`）。Favicon 需保留有效地址，默认 `/favicon.svg` 为透明占位，可用自己的文件替换。
 
 图片 URL 可被多篇文章和多个栏目复用。素材库不提供删除，也不会自动清理未引用图片，避免造成已有文章断图。素材索引 `src/content/media.json` 只供后台使用，不作为前台公开文件；上传图片本身可通过 `/uploads/` 访问。
 
@@ -152,19 +152,30 @@ docker compose -f compose.yaml -f compose.files.yaml up -d --build
 | `ADMIN_AUTH_DIR` | 项目 `.admin/` | 非公开凭据目录；容器为 `/app/.admin`。 |
 | `ADMIN_LOOPBACK_PUBLISHED` | 未启用 | `1` 允许私有网桥访问首次初始化，仍需终端一次性令牌；仅用于主机端口绑定 loopback 的 Compose。 |
 | `ADMIN_SECURE_COOKIES` | 未启用 | 经 HTTPS 反向代理访问后台时设 `1`，给 cookie 增加 Secure；本机 HTTP 不设置。 |
+| `ADMIN_ALLOW_REMOTE_SETUP` | 未启用 | `1` 允许非 loopback 请求经同源 HTTPS 首次建号，需同时启用 Secure cookie 并提供一次性初始化令牌。 |
+
+经 HTTPS 反向代理公开后台时，在 Compose 的 `services.admin.environment` 中加入以下配置，将域名替换为实际后台域名；使用非默认 HTTPS 端口时，Host 还需包含端口：
+
+```yaml
+ADMIN_ALLOWED_HOSTS: cms.example.com
+ADMIN_SECURE_COOKIES: "1"
+ADMIN_ALLOW_REMOTE_SETUP: "1"
+```
+
+代理需保留外部 Host，浏览器请求的 Origin 应为对应的 `https://Host`。`ADMIN_ALLOW_REMOTE_SETUP` 用于首次远程建号；表单要求初始化令牌时，按[管理员登录](#管理员登录)中的命令获取。Compose 的 `.env` 本身不会将新增变量注入容器，需在 `admin.environment` 中显式填写或引用，并按当前 Compose 模式重新创建后台容器使配置生效。
 
 这是需要管理员密码的本机管理工具，默认不面向公网。服务验证 Host／Origin／CSRF 和会话，校验内容、路径、图片类型和长度；没有让请求传入任意发布命令的接口，也没有通过环境变量跳过鉴权的入口。
 
 容器模式下，后台调用既定的 `scripts/publish.mjs`，一次只运行一个构建，期间后续修改合并排队。监听和发布状态通过发布状态 API 提供；读取或构建失败时源文件保留、旧页面继续服务，可在后台状态与日志查看原因，修正后重试。后台上传图片写入所配置的图片目录或卷，Nginx 直接提供这些图片。
 
-也可在项目根目录手动运行 `npm run publish`，构建并验证成功后切换 `.published/current`。它与 `npm run build` 输出的 `dist/` 分开，不会启动服务或上传到外部平台。完整双服务 Docker 镜像构建仍受 Docker Hub 连接问题影响，尚未完成最终验证。
+也可在项目根目录手动运行 `npm run publish`，构建并验证成功后切换 `.published/current`。它与 `npm run build` 输出的 `dist/` 分开，不会启动服务或上传到外部平台。
 
 ## API 与验证
 
 - `GET /healthz`：健康状态，不需要 CSRF。
 - `GET /api/auth/status`：公开返回 `configured`、`authenticated`、`csrf`、`setupTokenRequired` 及站点名称、主题、前台地址；未登录时建立独立 bootstrap cookie。仅返回是否需要初始化令牌，不返回令牌内容。
 - `POST /api/auth/setup`：首次设置账号，请求体 `{ "username": "…", "password": "…", "setupToken": "…" }`，本机 loopback 可省略 `setupToken`；需 bootstrap cookie、对应 CSRF 与同源 Origin。
-- `POST /api/auth/login`：用户名和密码登录，要求与 setup 相同；成功返回 `{ authenticated: true, username, csrf }` 并设置会话 cookie。
+- `POST /api/auth/login`：用户名和密码登录，需 bootstrap cookie、对应 CSRF 与同源 Origin，无需初始化令牌；成功返回 `{ authenticated: true, username, csrf }` 并设置会话 cookie。
 - `GET /api/account`：登录后读取 `{ username, csrf }`，未登录不公开用户名。
 - `PUT /api/account`：登录、同源 Origin 和会话 CSRF 验证后接收 `{ username, currentPassword, newPassword? }`。新密码省略或为空时保持原密码；成功返回 `{ authenticated: true, username, csrf }`，更新当前会话 cookie 并注销其他会话。
 - `POST /api/auth/logout`：需有效会话及其 CSRF，清除并撤销会话。
