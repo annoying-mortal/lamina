@@ -1,0 +1,19 @@
+node_modules/
+dist/
+.astro/
+.sites-runtime/
+.DS_Store
+.env
+.env.*
+!.env.example
+verification/
+.verification/
+.published/
+.publish-build/
+admin/.data/
+public/uploads/*
+!public/uploads/.gitkeep
+src/content/media.json
+.admin/
+# Original font supplied by each deployer; embedded locally, not redistributed.
+public/fonts/alimama-fangyuan/alimama-fangyuan.woff2

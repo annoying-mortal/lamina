@@ -1,0 +1,35 @@
+{
+  "family_alias": "Alimama FangYuan",
+  "original_family": "Alimama FangYuanTi VF",
+  "version": "Version 1.004;beta",
+  "copyright": "Copyright (c) 2023 Alibaba (China) Co., Ltd. All rights reserved.",
+  "official_site": "https://www.alibabafonts.com/#/more",
+  "source_url": "https://fonts.alibabadesign.com/AlimamaFangYuanTiVF/AlimamaFangYuanTiVF-Thin/AlimamaFangYuanTiVF-Thin.woff2",
+  "source_reference": "https://g.alicdn.com/uedmid/fonts-alibabagroup/0.10.4/js/index.js",
+  "official_detail": "https://www.iconfont.cn/fonts/detail?cnid=pOvFIr086ADR",
+  "download_request_referer": "https://www.alibabafonts.com/",
+  "sha256": "2f36da22906ae5d601ce4af009cea08e8b538a9da47e9762c5dd520ac2f3e08f",
+  "bytes": 2408604,
+  "modifications": "None. Official WOFF2 copied byte-for-byte; no conversion, subset, rename, or outline edits.",
+  "distribution": "Local embedded website use only. Exclude this binary from template source and container distribution. Each deployer obtains their own unmodified copy from the official source. See LICENSE.txt.",
+  "axes": [
+    {
+      "tag": "wght",
+      "min": 200.0,
+      "default": 200.0,
+      "max": 700.0
+    },
+    {
+      "tag": "BEVL",
+      "min": 1.0,
+      "default": 1.0,
+      "max": 100.0
+    }
+  ],
+  "glyph_count": 7043,
+  "unicode_count": 7017,
+  "cjk_basic": 6763,
+  "cjk_extension_a": 0,
+  "missing_sample": "體龘靐齉龍鳳臺灣",
+  "note": "The family covers GB2312-level Simplified Chinese, not the full Chinese Unicode ranges. Keep an existing broad-CJK fallback after this family."
+}

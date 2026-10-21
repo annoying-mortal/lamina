@@ -1,0 +1,103 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { getPostCategories, getPosts } from '../../lib/content';
+import { site } from '../../data/site';
+import '../../styles/content.css';
+const posts = await getPosts();
+const categories = getPostCategories(posts);
+const page = site.pages.blog;
+---
+
+<Layout title={page.title} description={page.description} active="blog">
+  <div class="page-shell content-page blog-index">
+    <header class="content-heading">
+      <p class="eyebrow">{page.eyebrow}</p>
+      <div class="heading-row"><h1>{page.title}<span class="heading-period">.</span></h1><span class="collection-count">{String(posts.length).padStart(2, '0')} ENTRIES</span></div>
+      <p class="heading-description">{page.description.split(/\r?\n/).map((line, index) => <>{index > 0 && <br />}{line}</>)}</p>
+    </header>
+
+    <div class="content-toolbar">
+      <div class="filter-tabs" aria-label="Categories">
+        <button class="filter-tab is-active" data-filter="all" aria-pressed="true">All <span>{posts.length}</span></button>
+        {categories.map(category => <button class="filter-tab" data-filter={category.id} aria-pressed="false">{category.label}<span>{posts.filter(post => post.categoryId === category.id).length}</span></button>)}
+      </div>
+      <label class="content-search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg><input type="search" id="post-search" placeholder="Search posts or tags" aria-label="Search posts or tags" autocomplete="off" /></label>
+    </div>
+
+
+    <section class="post-list" aria-label="Blog">
+      {posts.map((post, index) => <article class="post-row" data-category={post.categoryId} data-search={[post.title, post.summary, ...post.tags].join(' ').toLowerCase()}>
+        <span class="post-index" aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
+        <div class="post-row-content">
+          <div class="post-meta"><time datetime={post.date}>{post.date.replaceAll('-', '.')}</time><span class="meta-divider">/</span><span>{post.category}</span><span class="meta-divider">/</span><span>{post.readTime} MIN READ</span>{post.demo && <span class="demo-badge">Demo</span>}</div>
+          <h2><a href={`/blog/${post.slug}/`} data-post-link>{post.title}<span class="post-link-arrow" aria-hidden="true">↗</span></a></h2>
+          <p>{post.summary}</p>
+          <div class="post-tags">{post.tags.map(tag => <span>#{tag}</span>)}</div>
+        </div>
+      </article>)}
+    </section>
+    <div class="empty-state" id="post-empty" hidden={posts.length > 0}><span class="empty-symbol" aria-hidden="true">∅</span><h2>{posts.length ? 'No matching posts' : 'Enter post content'}</h2>{posts.length > 0 && <p>Try another search.</p>}<button class="text-button" id="reset-posts" hidden={!posts.length}>All posts <span aria-hidden="true">↗</span></button></div>
+    <nav class="pagination" aria-label="Pagination"><p id="post-results" role="status" aria-live="polite">{posts.length} posts</p><div class="pagination-controls"><button id="previous-page" aria-label="Previous page" disabled>←</button><span id="page-position">{posts.length ? 1 : 0} / {Math.ceil(posts.length / 6)}</span><button id="next-page" aria-label="Next page" disabled={posts.length <= 6}>→</button></div></nav>
+  </div>
+</Layout>
+
+<script>
+  function initializeBlog() {
+    const root = document.querySelector<HTMLElement>('.blog-index');
+    if (!root || root.dataset.initialized) return;
+    root.dataset.initialized = 'true';
+    const rows = [...root.querySelectorAll<HTMLElement>('.post-row')];
+    const filters = [...root.querySelectorAll<HTMLButtonElement>('[data-filter]')];
+    const input = root.querySelector<HTMLInputElement>('#post-search')!;
+    const previous = root.querySelector<HTMLButtonElement>('#previous-page')!;
+    const next = root.querySelector<HTMLButtonElement>('#next-page')!;
+    const params = new URLSearchParams(location.search);
+    let category = params.get('category') || 'all';
+    if (!filters.some(button => button.dataset.filter === category)) category = 'all';
+    let page = Math.max(1, Number(params.get('page')) || 1);
+    input.value = params.get('q') || '';
+    const perPage = 6;
+
+    function update(updateURL = true) {
+      const query = input.value.trim().toLowerCase();
+      const matches = rows.filter(row => (category === 'all' || row.dataset.category === category) && (row.dataset.search || '').includes(query));
+      const pages = Math.max(1, Math.ceil(matches.length / perPage));
+      page = Math.min(page, pages);
+      rows.forEach(row => { row.hidden = true; });
+      matches.slice((page - 1) * perPage, page * perPage).forEach(row => { row.hidden = false; });
+      filters.forEach(button => {
+        const active = button.dataset.filter === category;
+        button.classList.toggle('is-active', active);
+        button.setAttribute('aria-pressed', String(active));
+      });
+      root!.querySelector<HTMLElement>('#post-empty')!.hidden = matches.length > 0;
+      root!.querySelector('#post-results')!.textContent = `${matches.length} posts${query ? ` · “${input.value.trim()}”` : ''}`;
+      root!.querySelector('#page-position')!.textContent = matches.length ? `${page} / ${pages}` : '0 / 0';
+      previous.disabled = page <= 1;
+      next.disabled = page >= pages;
+      if (updateURL) {
+        const url = new URL(location.href);
+        url.search = '';
+        if (category !== 'all') url.searchParams.set('category', category);
+        if (query) url.searchParams.set('q', input.value.trim());
+        if (page > 1) url.searchParams.set('page', String(page));
+        history.replaceState(history.state, '', url);
+      }
+    }
+    filters.forEach(button => button.addEventListener('click', () => { category = button.dataset.filter!; page = 1; update(); }));
+    input.addEventListener('input', () => { page = 1; update(); });
+    root.querySelector('#reset-posts')!.addEventListener('click', () => { input.value = ''; category = 'all'; page = 1; update(); input.focus(); });
+    function turnPage(direction: number) {
+      page += direction;
+      update();
+      root!.querySelector('.content-toolbar')!.scrollIntoView({ block: 'start', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
+      root!.querySelector<HTMLAnchorElement>('.post-row:not([hidden]) a')?.focus({ preventScroll: true });
+    }
+    previous.addEventListener('click', () => turnPage(-1));
+    next.addEventListener('click', () => turnPage(1));
+    root.querySelectorAll('[data-post-link]').forEach(link => link.addEventListener('click', () => { try { sessionStorage.removeItem('blog:from'); } catch { /* Storage may be unavailable. */ } }));
+    update(false);
+  }
+  initializeBlog();
+  document.addEventListener('astro:page-load', initializeBlog);
+</script>

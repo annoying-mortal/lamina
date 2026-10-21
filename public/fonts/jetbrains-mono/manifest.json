@@ -1,0 +1,243 @@
+{
+  "source": "https://github.com/ryanoasis/nerd-fonts/releases/download/v3.5.1/JetBrainsMono.zip",
+  "release": "3.5.1",
+  "upstream_version": "2.304",
+  "archive_sha256": "fab782a66f7d3019da64f6572db9fc5d3a4bcb19f9fa13e2d8a62e3693d6396e",
+  "variant": "JetBrainsMonoNerdFontMono",
+  "css_family": "JetBrains Mono",
+  "processing": "WOFF2 encoding only; no subsetting, name changes, or glyph modifications.",
+  "files": [
+    {
+      "file": "jetbrains-mono-400-normal.woff2",
+      "weight": 400,
+      "style": "normal",
+      "family": [
+        "JetBrainsMono NFM"
+      ],
+      "typographic_family": [
+        "JetBrainsMono NFM",
+        "JetBrainsMono Nerd Font Mono"
+      ],
+      "full_name": [
+        "JetBrainsMono NFM Regular"
+      ],
+      "postscript_name": [
+        "JetBrainsMonoNFM-Regular"
+      ],
+      "version": [
+        "Version 2.304; ttfautohint (v1.8.4.7-5d5b);Nerd Fonts 3.5.1"
+      ],
+      "glyphs": 12608,
+      "unicode_codepoints": 12226,
+      "nerd_private_use_codepoints": 10610,
+      "cjk_unified_codepoints": 0,
+      "size_bytes": 1083716,
+      "sha256": "a01afb185b6256b3190c3f79aa6041c9f0d6ba28df71d8af69cd2f65fcfeaed8",
+      "source_file": "JetBrainsMonoNerdFontMono-Regular.ttf",
+      "source_sha256": "f2a5ea6cfab397445ffab00c0370927b66d61e560a05db5db271b42006381c1a"
+    },
+    {
+      "file": "jetbrains-mono-400-italic.woff2",
+      "weight": 400,
+      "style": "italic",
+      "family": [
+        "JetBrainsMono NFM"
+      ],
+      "typographic_family": [
+        "JetBrainsMono NFM",
+        "JetBrainsMono Nerd Font Mono"
+      ],
+      "full_name": [
+        "JetBrainsMono NFM Italic"
+      ],
+      "postscript_name": [
+        "JetBrainsMonoNFM-Italic"
+      ],
+      "version": [
+        "Version 2.304; ttfautohint (v1.8.4.7-5d5b);Nerd Fonts 3.5.1"
+      ],
+      "glyphs": 12595,
+      "unicode_codepoints": 12226,
+      "nerd_private_use_codepoints": 10610,
+      "cjk_unified_codepoints": 0,
+      "size_bytes": 1087076,
+      "sha256": "9bdd468a238a881527fdd0cf05abdb6e3f70f6a4e2e9685414fadfc71d823eab",
+      "source_file": "JetBrainsMonoNerdFontMono-Italic.ttf",
+      "source_sha256": "31efd6ead98746f5b0afa1ee6dba60267ad48db36428360bee327bec10621f97"
+    },
+    {
+      "file": "jetbrains-mono-500-normal.woff2",
+      "weight": 500,
+      "style": "normal",
+      "family": [
+        "JetBrainsMono NFM Medium"
+      ],
+      "typographic_family": [
+        "JetBrainsMono NFM",
+        "JetBrainsMono Nerd Font Mono"
+      ],
+      "full_name": [
+        "JetBrainsMono NFM Medium"
+      ],
+      "postscript_name": [
+        "JetBrainsMonoNFM-Medium"
+      ],
+      "version": [
+        "Version 2.304; ttfautohint (v1.8.4.7-5d5b);Nerd Fonts 3.5.1"
+      ],
+      "glyphs": 12608,
+      "unicode_codepoints": 12226,
+      "nerd_private_use_codepoints": 10610,
+      "cjk_unified_codepoints": 0,
+      "size_bytes": 1085060,
+      "sha256": "25d64cc6185e2901892c79a670923bd7b12b977082de92c1d8f15df104f2fa5d",
+      "source_file": "JetBrainsMonoNerdFontMono-Medium.ttf",
+      "source_sha256": "a736c04959f32b69487956c9ccffa90e71903d3c85952886d42ecead0ca6cb1d"
+    },
+    {
+      "file": "jetbrains-mono-500-italic.woff2",
+      "weight": 500,
+      "style": "italic",
+      "family": [
+        "JetBrainsMono NFM Medium"
+      ],
+      "typographic_family": [
+        "JetBrainsMono NFM",
+        "JetBrainsMono Nerd Font Mono"
+      ],
+      "full_name": [
+        "JetBrainsMono NFM Medium Italic"
+      ],
+      "postscript_name": [
+        "JetBrainsMonoNFM-MediumItalic"
+      ],
+      "version": [
+        "Version 2.304; ttfautohint (v1.8.4.7-5d5b);Nerd Fonts 3.5.1"
+      ],
+      "glyphs": 12595,
+      "unicode_codepoints": 12226,
+      "nerd_private_use_codepoints": 10610,
+      "cjk_unified_codepoints": 0,
+      "size_bytes": 1089088,
+      "sha256": "758b532561f086417ae653ab92abce4258d8ca22bcefcc382c5752605d8c338e",
+      "source_file": "JetBrainsMonoNerdFontMono-MediumItalic.ttf",
+      "source_sha256": "f21eb76516348ffa152a9727fe4e99fe8baedbb7359c38aeefd1f123d5f6d0fe"
+    },
+    {
+      "file": "jetbrains-mono-600-normal.woff2",
+      "weight": 600,
+      "style": "normal",
+      "family": [
+        "JetBrainsMono NFM SemiBold"
+      ],
+      "typographic_family": [
+        "JetBrainsMono NFM",
+        "JetBrainsMono Nerd Font Mono"
+      ],
+      "full_name": [
+        "JetBrainsMono NFM SemiBold"
+      ],
+      "postscript_name": [
+        "JetBrainsMonoNFM-SemiBold"
+      ],
+      "version": [
+        "Version 2.304; ttfautohint (v1.8.4.7-5d5b);Nerd Fonts 3.5.1"
+      ],
+      "glyphs": 12608,
+      "unicode_codepoints": 12226,
+      "nerd_private_use_codepoints": 10610,
+      "cjk_unified_codepoints": 0,
+      "size_bytes": 1085656,
+      "sha256": "3563c7dd3806b1b4a47b742fafafc1d4160ee183274325f8ec35dd7b2a3f554f",
+      "source_file": "JetBrainsMonoNerdFontMono-SemiBold.ttf",
+      "source_sha256": "d3955c56fca699f37ebc153d0a6e331b8784f66fd8a3af5e20c30b90869201c4"
+    },
+    {
+      "file": "jetbrains-mono-600-italic.woff2",
+      "weight": 600,
+      "style": "italic",
+      "family": [
+        "JetBrainsMono NFM SemiBold"
+      ],
+      "typographic_family": [
+        "JetBrainsMono NFM",
+        "JetBrainsMono Nerd Font Mono"
+      ],
+      "full_name": [
+        "JetBrainsMono NFM SemiBold Italic"
+      ],
+      "postscript_name": [
+        "JetBrainsMonoNFM-SemiBoldItalic"
+      ],
+      "version": [
+        "Version 2.304; ttfautohint (v1.8.4.7-5d5b);Nerd Fonts 3.5.1"
+      ],
+      "glyphs": 12595,
+      "unicode_codepoints": 12226,
+      "nerd_private_use_codepoints": 10610,
+      "cjk_unified_codepoints": 0,
+      "size_bytes": 1089292,
+      "sha256": "257070a6a00e5011ddfcd284d7eba2e69944747f349e41c825aa1dcdfa7eabfd",
+      "source_file": "JetBrainsMonoNerdFontMono-SemiBoldItalic.ttf",
+      "source_sha256": "0d2aa4c3955f612986e22d08f08b9c255b75107c07a6128ac24dc80281cc9d9c"
+    },
+    {
+      "file": "jetbrains-mono-700-normal.woff2",
+      "weight": 700,
+      "style": "normal",
+      "family": [
+        "JetBrainsMono NFM"
+      ],
+      "typographic_family": [
+        "JetBrainsMono NFM",
+        "JetBrainsMono Nerd Font Mono"
+      ],
+      "full_name": [
+        "JetBrainsMono NFM Bold"
+      ],
+      "postscript_name": [
+        "JetBrainsMonoNFM-Bold"
+      ],
+      "version": [
+        "Version 2.304; ttfautohint (v1.8.4.7-5d5b);Nerd Fonts 3.5.1"
+      ],
+      "glyphs": 12608,
+      "unicode_codepoints": 12226,
+      "nerd_private_use_codepoints": 10610,
+      "cjk_unified_codepoints": 0,
+      "size_bytes": 1084792,
+      "sha256": "c8cee7dc3df8a82862a7c917bcf32ee53aacd1e4256a4dd84e3046f3ffabe32f",
+      "source_file": "JetBrainsMonoNerdFontMono-Bold.ttf",
+      "source_sha256": "bfcf9a917276ffc058867d87cbc8a5b2f1ab0f4b710e9170dc02763ccb80bd4b"
+    },
+    {
+      "file": "jetbrains-mono-700-italic.woff2",
+      "weight": 700,
+      "style": "italic",
+      "family": [
+        "JetBrainsMono NFM"
+      ],
+      "typographic_family": [
+        "JetBrainsMono NFM",
+        "JetBrainsMono Nerd Font Mono"
+      ],
+      "full_name": [
+        "JetBrainsMono NFM Bold Italic"
+      ],
+      "postscript_name": [
+        "JetBrainsMonoNFM-BoldItalic"
+      ],
+      "version": [
+        "Version 2.304; ttfautohint (v1.8.4.7-5d5b);Nerd Fonts 3.5.1"
+      ],
+      "glyphs": 12595,
+      "unicode_codepoints": 12226,
+      "nerd_private_use_codepoints": 10610,
+      "cjk_unified_codepoints": 0,
+      "size_bytes": 1089376,
+      "sha256": "263c368d0621ecb987ea7732a3f8b13c57f35747a2f3021a9ec952782c47f12a",
+      "source_file": "JetBrainsMonoNerdFontMono-BoldItalic.ttf",
+      "source_sha256": "9dba502e00e35209f6ed2a151c7376c051657b067cdebbc6e52d06cb9002cf31"
+    }
+  ]
+}

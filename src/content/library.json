@@ -1,0 +1,112 @@
+[
+  {
+    "original": "Adachi and Shimamura",
+    "typeLabel": "ACGN",
+    "creator": "入间人间 · のん",
+    "date": "2026-01-01",
+    "rating": "",
+    "cover": "https://cdn2.penguin.com.au/covers/400/9781645055358.jpg",
+    "note": "A light novel about Adachi, Shimamura, and the changing distance between them.",
+    "detail": "Example ACGN entry. Add your own reading or viewing notes here.",
+    "article": null,
+    "tags": [
+      "Light novel",
+      "Romance"
+    ],
+    "demo": true,
+    "id": "example-adachi-shimamura",
+    "title": "安达与岛村",
+    "type": "acgn"
+  },
+  {
+    "original": "Original Soundtrack",
+    "typeLabel": "Albums",
+    "creator": "Kan R. Gao · Laura Shigihara",
+    "date": "2026-01-01",
+    "rating": "",
+    "cover": "https://f4.bcbits.com/img/a1974877315_5.jpg",
+    "note": "The original soundtrack for To the Moon by Freebird Games.",
+    "detail": "Example album entry. Add your favorite tracks and listening notes here.",
+    "article": null,
+    "tags": [
+      "Soundtrack",
+      "Piano"
+    ],
+    "demo": true,
+    "id": "example-to-the-moon",
+    "title": "To the Moon",
+    "type": "albums"
+  },
+  {
+    "original": "",
+    "typeLabel": "Books",
+    "creator": "史铁生",
+    "date": "2026-01-01",
+    "rating": "",
+    "cover": "https://img01.yzcdn.cn/upload_files/2024/08/13/FpZVWJoVqDKxqQlNIa6b8EgqvH-P.jpg!middle.jpg",
+    "note": "A collection of essays by Shi Tiesheng, including 我与地坛.",
+    "detail": "Example book entry. Add your reading notes and reflections here.",
+    "article": null,
+    "tags": [
+      "Essays"
+    ],
+    "demo": true,
+    "id": "example-wo-yu-di-tan",
+    "title": "我与地坛",
+    "type": "books"
+  },
+  {
+    "original": "Enter original title",
+    "typeLabel": "ACGN",
+    "creator": "Enter creator",
+    "date": "2026-01-01",
+    "rating": "",
+    "cover": "",
+    "note": "Enter note",
+    "detail": "Enter content",
+    "article": null,
+    "tags": [
+      "Enter tag"
+    ],
+    "demo": true,
+    "id": "template-acgn",
+    "title": "Enter Title",
+    "type": "acgn"
+  },
+  {
+    "original": "Enter original title",
+    "typeLabel": "Albums",
+    "creator": "Enter creator",
+    "date": "2026-01-01",
+    "rating": "",
+    "cover": "",
+    "note": "Enter note",
+    "detail": "Enter content",
+    "article": null,
+    "tags": [
+      "Enter tag"
+    ],
+    "demo": true,
+    "id": "template-albums",
+    "title": "Enter Title",
+    "type": "albums"
+  },
+  {
+    "original": "Enter original title",
+    "typeLabel": "Books",
+    "creator": "Enter creator",
+    "date": "2026-01-01",
+    "rating": "",
+    "cover": "",
+    "note": "Enter note",
+    "detail": "Enter content",
+    "article": null,
+    "tags": [
+      "Enter tag"
+    ],
+    "demo": true,
+    "id": "template-books",
+    "title": "Enter Title",
+    "type": "books"
+  }
+]

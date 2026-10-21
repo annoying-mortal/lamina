@@ -1,0 +1,82 @@
+---
+import { render } from 'astro:content';
+import Layout from '../../layouts/Layout.astro';
+import { getPosts } from '../../lib/content';
+import 'katex/dist/katex.min.css';
+import '../../styles/content.css';
+
+export async function getStaticPaths() {
+  const posts = await getPosts();
+  return posts.map((post, index) => ({ params: { slug: post.slug }, props: { post, previous: posts[index - 1], next: posts[index + 1] } }));
+}
+const { post, previous, next } = Astro.props;
+const { Content, headings } = await render(post.entry);
+const toc = headings.filter(heading => (heading.depth === 2 || heading.depth === 3) && heading.slug !== 'footnote-label');
+---
+
+<Layout title={post.title} description={post.summary} active="blog">
+  <div class="page-shell content-page article-page">
+    <nav class="article-breadcrumb" aria-label="Breadcrumb"><a href="/blog/" id="article-return">← All posts</a><span aria-hidden="true">/</span><a href={`/blog/?category=${post.categoryId}`}>{post.category}</a><span class="article-id">{post.id}</span></nav>
+    <header class="article-header" id="article-top">
+      <div class="post-meta"><time datetime={post.date}>{post.date.replaceAll('-', '.')}</time><span class="meta-divider">/</span><span>{post.readTime} MIN READ</span>{post.demo && <><span class="meta-divider">/</span><span class="demo-badge">Demo</span></>}</div>
+      <h1>{post.title}</h1>
+      <p class="article-summary">{post.summary}</p>
+      <div class="post-tags">{post.tags.map(tag => <a href={`/blog/?q=${encodeURIComponent(tag)}`}>#{tag}</a>)}</div>
+    </header>
+    <div class="article-grid">
+      <article class="article-body"><Content /></article>
+      <aside class:list={['article-aside', { 'article-aside-no-toc': toc.length === 0 }]} aria-label={toc.length ? 'Contents and reading progress' : 'Reading progress'}><div class="article-toc">{toc.length > 0 && <><p class="eyebrow">ON THIS PAGE</p><nav aria-label="Contents">{toc.map((heading, index) => <a href={`#${heading.slug}`} class:list={{ 'toc-subheading': heading.depth === 3 }}><span>{String(index + 1).padStart(2, '0')}</span>{heading.text}</a>)}</nav></>}<div class="article-reading-progress"><span>Reading progress</span><span id="reading-percent">0%</span></div><div class="reading-track"><span id="reading-bar"></span></div><a class="toc-top" href="#article-top">↑ Back to top</a></div></aside>
+    </div>
+    <div class="article-end"><span aria-hidden="true">✳</span><p>Published {post.date.replaceAll('-', '.')}</p></div>
+    <nav class="article-adjacent" aria-label="More posts">
+      {previous ? <a href={`/blog/${previous.slug}/`}><span class="eyebrow">← Previous</span><strong>{previous.title}</strong></a> : <div><span class="eyebrow">← Previous</span><strong>Latest post</strong></div>}
+      {next ? <a href={`/blog/${next.slug}/`}><span class="eyebrow">Next →</span><strong>{next.title}</strong></a> : <a href="/blog/"><span class="eyebrow">ALL ENTRIES →</span><strong>All posts</strong></a>}
+    </nav>
+  </div>
+</Layout>
+
+<script>
+  function initializeArticle() {
+    const article = document.querySelector<HTMLElement>('.article-body');
+    if (!article || article.dataset.initialized) return;
+    article.dataset.initialized = 'true';
+    const returnLink = document.querySelector<HTMLAnchorElement>('#article-return')!;
+    try {
+      if (sessionStorage.getItem('blog:from') === 'home') { returnLink.href = '/#archives'; returnLink.textContent = '← Archive'; }
+    } catch { /* A plain list link remains available. */ }
+    article.querySelectorAll<HTMLElement>('.code-wrapper').forEach((wrapper) => {
+      const code = wrapper.querySelector('pre > code');
+      const button = wrapper.querySelector<HTMLButtonElement>('.copy-code');
+      if (!code || !button) return;
+      button.addEventListener('click', async () => {
+        try { await navigator.clipboard.writeText(code.textContent || ''); button.textContent = 'Copied ✓'; button.setAttribute('aria-label', 'Code copied'); }
+        catch { button.textContent = 'Select to copy'; button.setAttribute('aria-label', 'Select the code to copy'); }
+        window.setTimeout(() => { button.textContent = 'Copy'; button.setAttribute('aria-label', 'Copy code'); }, 2000);
+      });
+    });
+    const links = [...document.querySelectorAll<HTMLAnchorElement>('.article-toc nav a')];
+    const sections = links.map(link => document.getElementById(decodeURIComponent(link.hash.slice(1))));
+    let frame = 0;
+    function updateProgress() {
+      frame = 0;
+      const rect = article!.getBoundingClientRect();
+      const available = Math.max(1, article!.offsetHeight - innerHeight + 160);
+      const percent = Math.min(100, Math.max(0, Math.round((160 - rect.top) / available * 100)));
+      const bar = document.querySelector<HTMLElement>('#reading-bar');
+      if (bar) bar.style.width = `${percent}%`;
+      const label = document.querySelector('#reading-percent');
+      if (label) label.textContent = `${percent}%`;
+      let active = -1;
+      const headingOffset = (parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop) || 0) + 135;
+      sections.forEach((section, index) => { if (section && section.getBoundingClientRect().top <= headingOffset) active = index; });
+      links.forEach((link, index) => { link.classList.toggle('is-active', index === active); if (index === active) link.setAttribute('aria-current', 'location'); else link.removeAttribute('aria-current'); });
+    }
+    function onScroll() { if (!frame) frame = requestAnimationFrame(updateProgress); }
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll, { passive: true });
+    document.addEventListener('astro:before-swap', () => { window.removeEventListener('scroll', onScroll); window.removeEventListener('resize', onScroll); cancelAnimationFrame(frame); }, { once: true });
+    updateProgress();
+  }
+  initializeArticle();
+  document.addEventListener('astro:page-load', initializeArticle);
+</script>

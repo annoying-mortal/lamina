@@ -1,0 +1,41 @@
+---
+import '../styles/home-orbit.css';
+import { site, imageSource } from '../data/site';
+
+const orbitImage = imageSource(site.orbitImage);
+
+// A conventional 12-hour dial, with separate hour and minute markers.
+const ticks = Array.from({ length: 60 }, (_, index) => ({
+  angle: index * 6,
+  major: index % 5 === 0,
+}));
+---
+<div class="home-orbit" data-home-orbit role="img" aria-label="Local time" aria-hidden="true">
+  <div class="home-orbit-position">
+    <svg class="home-orbit-instrument" viewBox="0 0 420 420" fill="none" focusable="false">
+      <circle class="orbit-outline" cx="210" cy="210" r="202" />
+      <g class="orbit-ticks">
+        {ticks.map(tick => <path
+          d={`M210 ${tick.major ? 20 : 25}V30`}
+          transform={`rotate(${tick.angle} 210 210)`}
+          class:list={{ 'orbit-tick': true, 'orbit-tick-major': tick.major }}
+        />)}
+      </g>
+      <circle class="orbit-guide" cx="210" cy="210" r="170" />
+      <circle class="orbit-guide orbit-guide-inner" cx="210" cy="210" r="145" />
+      <g class="orbit-clock-markers">
+        <!-- Draw the longer minute marker first so both remain visible at overlap. -->
+        <path class="orbit-minute-marker" data-orbit-minute-marker d="M210 15V39" />
+        <path class="orbit-hour-marker" data-orbit-hour-marker d="M210 20V34" />
+      </g>
+      <g class="orbit-rotor orbit-rotor-outer">
+        <circle class="orbit-arc" cx="210" cy="210" r="170" pathLength="360" stroke-dasharray="62 118 62 118" />
+        <path class="orbit-index" d="M380 204V216M40 204V216" />
+      </g>
+      <g class="orbit-rotor orbit-rotor-inner">
+        <circle class="orbit-arc orbit-accent" cx="210" cy="210" r="145" pathLength="360" stroke-dasharray="32 148 32 148" />
+      </g>
+    </svg>
+    {orbitImage && <img class="orbit-image" data-orbit-image src={orbitImage} alt="" decoding="async" referrerpolicy="no-referrer" />}
+  </div>
+</div>

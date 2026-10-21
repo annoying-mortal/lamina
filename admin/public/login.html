@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="light dark" />
+  <meta name="robots" content="noindex,nofollow" />
+  <title>Sign in · Workspace</title>
+  <link rel="stylesheet" href="/typography.css" />
+  <script src="/theme.js"></script>
+  <link rel="stylesheet" href="/login.css" />
+  <script type="module" src="/login.js"></script>
+</head>
+<body data-state="loading">
+  <div class="ambient-lines" aria-hidden="true"><svg viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid slice"><g fill="none" stroke="currentColor" stroke-width="2"><path d="M-210 705C-45 705 182 704 247 567C337 377 99 306 4 435S27 680 169 631C309 584 227 314 279 111S568-113 568-113"/><path d="M1560-80C1374 114 1671 168 1601 323S1371 367 1431 480S1692 666 1559 787S1329 886 1498 1130"/><circle cx="1450" cy="648" r="346"/><circle cx="1450" cy="648" r="352"/></g></svg></div>
+  <header class="login-header">
+    <a href="/" class="identity-brand" aria-label="Workspace" data-en-label="Workspace" data-zh-label="工作台"><strong data-site-name>Enter site name</strong><span>PERSONAL ARCHIVE</span><span class="brand-system">CONTENT <b>OS</b></span></a>
+    <div class="header-actions"><div class="language-switch" aria-label="Language"><button type="button" data-admin-language="en">EN</button><button type="button" data-admin-language="zh">中文</button></div><a id="return-site" href="http://127.0.0.1:4321/"><span data-en="Site" data-zh="网站">Site</span> <span aria-hidden="true">↗</span></a><button id="theme-toggle" data-theme-toggle class="theme-toggle" type="button" aria-label="Toggle theme" title="Toggle theme"><svg class="sun-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="1.5"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5" stroke="currentColor" stroke-width="1.5"/></svg><svg class="moon-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20.5 13.1A8.8 8.8 0 0 1 10.9 3.5 8.8 8.8 0 1 0 20.5 13.1Z" stroke="currentColor" stroke-width="1.5"/></svg></button></div>
+  </header>
+  <main>
+    <section class="identity-stage" aria-labelledby="login-title">
+      <div class="identity-emblem" aria-hidden="true">
+        <div class="emblem-art"><svg class="scan-orbit" viewBox="0 0 300 300"><circle class="orbit-base" cx="150" cy="150" r="136"/><circle class="orbit-moving" cx="150" cy="150" r="136"/><circle class="orbit-inner" cx="150" cy="150" r="121"/></svg><img id="identity-logo" class="identity-logo" alt="" decoding="async" referrerpolicy="no-referrer" hidden /></div>
+        <span id="emblem-label">Enter archive title</span><span class="emblem-caption">PRIVATE WORKSPACE / 01</span>
+      </div>
+      <div class="identity-content">
+        <p class="access-label">ACCESS PERMISSION REQUIRED</p>
+        <div class="terminal-line" aria-hidden="true"><span class="terminal-dot"></span><span id="terminal-message">CONNECTING</span><i class="terminal-cursor"></i></div>
+        <h1 id="login-title">Sign in</h1>
+        <p id="login-description" class="login-description" hidden></p>
+        <form id="login-form" aria-labelledby="login-title">
+          <fieldset id="login-fields" disabled>
+            <label class="credential"><span><span data-en="Username" data-zh="用户名">Username</span><small>IDENTITY</small></span><input name="username" id="username" autocomplete="username" autocapitalize="none" spellcheck="false" required minlength="3" maxlength="32" pattern="[A-Za-z0-9][A-Za-z0-9._\-]{2,31}" placeholder="Enter username" data-en-placeholder="Enter username" data-zh-placeholder="请填写用户名" aria-describedby="username-hint login-error" /></label>
+            <p id="username-hint" class="field-hint"><span data-en="3–32 characters: letters, numbers, . _ -. Start with a letter or number. Case-sensitive." data-zh="3–32 位字母、数字、点、下划线或短横线，以字母或数字开头，区分大小写。">3–32 characters: letters, numbers, . _ -. Start with a letter or number. Case-sensitive.</span></p>
+            <label class="credential"><span id="password-label"><span data-en="Password" data-zh="密码">Password</span><small>ACCESS KEY</small></span><span class="password-line"><input type="password" name="password" id="password" placeholder="Enter password" data-en-placeholder="Enter password" data-zh-placeholder="请填写密码" autocomplete="current-password" required maxlength="128" aria-describedby="login-error password-hint" /><button type="button" id="show-password" aria-label="Show password" title="Show password" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z" stroke="currentColor" stroke-width="1.5"/><circle cx="12" cy="12" r="2.5" stroke="currentColor" stroke-width="1.5"/><path class="password-slash" d="m4 3 16 18" stroke="currentColor" stroke-width="1.5"/></svg></button></span></label>
+            <p id="password-hint" class="field-hint" data-en="12–128 characters." data-zh="12–128 个字符。" hidden>12–128 characters.</p>
+            <label class="credential" id="confirm-field" hidden><span><span data-en="Confirm password" data-zh="确认密码">Confirm password</span><small>CONFIRM KEY</small></span><input type="password" id="confirm-password" placeholder="Confirm password" data-en-placeholder="Confirm password" data-zh-placeholder="请填写确认密码" autocomplete="new-password" maxlength="128" /></label>
+            <label class="credential" id="setup-token-field" hidden><span><span data-en="Setup token" data-zh="初始化口令">Setup token</span><small>SETUP TOKEN</small></span><input type="password" id="setup-token" placeholder="Enter setup token" data-en-placeholder="Enter setup token" data-zh-placeholder="请填写初始化口令" autocomplete="off" maxlength="64" /><small class="field-hint" data-en="Use the one-time token from the server terminal." data-zh="填写服务器终端中的一次性口令。">Use the one-time token from the server terminal.</small></label>
+            <p id="login-error" class="login-error" role="alert" hidden></p>
+            <button id="login-submit" class="login-submit" type="submit"><span id="submit-label">Sign in</span><span class="submit-arrow" aria-hidden="true">→</span></button>
+          </fieldset>
+        </form>
+        <button id="retry-connection" class="retry-button" type="button" data-en="Reconnect ↗" data-zh="重新连接 ↗" hidden>Reconnect ↗</button>
+        <p id="login-status" class="login-status" role="status" aria-live="polite" data-en="Connecting…" data-zh="连接中…">Connecting…</p>
+        <noscript><p class="login-error">Enable JavaScript to sign in.</p></noscript>
+      </div>
+    </section>
+  </main>
+  <footer class="login-footer"><span><i id="session-indicator"></i><span id="session-status">SESSION LOCKED</span></span><span>CONTENT MANAGEMENT <b>↗</b></span></footer>
+</body>
+</html>

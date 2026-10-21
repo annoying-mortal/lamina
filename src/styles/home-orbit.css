@@ -1,0 +1,30 @@
+/* The instrument stays behind Home's content and follows the chapter transition. */
+:root[data-page="home"] #main{isolation:isolate}
+.home-orbit{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none;color:var(--fg);transition:opacity .35s ease;contain:strict}
+.home-orbit-position{--orbit-size:420px;position:absolute;left:0;top:0;width:var(--orbit-size);height:var(--orbit-size);transform:translate3d(63vw,28vh,0);transform-origin:0 0;will-change:transform}
+.home-orbit-instrument{display:block;width:100%;height:100%;overflow:visible;stroke:currentColor;stroke-width:1;opacity:var(--orbit-opacity,.58)}
+.orbit-image{position:absolute;inset:20%;width:60%;height:60%;border-radius:50%;border:1px solid var(--line);object-fit:cover;object-position:center;opacity:var(--orbit-image-opacity,1)}
+.orbit-image[hidden]{display:none}
+.orbit-outline{opacity:.14}
+.orbit-guide{opacity:.3}
+.orbit-guide-inner{opacity:.18}
+.orbit-tick{opacity:.18}
+.orbit-tick-major{stroke-width:1.35;opacity:.35}
+.orbit-clock-markers{opacity:0;stroke-width:6;stroke-linecap:butt}
+.orbit-minute-marker{stroke:color-mix(in srgb,var(--fg) 43%,var(--bg))}
+.orbit-hour-marker{stroke:var(--fg)}
+.home-orbit[data-clock-ready] .orbit-clock-markers{opacity:1}
+.orbit-rotor{transform-box:view-box;transform-origin:50% 50%;animation:home-instrument-spin 48s linear infinite}
+.orbit-rotor-inner{animation-duration:64s;animation-direction:reverse}
+.orbit-arc{stroke-width:2;opacity:.9}
+.orbit-index{stroke-width:1.5;opacity:.8}
+.orbit-accent{stroke:#7e8669;stroke-width:2.5}
+:root[data-theme="dark"] .orbit-accent{stroke:#b3b99b}
+.home-orbit[data-motion="paused"] .orbit-rotor{animation-play-state:paused}
+.home-orbit[data-obscured="true"]{opacity:0}
+:root[data-page="home"] .home-hero,:root[data-page="home"] .home-page{z-index:1}
+:root[data-page="home"] .home-contact{background:transparent}
+:root[data-page="home"] .archive-section{z-index:2}
+@keyframes home-instrument-spin{from{transform:rotate(-24deg)}to{transform:rotate(336deg)}}
+@media(max-width:760px){.home-orbit-position{--orbit-size:230px;transform:translate3d(46vw,54vh,0)}}
+@media(prefers-reduced-motion:reduce){.home-orbit{transition:none}.home-orbit-position{will-change:auto}.orbit-rotor{animation:none;transform:rotate(-24deg)}}

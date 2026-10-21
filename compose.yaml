@@ -1,0 +1,61 @@
+services:
+  blog:
+    build:
+      context: .
+      target: runtime
+      args:
+        SITE_URL: ${SITE_URL:-http://localhost:8080}
+    ports:
+      - "127.0.0.1:${PORT:-8080}:8080"
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=32m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 100
+    volumes:
+      - blog-published:/usr/share/nginx/html:ro
+      - blog-uploads:/var/www/uploads:ro
+      - ./public/fonts/alimama-fangyuan:/var/www/site-fonts/alimama-fangyuan:ro
+    depends_on:
+      admin:
+        condition: service_healthy
+  admin:
+    build:
+      context: .
+      target: admin
+      args:
+        SITE_URL: ${SITE_URL:-http://localhost:8080}
+    environment:
+      ADMIN_HOST: 0.0.0.0
+      ADMIN_PORT: 4322
+      ADMIN_AUTO_PUBLISH: 1
+      ADMIN_AUTH_DIR: /app/.admin
+      ADMIN_LOOPBACK_PUBLISHED: 1
+      ADMIN_ALLOWED_HOSTS: "127.0.0.1:${ADMIN_PORT:-4322},localhost:${ADMIN_PORT:-4322},[::1]:${ADMIN_PORT:-4322}"
+      SITE_PUBLISH_ROOT: /published
+      SITE_UPLOADS_DIR: /app/public/uploads
+      SITE_URL: ${SITE_URL:-http://localhost:8080}
+    ports:
+      - "127.0.0.1:${ADMIN_PORT:-4322}:4322"
+    restart: unless-stopped
+    volumes:
+      - blog-content:/app/src/content
+      - blog-published:/published
+      - blog-uploads:/app/public/uploads
+      - blog-admin:/app/.admin
+      - ./public/fonts/alimama-fangyuan:/app/public/fonts/alimama-fangyuan:ro
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 160
+
+volumes:
+  blog-content:
+  blog-published:
+  blog-uploads:
+  blog-admin:

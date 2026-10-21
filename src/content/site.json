@@ -1,0 +1,135 @@
+{
+  "name": "Enter site name",
+  "title": "Enter page title",
+  "description": "Enter site description",
+  "url": "",
+  "tagline": "Enter headline",
+  "intro": "Enter introduction",
+  "aboutEyebrow": "Enter about label",
+  "aboutTitle": "Enter about title",
+  "aboutBody": "Enter about content",
+  "contactEyebrow": "Enter contact label",
+  "contactTitle": "Enter contact title",
+  "contactBody": "Enter contact content",
+  "launchedAt": "",
+  "eyebrow": "Enter home label",
+  "footerNote": "Enter footer text",
+  "footerLabel": "Enter footer label",
+  "github": "",
+  "email": "",
+  "logo": "",
+  "favicon": "/favicon.svg",
+  "defaultTheme": "system",
+  "showRSS": true,
+  "demo": false,
+  "archiveSubtitle": "Enter archive subtitle",
+  "archiveTitle": "Enter archive title",
+  "homeEdition": "Enter home footer text",
+  "navigation": [
+    {
+      "id": "home",
+      "label": "Home",
+      "visible": true
+    },
+    {
+      "id": "blog",
+      "label": "Blog",
+      "visible": true
+    },
+    {
+      "id": "library",
+      "label": "Library",
+      "visible": true
+    },
+    {
+      "id": "friends",
+      "label": "Friends",
+      "visible": true
+    }
+  ],
+  "pages": {
+    "blog": {
+      "title": "Blog",
+      "eyebrow": "Enter blog label",
+      "description": "Enter blog description"
+    },
+    "library": {
+      "title": "Library",
+      "eyebrow": "Enter library label",
+      "description": "Enter library description"
+    },
+    "friends": {
+      "title": "Friends",
+      "eyebrow": "Enter friends label",
+      "description": "Enter friends description"
+    }
+  },
+  "categories": [
+    {
+      "id": "engineering",
+      "label": "Category 01",
+      "en": "Category 01"
+    },
+    {
+      "id": "thinking",
+      "label": "Category 02",
+      "en": "Category 02"
+    },
+    {
+      "id": "reading",
+      "label": "Category 03",
+      "en": "Category 03"
+    }
+  ],
+  "aboutHighlights": [
+    {
+      "label": "Enter achievement label",
+      "title": "Enter achievement title",
+      "description": "Enter achievement summary",
+      "period": "Enter period",
+      "url": ""
+    },
+    {
+      "label": "Enter achievement label",
+      "title": "Enter achievement title",
+      "description": "Enter achievement summary",
+      "period": "Enter period",
+      "url": ""
+    },
+    {
+      "label": "Enter achievement label",
+      "title": "Enter achievement title",
+      "description": "Enter achievement summary",
+      "period": "Enter period",
+      "url": ""
+    }
+  ],
+  "orbitImage": "",
+  "libraryTypes": [
+    {
+      "id": "all",
+      "label": "All",
+      "en": "ALL"
+    },
+    {
+      "id": "acgn",
+      "label": "ACGN",
+      "en": "ACGN"
+    },
+    {
+      "id": "albums",
+      "label": "Albums",
+      "en": "ALBUMS"
+    },
+    {
+      "id": "books",
+      "label": "Books",
+      "en": "BOOKS"
+    },
+    {
+      "id": "others",
+      "label": "Others",
+      "en": "OTHERS"
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+[
+  {
+    "id": "example-me",
+    "name": "Me",
+    "url": "http://localhost:8080/",
+    "avatar": "",
+    "initials": "",
+    "description": "My site.",
+    "label": "Home",
+    "kind": "Blog",
+    "order": 0,
+    "visible": true,
+    "demo": true
+  },
+  {
+    "id": "template-friend",
+    "name": "Enter Title",
+    "url": "https://example.com/",
+    "avatar": "",
+    "initials": "",
+    "description": "Enter description",
+    "label": "Enter tag",
+    "kind": "Enter type",
+    "order": 1,
+    "visible": true,
+    "demo": true
+  }
+]

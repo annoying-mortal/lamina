@@ -1,0 +1,6 @@
+Syncopate webfont conversion
+
+Webfont format conversion: converted from the Google Fonts TTF distribution to WOFF2 on 2026-10-21. Glyph outlines and family name unchanged. Original Apache 2.0 license and notices retained.
+
+Original source: https://github.com/google/fonts/tree/main/apache/syncopate
+Original TTF files are included alongside the WOFF2 files.

@@ -1,0 +1,106 @@
+---
+import Layout from '../layouts/Layout.astro';
+import ArchiveSection from '../components/ArchiveSection.astro';
+import HomeOrbit from '../components/HomeOrbit.astro';
+import { site, imageSource } from '../data/site';
+import { library } from '../data/library';
+import { getPostCategories, getPosts } from '../lib/content';
+import '../styles/home.css';
+const posts = await getPosts();
+const categories = getPostCategories(posts);
+const logo = imageSource(site.logo);
+const titleLines = site.tagline.split(/\r?\n/);
+const introLines = site.intro.replaceAll('{name}', site.name).split(/\r?\n/);
+const personalize = (value: string) => value.replaceAll('{name}', site.name);
+const highlightLink = (value: string) => {
+  try { const url = new URL(value); return ['http:', 'https:'].includes(url.protocol) ? url.href : ''; }
+  catch { return ''; }
+};
+const highlightGroups: { label: string; items: typeof site.aboutHighlights }[] = [];
+for (const highlight of site.aboutHighlights) {
+  const label = personalize(highlight.label).trim();
+  let group = highlightGroups.find(group => group.label.toLocaleLowerCase() === label.toLocaleLowerCase());
+  if (!group) { group = { label, items: [] }; highlightGroups.push(group); }
+  group.items.push(highlight);
+}
+const chapters = [
+  { id: 'welcome', label: 'Home' }, { id: 'about', label: 'About' },
+  { id: 'archives', label: 'Archive' }, { id: 'contact', label: 'Contact' },
+];
+const launchTime = Date.parse(site.launchedAt);
+const hasLaunchTime = Number.isFinite(launchTime);
+---
+<Layout active="home">
+  <HomeOrbit />
+  <section class="home-hero" id="welcome" data-home-chapter aria-labelledby="welcome-title">
+    <div class="hero-content">
+      <div class="hero-intro eyebrow"><span class="status-dot"></span>{site.eyebrow}</div>
+      <h1 id="welcome-title">{titleLines.map((line, index) => <>{index > 0 && <br />}{index === 0 ? line : <span>{line}</span>}</>)}</h1>
+      <p class="hero-description">{introLines.map((line, index) => <>{index > 0 && <br />}{line}</>)}</p>
+    </div>
+    <div class="hero-art-anchor" aria-hidden="true"></div>
+    <div class="hero-bottom"><a href="#about" class="scroll-cue" aria-label="Scroll to about"><span class="scroll-cue-line"></span><span>SCROLL TO EXPLORE</span></a><span class="hero-edition">{site.homeEdition}</span>{site.demo && <span class="demo-note">DEMO</span>}</div>
+  </section>
+
+  <section class="home-page home-about" id="about" data-home-chapter aria-labelledby="about-title">
+    <div class="home-section-top"><span class="eyebrow">{site.aboutEyebrow}</span><span class="chapter-number">02 / 04</span></div>
+    <div class="about-layout">
+      <div class="about-statement">
+        {logo && <img class="about-logo" data-fallback-image src={logo} alt="" />}
+        <h2 id="about-title">{personalize(site.aboutTitle)}</h2>
+        <div class="about-prose">{personalize(site.aboutBody).split(/\n+/).filter(Boolean).map(paragraph => <p>{paragraph}</p>)}</div>
+      </div>
+      {highlightGroups.length > 0 && <div class:list={['about-highlights', { 'single-group': highlightGroups.length === 1 }]} aria-label="Experience and achievements">
+        {highlightGroups.map(group => <section class="highlight-group">
+          {group.label && <h3 class="highlight-group-label"><span aria-hidden="true">//</span>{group.label}</h3>}
+          <ul class="highlight-list">
+            {group.items.map(highlight => {
+              const href = highlightLink(highlight.url);
+              return <li class="about-highlight">
+                <div class="highlight-entry">
+                  <h4>{href ? <a href={href} target="_blank" rel="noopener noreferrer">{personalize(highlight.title)}<span aria-hidden="true">↗</span></a> : personalize(highlight.title)}</h4>
+                  {highlight.period && <span class="highlight-period">{highlight.period}</span>}
+                </div>
+                {highlight.description && <p>{personalize(highlight.description)}</p>}
+              </li>;
+            })}
+          </ul>
+        </section>)}
+      </div>}
+    </div>
+    <div class="home-section-bottom"><span>{site.name} / PERSONAL PROFILE</span><a href="#archives">Archive <span aria-hidden="true">↓</span></a></div>
+  </section>
+
+  <ArchiveSection posts={posts} categories={categories} site={site} library={library} />
+
+  <section class="home-page home-contact" id="contact" data-home-chapter aria-labelledby="contact-title">
+    <div class="home-section-top"><span class="eyebrow">{site.contactEyebrow}</span><span class="chapter-number">04 / 04</span></div>
+    <div class="contact-layout">
+      <div class="contact-message">
+        <h2 id="contact-title">{personalize(site.contactTitle).split(/\r?\n/).map((line, index) => <>{index > 0 && <br />}{index === 0 ? line : <span>{line}</span>}</>)}</h2>
+        <p class="contact-description">{personalize(site.contactBody)}</p>
+        <div class="contact-links">
+          {site.email && <a href={`mailto:${site.email}`}><span><small>EMAIL</small>{site.email}</span><span aria-hidden="true">↗</span></a>}
+          {site.github && <a href={site.github} target="_blank" rel="noopener noreferrer"><span>GitHub{site.github === 'https://github.com/' && site.demo ? ' · Demo' : ''}</span><span aria-hidden="true">↗</span></a>}
+          {site.showRSS && <a href="/rss.xml"><span>RSS</span><span aria-hidden="true">↗</span></a>}
+          {!site.email && !site.github && <p class="contact-empty">Enter contact details</p>}
+        </div>
+      </div>
+      <aside class="home-colophon" aria-label="Site information">
+        <div class="colophon-heading"><span class="status-dot"></span><span>SITE INFORMATION</span></div>
+        {hasLaunchTime ? <div class="site-runtime" data-launched-at={site.launchedAt}>
+          <p class="runtime-label">{site.demo ? 'LOCAL UPTIME' : 'UPTIME'}</p>
+          <div class="runtime-days"><strong data-runtime-days>—</strong><span>days</span></div>
+          <p class="runtime-clock" data-runtime-clock>Calculating uptime</p>
+          <p class="runtime-origin">SINCE <time datetime={site.launchedAt}>{new Date(launchTime).toLocaleDateString('en-GB', { timeZone: 'Asia/Shanghai', year: 'numeric', month: '2-digit', day: '2-digit' }).replaceAll('/', '.')}</time></p>
+          <noscript><p class="runtime-note">Enable JavaScript for live uptime.</p></noscript>
+        </div> : <div class="site-runtime"><p class="runtime-label">Enter launch date</p></div>}
+        <dl class="colophon-counts"><div><dt>Posts</dt><dd>{String(posts.length).padStart(2, '0')}</dd></div><div><dt>Library</dt><dd>{String(library.length).padStart(2, '0')}</dd></div></dl>
+        <p class="colophon-note">{site.footerNote}</p>
+      </aside>
+    </div>
+    <footer class="home-section-bottom contact-footer"><span>© {new Date().getFullYear()} {site.name} <i>/</i> {site.footerLabel}</span><a href="#welcome">Back to top <span aria-hidden="true">↑</span></a></footer>
+  </section>
+  <nav class="scene-nav" aria-label="Home sections">{chapters.map((chapter, index) => <a href={`#${chapter.id}`} class:list={{ 'is-active': index === 0 }} aria-label={`Section ${index + 1}: ${chapter.label}`} title={chapter.label}><span>{String(index + 1).padStart(2, '0')}</span><i></i></a>)}</nav>
+  <script>import '../scripts/home';</script>
+</Layout>

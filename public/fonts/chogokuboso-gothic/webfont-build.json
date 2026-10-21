@@ -1,0 +1,13 @@
+{
+  "source": "https://font.websozai.jp/fontdata-8/chogokubosogothic.zip",
+  "sourceSha256": "bd4ebe661508ac8fcc6093916b45ae75900626c997133a1bdaaa6c2cb90fb5a6",
+  "woff2Sha256": "069a23b5cb8be3bf88d4f78f934dc2c0951c1a2e48cbb789ed0cf62eb363d78e",
+  "originalUnicodeMappings": 14963,
+  "retainedUnicodeMappings": 8421,
+  "removedEmptyMappings": 6542,
+  "nonemptyCJKMappings": 6709,
+  "changes": [
+    "Converted to WOFF2 without changing outlines.",
+    "Removed empty non-whitespace Unicode mappings to permit browser fallback; original TTF preserved unchanged."
+  ]
+}

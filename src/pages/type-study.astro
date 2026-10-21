@@ -1,0 +1,90 @@
+---
+import { site, siteBaseURL, imageSource } from '../data/site';
+const canonical = new URL(Astro.url.pathname, siteBaseURL(Astro.site ?? Astro.url.origin));
+const faces = [
+  { id: 'geom', name: 'Geom', note: 'NEW / LIVE PREVIEW', desc: '几何结构更克制，大小写与字重完整。这里是实际网页字体，可直接观察导航、正文和登录字段；中文需搭配下方字库。', family: 'Geom', weight: 400, license: 'OFL 1.1' },
+  { id: 'michroma', name: 'Michroma', note: 'NASA / WIDE', desc: '最接近 Nasalization 的宽体航天感。字面开阔，适合导航和短标题；长段文字会占更多空间。', family: 'Michroma', weight: 400, license: 'OFL 1.1' },
+  { id: 'oxanium', name: 'Oxanium', note: 'RECOMMENDED / ALL-ROUND', desc: '如果全站只选一款，我更推荐它。保留科技感，同时有完整大小写和多个字重，正文与后台表单也较易阅读。', family: 'Oxanium', weight: 400, license: 'OFL 1.1' },
+  { id: 'syncopate', name: 'Syncopate', note: 'GEOMETRIC / ALL CAPS', desc: '宽阔、几何化的大写结构，更接近 NOVECENTO WIDE 的标题气质。小写也显示为大写，不适合长篇正文。', family: 'Syncopate', weight: 400, license: 'APACHE 2.0' },
+  { id: 'montserrat', name: 'Montserrat', note: 'GEOMETRIC / QUIET', desc: '几何感更克制，最适合长期阅读。没有强烈的科幻造型，可以用字距与刻度线建立 RhineLab 风格。', family: 'Montserrat', weight: 400, license: 'OFL 1.1' },
+];
+const originals = [
+  { id: 'novecento-wide', name: 'NOVECENTO WIDE', style: 'NORMAL', image: '/images/type-study/novecento-wide.png', desc: '最初指定的几何宽体。此处使用原版 Novecento Sans Wide Normal 渲染，与下方候选字体采用相同文案和字号。' },
+];
+const chineseFaces = [
+  { id: 'site-fonts', name: 'Site', chineseName: '阿里妈妈方圆体', variable: '--font-site', headingWeight: 400, note: 'GEOM', desc: '网站导航、Home、Library、友链及 CMS 界面。方圆体未覆盖的繁体和生僻字由 MiSans 补齐。', coverage: 'Geom + 方圆体', source: 'https://www.alibabafonts.com/#/more' },
+  { id: 'rhine-fonts', name: 'RhineLab', chineseName: 'MiSans', variable: '--font-rhine', headingWeight: 400, note: 'ORIGINAL RHINELAB UI', desc: '沿用 RhineLabUI 的基础字体 MiSans，中英文一致。用于档案阵列、抽取详情、三维标签，以及登录页左上角整组可编辑站点标识和底部状态标识。', coverage: 'MiSans · English + 中文', source: '/fonts/FONT-SOURCES.md' },
+  { id: 'article-fonts', name: 'Blog articles', chineseName: '霞鹜文楷', variable: '--font-article', headingWeight: 400, note: 'JETBRAINS MONO', desc: '文章标题、正文、目录和代码，以及 CMS 的 Markdown 编辑与预览。使用完整文楷字库，按需加载。', coverage: 'JetBrains Mono + 文楷', source: 'https://github.com/lxgw/LxgwWenKai' },
+];
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="robots" content="noindex,nofollow" />
+    <meta name="description" content="A side-by-side typeface study for the personal archive template." />
+    <link rel="canonical" href={canonical} />
+    <link rel="icon" href={imageSource(site.favicon) || '/favicon.svg'} />
+    {site.showRSS && <link rel="alternate" type="application/rss+xml" title={`${site.name} RSS`} href="/rss.xml" />}
+    <title>Typeface study</title>
+    <link rel="stylesheet" href="/typography.css" />
+  </head>
+  <body>
+    <header>
+      <a href="/">← Home</a><span>DESIGN STUDY / 01</span>
+    </header>
+    <main>
+      <div class="intro"><div><p class="eyebrow">THREE CONTEXTS.</p><h1>Typeface study</h1></div><div class="intro-note"><p>Site. Archive. Articles.<br />Independent typography, shared design.</p><a href="/">View site ↗</a></div></div>
+      <section class="chinese-section" id="chinese" aria-labelledby="chinese-heading">
+        <div class="intro"><div><p class="eyebrow">APPLIED TYPOGRAPHY</p><h2 id="chinese-heading">Current pairings</h2></div></div>
+        <div class="chinese-specimens">
+          {chineseFaces.map((face, index) => <section class="specimen chinese-specimen" id={face.id}>
+            <div class="specimen-header"><span>{String(index + 1).padStart(2, '0')} / {face.name}</span><small>{face.note}</small></div>
+            <div class="cjk-pairing" lang="zh-CN" style={`--pairing-font:var(${face.variable});--heading-weight:${face.headingWeight}`}>
+              <p class="paired-english">Personal archive.</p>
+              <h3>请填写站点名称</h3>
+              <p class="cjk-body">以清晰的文字，记录每一次观察与发现。</p>
+              <div class="cjk-coverage-sample"><p>简体：阅读、链接、设置、档案。</p><p>繁體：閱讀、連結、設定、檔案。</p><p>龘 靐 齉 龍 鳳 臺 灣 · 0123456789</p></div>
+              <div class="cjk-fields"><span>请输入标题</span><span>正文内容 →</span></div>
+            </div>
+            <div class="cjk-info" lang="zh-CN"><p class="coverage-label">{face.chineseName} / {face.coverage}</p><p>{face.desc}</p><a href={face.source} target="_blank" rel="noopener noreferrer">Font project ↗</a></div>
+          </section>)}
+        </div>
+        <p class="study-note" lang="zh-CN">三套字体已分别应用。本站使用阿里妈妈方圆体和 MiSans；缺字按各自的字体列表补齐。</p>
+      </section>
+      <details class="reference-fonts"><summary>Reference typefaces</summary>
+      <div class="specimens">
+        {originals.map((face, index) => <section class="specimen original-specimen" id={face.id}>
+          <div class="specimen-header"><span>{String(index + 1).padStart(2, '0')} / {face.name}</span><small>ORIGINAL / {face.style}</small></div>
+          <div class="sample original-sample"><img src={face.image} width="550" height="228" alt={`${face.name}: Home, Blog, Library, Friends. Personal archive. A place for notes, projects and discoveries. Small observations become lasting ideas. ARCHIVE / 01. 0123456789. Aa Bb Gg Rr. Username, Password, Sign in.`} /></div>
+          <div class="specimen-foot"><p>{face.desc}</p><small>STATIC SAMPLE</small></div>
+        </section>)}
+        {faces.map((face, index) => <section class:list={['specimen', { 'featured-specimen': face.id === 'geom' }]} id={face.id} style={`--sample-font:"${face.family}";--sample-weight:${face.weight}`}>
+          <div class="specimen-header"><span>{String(index + 2).padStart(2, '0')} / {face.name}</span><small>{face.note}</small></div>
+          <div class="sample">
+            <nav aria-label={`${face.name} navigation sample`}><span>Home</span><span>Blog</span><span>Library</span><span>Friends</span></nav>
+            <h2>Personal archive.</h2>
+            <p class="sample-body">A place for notes, projects and discoveries.<br />Small observations become lasting ideas.</p>
+            <div class="sample-metrics"><span>ARCHIVE / 01</span><span>0123456789</span><span>Aa Bb Gg Rr</span></div>
+            <div class="sample-login"><span>Username</span><span>Password</span><b>Sign in →</b></div>
+          </div>
+          <div class="specimen-foot"><p>{face.desc}</p><small>{face.license}</small></div>
+        </section>)}
+      </div>
+      </details>
+      <footer><span>TYPOGRAPHY / 03</span><a href="/fonts/FONT-SOURCES.md">Font sources & licenses ↗</a></footer>
+    </main>
+  </body>
+</html>
+<style>
+  .reference-fonts{margin-top:48px}.reference-fonts>summary{cursor:pointer;padding:18px 0;border-top:1px solid #c8cbc1;font-size:12px;margin-bottom:28px}
+  .intro-note{font-size:12px;line-height:1.9;color:#666b60}.intro-note p{margin:0}.intro-note a{display:inline-block;margin-top:10px;border-bottom:1px solid #a4a99a}.featured-specimen{border-top-color:#606950}.featured-specimen .specimen-header small{color:#5d674d}.chinese-section{padding-top:0;scroll-margin-top:30px}.chinese-section h2{font-family:Geom,MiSans,sans-serif;font-size:32px;font-weight:400;margin:0}.chinese-specimens{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:32px}.chinese-specimen .specimen-header{align-items:flex-start;min-height:32px;margin-bottom:22px}.chinese-specimen .specimen-header>span{font-size:12px}.cjk-pairing{font-family:var(--pairing-font);font-synthesis:none;font-weight:400}.paired-english{font-size:22px;line-height:1.5;margin:0 0 12px}.cjk-pairing h3{font-size:26px;line-height:1.5;font-weight:var(--heading-weight);margin:0 0 22px}.cjk-body{font-size:15px;line-height:2;margin:0 0 24px;min-height:60px}.cjk-coverage-sample{font-size:13px;line-height:2.2;color:#646b5d}.cjk-coverage-sample p{margin:0}.cjk-fields{display:flex;justify-content:space-between;border-bottom:1px solid #c8cbc1;padding:22px 0 12px;font-size:12px}.cjk-info{font-size:11px;line-height:1.9;color:#656b5e;margin-top:22px}.cjk-info p{margin:0 0 10px}.cjk-info .coverage-label{color:#3c4434}.cjk-info a{display:inline-block;margin-top:4px;border-bottom:1px solid #c8cbc1;font-size:10px;letter-spacing:.3px}.study-note{font-size:10px;line-height:1.9;color:#7a7e71;margin-top:32px}@media(max-width:1000px){.chinese-specimens{grid-template-columns:1fr;gap:40px}.cjk-body{min-height:0}.chinese-specimen .specimen-header{min-height:0}.intro-note{margin-top:20px}}@media(prefers-reduced-motion:no-preference){html{scroll-behavior:smooth}}
+  .original-sample{overflow-x:auto;scrollbar-width:thin}.original-sample img{display:block;width:550px;height:228px;max-width:none}.original-specimen{border-top-color:#606950}.original-specimen .specimen-header small{color:#5d674d}
+  @font-face{font-family:Michroma;src:url('/fonts/michroma/michroma.woff2') format('woff2');font-display:swap;font-weight:400}
+  @font-face{font-family:Oxanium;src:url('/fonts/oxanium/oxanium.woff2') format('woff2');font-display:swap;font-weight:200 800}
+  @font-face{font-family:Syncopate;src:url('/fonts/syncopate/syncopate-regular.woff2') format('woff2');font-display:swap;font-weight:400}
+  @font-face{font-family:Syncopate;src:url('/fonts/syncopate/syncopate-bold.woff2') format('woff2');font-display:swap;font-weight:700}
+  @font-face{font-family:Montserrat;src:url('/fonts/montserrat/montserrat.woff2') format('woff2');font-display:swap;font-weight:100 900}
+  *{box-sizing:border-box}body{margin:0;background:#f3f3ef;color:#23251f;font-family:var(--font-site);-webkit-font-smoothing:antialiased}a{color:inherit;text-decoration:none}header{display:flex;justify-content:space-between;padding:27px 5vw;border-bottom:1px solid #d1d2cb;font-size:11px;letter-spacing:1.4px}main{max-width:1560px;margin:auto;padding:48px 5vw}.intro{display:flex;justify-content:space-between;align-items:end;gap:32px;margin-bottom:38px}.eyebrow{font-size:9px;letter-spacing:2px;color:#797e6d;margin:0 0 12px}h1{font-weight:500;font-size:36px;letter-spacing:-1px;margin:0}.specimens{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:40px 52px}.specimen{min-width:0;border-top:1px solid #9b9f90}.specimen-header{display:flex;justify-content:space-between;gap:12px;align-items:center;margin:16px 0 30px;font-size:13px}.specimen-header small{font-size:8px;letter-spacing:1px;color:#727965;text-align:right}.sample{font-family:var(--sample-font),sans-serif;font-synthesis:none;font-weight:var(--sample-weight);min-width:0}.sample nav{display:flex;flex-wrap:wrap;gap:22px;font-size:9px;text-transform:uppercase;letter-spacing:1px}.sample h2{font-size:30px;font-weight:var(--sample-weight);line-height:1.5;letter-spacing:0;margin:25px 0 14px;overflow-wrap:anywhere}.sample-body{font-size:12px;line-height:2;margin:0;overflow-wrap:anywhere}.sample-metrics{display:flex;flex-wrap:wrap;gap:16px;margin:25px 0 20px;color:#7a7e71;font-size:9px}.sample-login{display:grid;grid-template-columns:1fr 1fr auto;gap:14px;align-items:baseline;font-size:10px}.sample-login>span{padding-bottom:10px;border-bottom:1px solid #c8cbc1}.sample-login>b{font-size:10px;font-weight:var(--sample-weight)}.specimen-foot{display:flex;justify-content:space-between;gap:20px;align-items:end;margin-top:22px}.specimen-foot p{font-size:11px;line-height:1.9;color:#656b5e;margin:0;max-width:460px}.specimen-foot small{font-size:8px;white-space:nowrap;color:#858a7d}footer{border-top:1px solid #d1d2cb;margin-top:46px;padding:24px 0;display:flex;flex-wrap:wrap;align-items:center;gap:16px 28px;font-size:10px;color:#686e60}footer a{margin-left:auto}@media(max-width:900px){.specimens{grid-template-columns:1fr}.intro{display:block}}@media(max-width:480px){main{padding:32px 24px}.sample h2{font-size:26px}.sample-login{grid-template-columns:1fr 1fr}.sample-login>b{grid-column:1/-1}.specimen-header{align-items:flex-start}.sample nav{gap:15px}}
+</style>

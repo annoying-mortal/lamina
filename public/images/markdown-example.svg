@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540" role="img" aria-labelledby="title description">
+  <title id="title">Orbit diagram</title>
+  <desc id="description">An original geometric illustration for the Markdown example, with orbital rings, a central sphere, and reference lines.</desc>
+  <rect width="960" height="540" fill="#e9e7e1"/>
+  <g fill="none" stroke="#22251f">
+    <path d="M0 270h960M480 0v540" opacity=".15"/>
+    <circle cx="480" cy="270" r="198" stroke-dasharray="1 12" opacity=".45"/>
+    <circle cx="480" cy="270" r="145" opacity=".25"/>
+    <ellipse cx="480" cy="270" rx="318" ry="94" transform="rotate(-25 480 270)" stroke-width="2"/>
+    <circle cx="480" cy="270" r="73" stroke-width="2"/>
+    <path d="M38 38h25M38 38v25M922 38h-25M922 38v25M38 502h25M38 502v-25M922 502h-25M922 502v-25" opacity=".5"/>
+  </g>
+  <circle cx="480" cy="270" r="6" fill="#22251f"/>
+  <circle cx="750" cy="142" r="12" fill="#22251f"/>
+</svg>

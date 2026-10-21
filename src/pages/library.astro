@@ -1,0 +1,219 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { library, libraryTypes } from '../data/library';
+import { site } from '../data/site';
+import '../styles/library.css';
+
+const previewCount = 4;
+const tags = [...new Set(library.flatMap(item => item.tags ?? []))];
+const displayDate = (date: string) => date.replaceAll('-', '.');
+const page = site.pages.library;
+---
+
+<Layout title={page.title} description={page.description} active="library">
+  <div class="page-shell library-page" data-preview-count={previewCount}>
+    <header class="library-heading">
+      <p class="eyebrow">{page.eyebrow}</p>
+      <div class="library-heading-row"><h1>{page.title}<span>.</span></h1><p class="library-total"><strong>{String(library.length).padStart(2, '0')}</strong><span>IN THE COLLECTION</span></p></div>
+      <p class="library-intro">{page.description.split(/\r?\n/).map((line, index) => <>{index > 0 && <br class="library-mobile-break" />}{line}</>)}</p>
+    </header>
+
+    <div class="library-browser" id="collection">
+      <div class="library-toolbar">
+        <div class="library-type-tabs" role="group" aria-label="Library types">
+          {libraryTypes.map(type => <button type="button" class:list={['library-type-tab', { 'is-active': type.id === 'all' }]} data-library-filter={type.id} aria-pressed={type.id === 'all'}><span>{type.label}</span><small>{String(type.id === 'all' ? library.length : library.filter(item => item.type === type.id).length).padStart(2, '0')}</small></button>)}
+        </div>
+        <label class="library-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4.5 4.5"/></svg><input id="library-search" type="search" placeholder="Search library" aria-label="Search library" autocomplete="off" /></label>
+      </div>
+      <div class="library-tag-row" role="group" aria-label="Tags">
+        <span class="library-tag-caption">TAG /</span>
+        <button class="library-tag is-active" type="button" data-library-tag="" aria-pressed="true">All</button>
+        {tags.map(tag => <button class="library-tag" type="button" data-library-tag={tag} aria-pressed="false">{tag}</button>)}
+      </div>
+      <div class="library-result-heading"><h2 id="library-section-title">Library</h2><button type="button" class="library-clear" id="library-clear" hidden>Reset filters</button><p id="library-count" role="status" aria-live="polite">{Math.min(previewCount, library.length)} / {library.length}</p></div>
+      <section class="collection-wall" id="library-results" aria-label="Library">
+        {library.map((item, index) => <article class="collection-card" data-library-type={item.type} data-library-tags={JSON.stringify(item.tags ?? [])} data-library-search={[item.title, item.original, item.creator, item.note, ...(item.tags ?? [])].join(' ').toLocaleLowerCase()} hidden={index >= previewCount}>
+          <button type="button" class="collection-open" data-dialog={`work-${item.id}`} data-work-hash={`#work-${encodeURIComponent(item.id)}`} aria-haspopup="dialog" aria-controls={`work-${item.id}`} aria-label={`View ${item.title}`}>
+            <div class:list={['collection-cover', `collection-cover-${item.type}`]}>
+              <div class="collection-cover-fallback" aria-hidden="true"><span>{item.categoryLabel}</span><strong>{item.title.slice(0, 1)}</strong><p>{item.title}</p><small>PERSONAL COLLECTION</small></div>
+              {item.cover && <img data-cover-image src={item.cover} alt={item.demo ? `${item.title} demo cover` : `${item.title} cover`} width="480" height="640" loading={index < previewCount ? 'eager' : 'lazy'} decoding="async" />}
+              <span class="collection-cover-action" aria-hidden="true">View <span>↗</span></span>
+              {item.demo && <span class="collection-demo-badge">DEMO</span>}
+            </div>
+            <div class="collection-meta"><span>{item.categoryLabel}</span>{item.rating ? <span class="collection-rating">{item.rating}<small> / 10</small></span> : <span class="collection-unrated">Unrated</span>}</div>
+            <h3>{item.title}</h3><p class="collection-creator">{item.creator || 'Enter creator'}</p><p class="collection-note">{item.note || 'Enter library content'}</p>
+            <div class="collection-bottom"><span>{(item.tags ?? []).slice(0, 2).map(tag => `#${tag}`).join(' ')}</span>{item.date && <time datetime={item.date}>{displayDate(item.date)}</time>}</div>
+          </button>
+        </article>)}
+      </section>
+      <div class="library-empty" id="library-empty" hidden={library.length > 0}>
+        <span aria-hidden="true">∅</span><h2>{library.length ? 'No matching entries' : 'Enter library content'}</h2>{library.length > 0 && <p>Try another search.</p>}<button type="button" class="button" id="library-reset" hidden={!library.length}>View all <span aria-hidden="true">↗</span></button>
+      </div>
+      <div class="library-expand-row" id="library-expand-row" hidden={library.length <= previewCount}>
+        <span class="library-expand-line" aria-hidden="true"></span><button type="button" id="library-expand" class="library-expand" aria-expanded="false" aria-controls="library-results"><span data-expand-label>Show all</span><small data-expand-count>{String(library.length).padStart(2, '0')}</small><span class="library-expand-arrow" aria-hidden="true">↓</span></button><span class="library-expand-line" aria-hidden="true"></span>
+      </div>
+    </div>
+    {library.map(item => <dialog id={`work-${item.id}`} class="collection-dialog" aria-labelledby={`title-${item.id}`}>
+      <button type="button" class="collection-dialog-close" data-close-dialog aria-label="Close details"><span aria-hidden="true">×</span></button>
+      <div class="collection-dialog-grid">
+        <div class:list={['collection-dialog-cover', 'collection-cover', `collection-cover-${item.type}`]}><div class="collection-cover-fallback" aria-hidden="true"><span>{item.categoryLabel}</span><strong>{item.title.slice(0, 1)}</strong><p>{item.title}</p><small>PERSONAL COLLECTION</small></div>{item.cover && <img data-cover-image src={item.cover} alt="" width="480" height="640" loading="lazy" />}</div>
+        <div class="collection-dialog-body"><p class="eyebrow">{item.categoryLabel} / COLLECTION</p><h2 id={`title-${item.id}`}>{item.title}</h2>{item.original && <p class="collection-original">{item.original}</p>}<p class="collection-dialog-creator">{item.creator}</p>
+          {item.rating && <div class="collection-dialog-rating">{item.rating}<small>/ 10</small>{item.demo && <span>Demo rating</span>}</div>}
+          {item.note && <blockquote>{item.note}</blockquote>}{item.detail && <p class="collection-detail">{item.detail}</p>}
+          <div class="collection-dialog-tags">{(item.tags ?? []).map(tag => <span>#{tag}</span>)}</div>
+          {item.date && <p class="collection-dialog-date">Published {displayDate(item.date)}{item.demo && <span> · Demo date</span>}</p>}
+          {item.article && <a class="collection-article" href={item.article}>Related post <span aria-hidden="true">↗</span></a>}
+        </div>
+      </div>
+    </dialog>)}
+    <noscript><style>.collection-card[hidden]{display:block!important}.library-expand-row{display:none!important}</style><p class="library-demo-note">Enable JavaScript for filters and details.</p></noscript>
+  </div>
+</Layout>
+
+<script>
+  import { navigate } from 'astro:transitions/client';
+
+  let disposeLibrary: (() => void) | undefined;
+  let initializedRoot: HTMLElement | undefined;
+
+  function initializeLibrary() {
+    const root = document.querySelector<HTMLElement>('.library-page');
+    if (root === initializedRoot) return;
+    disposeLibrary?.();
+    if (!root) return;
+    initializedRoot = root;
+    const controller = new AbortController();
+    const { signal } = controller;
+    const cards = [...root.querySelectorAll<HTMLElement>('[data-library-type]')];
+    const filters = [...root.querySelectorAll<HTMLButtonElement>('[data-library-filter]')];
+    const tagButtons = [...root.querySelectorAll<HTMLButtonElement>('[data-library-tag]')];
+    const openers = [...root.querySelectorAll<HTMLButtonElement>('[data-dialog]')];
+    const dialogs = new Map([...root.querySelectorAll<HTMLDialogElement>('.collection-dialog')].map(dialog => [dialog.id, dialog]));
+    const search = root.querySelector<HTMLInputElement>('#library-search')!;
+    const expand = root.querySelector<HTMLButtonElement>('#library-expand')!;
+    const previewCount = Number(root.dataset.previewCount) || 4;
+    let activeType = 'all';
+    let activeTag = '';
+    let expanded = false;
+    let activeDialog: HTMLDialogElement | undefined;
+    let activeOpener: HTMLButtonElement | undefined;
+
+    const render = () => {
+      const query = search.value.trim().toLocaleLowerCase();
+      const matches = cards.filter(card => (activeType === 'all' || card.dataset.libraryType === activeType) && (!activeTag || (JSON.parse(card.dataset.libraryTags || '[]') as string[]).includes(activeTag)) && (!query || card.dataset.librarySearch?.includes(query)));
+      const shown = expanded ? matches : matches.slice(0, previewCount);
+      const shownSet = new Set(shown);
+      cards.forEach(card => { card.hidden = !shownSet.has(card); });
+      filters.forEach(button => { const active = button.dataset.libraryFilter === activeType; button.classList.toggle('is-active', active); button.setAttribute('aria-pressed', String(active)); });
+      tagButtons.forEach(button => { const active = button.dataset.libraryTag === activeTag; button.classList.toggle('is-active', active); button.setAttribute('aria-pressed', String(active)); });
+      root.querySelector('#library-count')!.textContent = `${shown.length} / ${matches.length}${matches.length !== cards.length ? ` · ${cards.length} total` : ''}`;
+      root.querySelector('#library-section-title')!.textContent = activeType !== 'all' || activeTag || query ? 'Results' : expanded ? 'All entries' : 'Library';
+      root.querySelector<HTMLButtonElement>('#library-clear')!.hidden = activeType === 'all' && !activeTag && !query;
+      root.querySelector<HTMLElement>('#library-empty')!.hidden = matches.length !== 0;
+      root.querySelector<HTMLElement>('#library-expand-row')!.hidden = matches.length <= previewCount;
+      expand.setAttribute('aria-expanded', String(expanded));
+      expand.querySelector('[data-expand-label]')!.textContent = expanded ? 'Show less' : 'Show all';
+      expand.querySelector('[data-expand-count]')!.textContent = String(matches.length).padStart(2, '0');
+      expand.querySelector('.library-expand-arrow')!.textContent = expanded ? '↑' : '↓';
+    };
+    filters.forEach(button => button.addEventListener('click', () => { activeType = button.dataset.libraryFilter!; expanded = false; render(); }, { signal }));
+    tagButtons.forEach(button => button.addEventListener('click', () => { activeTag = button.dataset.libraryTag!; expanded = false; render(); }, { signal }));
+    search.addEventListener('input', () => { expanded = false; render(); }, { signal });
+    expand.addEventListener('click', () => {
+      expanded = !expanded;
+      render();
+      if (!expanded) root.querySelector('#collection')?.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth', block: 'start' });
+    }, { signal });
+    const reset = () => { activeType = 'all'; activeTag = ''; search.value = ''; expanded = true; render(); search.focus({ preventScroll: true }); };
+    root.querySelector('#library-reset')!.addEventListener('click', reset, { signal });
+    root.querySelector('#library-clear')!.addEventListener('click', reset, { signal });
+
+    root.querySelectorAll<HTMLImageElement>('[data-cover-image]').forEach(img => {
+      const onError = () => { img.hidden = true; };
+      img.addEventListener('error', onError, { once: true, signal });
+      if (img.complete && img.naturalWidth === 0) onError();
+    });
+
+    const setHash = async (hash: string, replace = false) => {
+      if (location.hash === hash) return !signal.aborted;
+      const url = new URL(location.href);
+      url.hash = hash;
+      const position = { left: window.scrollX, top: window.scrollY };
+      // Let Astro update its history index and current URL, so Back closes the
+      // dialog without replacing this page and losing its filters or focus.
+      await navigate(url.href, { history: replace ? 'replace' : 'push' });
+      if (signal.aborted || location.hash !== url.hash) return false;
+      window.scrollTo({ ...position, behavior: 'instant' });
+      return true;
+    };
+
+    const closeDialog = (resetHash = true, restoreFocus = true) => {
+      const dialog = activeDialog;
+      const opener = activeOpener;
+      activeDialog = undefined;
+      activeOpener = undefined;
+      if (dialog?.open) dialog.close();
+      document.body.classList.remove('collection-dialog-open');
+      const returnFocus = () => {
+        if (!signal.aborted && restoreFocus && opener?.isConnected && !opener.closest('[hidden]')) opener.focus();
+      };
+      if (resetHash && dialog) void setHash('#collection', true).then(changed => { if (changed) returnFocus(); });
+      else returnFocus();
+    };
+
+    const syncFromHash = () => {
+      let id = '';
+      try { id = decodeURIComponent(location.hash.slice(1)); } catch { /* Ignore malformed external anchors. */ }
+      const dialog = dialogs.get(id);
+      const opener = openers.find(button => button.dataset.dialog === id);
+      if (!dialog || !opener) {
+        closeDialog(false);
+        return;
+      }
+      if (activeDialog === dialog && dialog.open) return;
+      closeDialog(false, false);
+      // A shared link can point beyond the preview, or outside the current filters.
+      if (opener.closest<HTMLElement>('.collection-card')?.hidden) {
+        activeType = 'all';
+        activeTag = '';
+        search.value = '';
+      }
+      expanded = true;
+      render();
+      activeDialog = dialog;
+      activeOpener = opener;
+      dialog.showModal();
+      document.body.classList.add('collection-dialog-open');
+    };
+
+    openers.forEach(button => {
+      const dialog = dialogs.get(button.dataset.dialog!);
+      if (!dialog) return;
+      button.addEventListener('click', async () => {
+        if (await setHash(button.dataset.workHash!)) syncFromHash();
+      }, { signal });
+      dialog.querySelector('[data-close-dialog]')!.addEventListener('click', () => closeDialog(), { signal });
+      dialog.addEventListener('cancel', event => { event.preventDefault(); closeDialog(); }, { signal });
+      dialog.addEventListener('click', event => {
+        const rect = dialog.getBoundingClientRect();
+        if (event.target === dialog && (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom)) closeDialog();
+      }, { signal });
+      dialog.addEventListener('close', () => {
+        if (activeDialog === dialog && !dialog.open) closeDialog();
+      }, { signal });
+    });
+    window.addEventListener('hashchange', syncFromHash, { signal });
+    window.addEventListener('popstate', syncFromHash, { signal });
+    disposeLibrary = () => {
+      controller.abort();
+      closeDialog(false, false);
+      initializedRoot = undefined;
+      disposeLibrary = undefined;
+    };
+    render();
+    syncFromHash();
+  }
+  initializeLibrary();
+  document.addEventListener('astro:page-load', initializeLibrary);
+  document.addEventListener('astro:before-swap', () => disposeLibrary?.());
+</script>

@@ -1,0 +1,15 @@
+{
+  "family": "Geom",
+  "version": "1.102",
+  "weights": [
+    300,
+    900
+  ],
+  "style": "normal",
+  "unicode_count": 499,
+  "glyph_count": 516,
+  "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/geom/Geom%5Bwght%5D.ttf",
+  "sha256_original": "4509ad62e97c2e07c7fbc51180caba092b66fb2967e4de7dcba149ab3beb3b15",
+  "sha256_woff2": "7b0a1420f00585e9b69c525e38356288eca99889f9cee1693c049d1b55d474f5",
+  "conversion": "TTF to WOFF2 only; no outline, name, or character-set edits."
+}

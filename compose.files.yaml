@@ -1,0 +1,25 @@
+# Optional: share the same Markdown, JSON and uploads with the host editor.
+# New setup: docker compose -f compose.yaml -f compose.files.yaml up -d --build
+# Existing named-volume setup: export its content/uploads first; see docs/writing.md.
+# Compose merges volume entries by container target, preserving published/auth volumes.
+services:
+  admin:
+    volumes:
+      - type: bind
+        source: ${BLOG_CONTENT_DIR:-./src/content}
+        target: /app/src/content
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${BLOG_UPLOADS_DIR:-./public/uploads}
+        target: /app/public/uploads
+        bind:
+          create_host_path: false
+  blog:
+    volumes:
+      - type: bind
+        source: ${BLOG_UPLOADS_DIR:-./public/uploads}
+        target: /var/www/uploads
+        read_only: true
+        bind:
+          create_host_path: false

@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#eae5e1" />
+    <title>CMS · Please enter site name</title>
+    <script src="/theme.js"></script>
+    <link rel="stylesheet" href="/typography.css" />
+    <link rel="stylesheet" href="/style.css" />
+    <script type="module" src="/app.js"></script>
+  </head>
+  <body>
+    <div class="workspace">
+      <aside class="sidebar">
+        <a class="wordmark" href="/" aria-label="CMS" data-en-label="CMS" data-zh-label="内容工作台"><img class="mark" id="workspace-mark" alt="" decoding="async" referrerpolicy="no-referrer" hidden /><span><span id="workspace-name"><span data-en="Please enter site name" data-zh="请填写站点名称">Please enter site name</span></span><small><span data-en="CMS" data-zh="内容工作台">CMS</span></small></span></a>
+        <div class="sidebar-label"><span data-en="CONTENT" data-zh="内容">CONTENT</span></div>
+        <nav aria-label="Content" data-en-label="Content" data-zh-label="管理内容">
+          <button class="nav-button active" data-kind="blog" aria-current="page"><span>01</span><span data-en="Blog" data-zh="文章">Blog</span><span id="blog-count" class="count">—</span></button>
+          <button class="nav-button" data-kind="library"><span>02</span><span data-en="Library" data-zh="收藏">Library</span><span id="library-count" class="count">—</span></button>
+          <button class="nav-button" data-kind="friends"><span>03</span><span data-en="Friends" data-zh="友链">Friends</span><span id="friends-count" class="count">—</span></button>
+          <button class="nav-button" data-kind="media"><span>04</span><span data-en="Media" data-zh="素材库">Media</span><span id="media-count" class="count">—</span></button>
+          <button class="nav-button" data-kind="settings"><span>05</span><span data-en="Settings" data-zh="站点设置">Settings</span></button>
+          <button class="nav-button" data-kind="backup"><span>06</span><span data-en="Backup" data-zh="备份">Backup</span></button>
+        </nav>
+        <div class="sidebar-foot"><span class="local-dot"></span>LOCAL WORKSPACE<a id="visit-site" href="http://127.0.0.1:4321/" target="_blank" rel="noopener"><span data-en="Open site " data-zh="打开网站 ">Open site </span><span>↗</span></a></div>
+      </aside>
+      <main>
+        <div class="workspace-utilities"><span class="eyebrow"><span data-en="WORKSPACE" data-zh="工作台">WORKSPACE</span></span><div><div class="language-switch" role="group" aria-label="Language"><button type="button" data-admin-language="en" aria-pressed="true">EN</button><button type="button" data-admin-language="zh" aria-pressed="false">中文</button></div><button type="button" class="theme-button" data-theme-toggle aria-label="Switch to dark mode"><svg class="sun-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg><svg class="moon-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="M20.5 14.2A8.6 8.6 0 0 1 9.8 3.5a8.7 8.7 0 1 0 10.7 10.7Z"/></svg></button><button type="button" id="account-button" class="account-button" aria-haspopup="dialog"><span data-en="Account" data-zh="账号设置">Account</span></button><button type="button" id="logout-button" class="logout-button"><span data-en="Sign out " data-zh="退出登录 ">Sign out </span><span aria-hidden="true">↗</span></button></div></div>
+        <header class="topbar"><div><h1 id="page-title"><span data-en="Blog" data-zh="文章">Blog</span></h1></div><div class="topbar-actions"><button id="publish-button" class="button subtle" hidden><span data-en="Publish" data-zh="重新发布">Publish</span></button><button id="create-button" class="button primary"><span data-en="+ New Blog" data-zh="＋ 新建文章">+ New Blog</span></button></div></header>
+        <div id="publish-status" class="publish-status" role="status"><span data-en="Connecting…" data-zh="连接本地内容库…">Connecting…</span></div>
+        <div id="alert" class="alert" role="alert" hidden></div>
+        <div id="recovery-banner" class="recovery-banner" role="status" hidden><div><strong><span data-en="Unsaved changes recovered" data-zh="上次未提交的修改仍在这里。">Unsaved changes recovered</span></strong><p id="recovery-description"><span data-en="Review before saving." data-zh="可恢复编辑，再检查并保存。">Review before saving.</span></p></div><div><button type="button" id="restore-recovery" class="button subtle"><span data-en="Restore" data-zh="恢复编辑">Restore</span></button><button type="button" id="discard-recovery" class="button subtle"><span data-en="Discard" data-zh="丢弃暂存">Discard</span></button></div></div>
+        <section id="media-panel" class="media-panel" hidden aria-label="Media" data-en-label="Media" data-zh-label="图片素材库">
+          <div class="media-intro"><h2><span data-en="Media" data-zh="素材库">Media</span></h2><p><span data-en="JPEG, PNG, GIF, WebP · Up to 10 MiB each." data-zh="JPEG、PNG、GIF、WebP · 单张不超过 10 MiB。">JPEG, PNG, GIF, WebP · Up to 10 MiB each.</span></p></div>
+          <label class="search-label media-search"><span>⌕</span><input id="media-search" type="search" placeholder="Please enter image name" data-en-placeholder="Please enter image name" data-zh-placeholder="请填写图片名称" aria-label="Search media" data-en-label="Search media" data-zh-label="搜索素材" /></label>
+          <div id="media-library-grid" class="media-grid"></div>
+        </section>
+        <section id="backup-panel" class="backup-panel" hidden aria-label="Backup" data-en-label="Backup" data-zh-label="备份"></section>
+        <div class="content-grid">
+          <section class="record-panel" aria-label="Content list" data-en-label="Content list" data-zh-label="内容列表">
+            <label class="search-label"><span>⌕</span><input id="search" type="search" placeholder="Search" data-en-placeholder="Search" data-zh-placeholder="请填写搜索关键词" aria-label="Search content" data-en-label="Search content" data-zh-label="搜索内容" /></label>
+            <div class="list-heading"><span id="list-label"><span data-en="All Blog" data-zh="全部文章">All Blog</span></span><span class="list-tools"><span id="result-count">0</span><button id="refresh-records" type="button" class="list-refresh" title="Refresh list" data-en-title="Refresh list" data-zh-title="从内容文件读取最新列表，保留当前编辑" aria-label="Refresh list" data-en-label="Refresh list" data-zh-label="刷新内容列表，保留当前编辑"><span data-en="Refresh" data-zh="刷新列表">Refresh</span></button></span></div>
+            <div id="record-list" class="record-list"></div>
+          </section>
+          <section class="editor-panel" aria-label="Editor" data-en-label="Editor" data-zh-label="内容编辑器">
+            <div id="empty-editor" class="empty-editor"><span>✳</span><h2><span data-en="No content selected" data-zh="未选择内容">No content selected</span></h2><p><span data-en="Select an item or create one." data-zh="选择左侧内容，或新建第一篇记录。">Select an item or create one.</span></p></div>
+            <form id="editor" hidden autocomplete="off">
+              <div class="editor-heading"><div><span id="editor-eyebrow" class="eyebrow"><span data-en="EDIT" data-zh="编辑">EDIT</span></span><h2 id="editor-title"><span data-en="Edit Blog" data-zh="编辑文章">Edit Blog</span></h2></div><div class="editor-heading-actions"><span id="dirty-state" class="dirty-state"><span data-en="Saved" data-zh="已保存">Saved</span></span><button type="submit" form="editor" id="save-top-button" class="button primary" data-en="Save" data-zh="保存">Save</button></div></div>
+              <div id="fields"></div>
+              <div class="editor-actions"><button type="button" id="delete-button" class="text-danger"><span data-en="Delete" data-zh="删除内容">Delete</span></button><div><a id="preview-link" class="button subtle" target="_blank" rel="noopener"><span data-en="Open page ↗" data-zh="查看页面 ↗">Open page ↗</span></a><button type="submit" class="button primary" id="save-button"><span data-en="Save" data-zh="保存修改">Save</span></button></div></div>
+              <p class="editor-footnote"><span data-en="⌘ / Ctrl + S" data-zh="⌘ / Ctrl + S">⌘ / Ctrl + S</span></p>
+            </form>
+          </section>
+        </div>
+      </main>
+    </div>
+    <dialog id="account-dialog" class="account-dialog" aria-labelledby="account-title">
+      <div class="dialog-content">
+        <div class="picker-heading"><div><span class="eyebrow"><span data-en="ACCOUNT" data-zh="账号">ACCOUNT</span></span><h2 id="account-title"><span data-en="Account" data-zh="账号设置">Account</span></h2></div><button type="button" id="close-account" class="button subtle" aria-label="Close account settings" data-en-label="Close account settings" data-zh-label="关闭账号设置"><span data-en="Close" data-zh="关闭">Close</span></button></div>
+        <p class="account-identity muted"><span data-en="Signed in as · " data-zh="当前身份 · ">Signed in as · </span><strong id="account-current-username">—</strong></p>
+        <p id="account-status" class="muted" role="status" aria-live="polite"></p>
+        <form id="account-form">
+          <fieldset id="account-fields" disabled>
+            <label class="field"><span class="field-label"><span data-en="Username" data-zh="管理员用户名">Username</span></span><input id="account-username" placeholder="Please enter username" data-en-placeholder="Please enter username" data-zh-placeholder="请填写管理员用户名" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" required minlength="3" maxlength="32" pattern="[A-Za-z0-9][A-Za-z0-9._\-]{2,31}" aria-describedby="account-username-hint" /><small id="account-username-hint"><span data-en="3–32 characters: letters, numbers, dots, underscores or hyphens. Case-sensitive." data-zh="3–32 位英文字母、数字、点、下划线或短横线，以字母或数字开头，区分大小写。">3–32 characters: letters, numbers, dots, underscores or hyphens. Case-sensitive.</span></small></label>
+            <label class="field"><span class="field-label"><span data-en="Current password" data-zh="当前密码">Current password</span></span><input id="account-current-password" placeholder="Please enter current password" data-en-placeholder="Please enter current password" data-zh-placeholder="请填写当前密码" name="currentPassword" type="password" autocomplete="current-password" required maxlength="128" /></label>
+            <label class="field"><span class="field-label"><span data-en="New password · optional" data-zh="新密码（可选）">New password · optional</span></span><input id="account-new-password" placeholder="Please enter new password" data-en-placeholder="Please enter new password" data-zh-placeholder="请填写新密码" name="newPassword" type="password" autocomplete="new-password" minlength="12" maxlength="128" aria-describedby="account-new-password-hint" /><small id="account-new-password-hint"><span data-en="12–128 characters. Leave blank to keep your password." data-zh="留空可保留原密码；新密码需 12–128 个字符，支持空格与中文。">12–128 characters. Leave blank to keep your password.</span></small></label>
+            <label class="field"><span class="field-label"><span data-en="Confirm new password" data-zh="再次输入新密码">Confirm new password</span></span><input id="account-confirm-password" placeholder="Please confirm password" data-en-placeholder="Please confirm password" data-zh-placeholder="请填写确认密码" name="confirmPassword" type="password" autocomplete="new-password" maxlength="128" /></label>
+            <p class="account-session-note muted"><span data-en="Saving signs out other sessions." data-zh="保存后，当前页面保持登录，其它设备和浏览器中的登录会话将结束。">Saving signs out other sessions.</span></p>
+            <div class="dialog-actions"><button id="save-account" class="button primary" type="submit"><span data-en="Save " data-zh="保存账号设置 ">Save </span><span aria-hidden="true">→</span></button></div>
+          </fieldset>
+          <p id="account-error" class="account-error" role="alert" hidden></p>
+        </form>
+      </div>
+    </dialog>
+    <dialog id="delete-dialog" aria-labelledby="delete-title"><div class="dialog-content"><span class="eyebrow"><span data-en="DELETE" data-zh="删除">DELETE</span></span><h2 id="delete-title"><span data-en="Delete item?" data-zh="删除这条内容？">Delete item?</span></h2><p id="delete-description"></p><p class="muted"><span data-en="This deletes the source file or record and cannot be undone." data-zh="对应源文件或收藏记录会被删除，此操作不能在后台撤销。">This deletes the source file or record and cannot be undone.</span></p><div class="dialog-actions"><button class="button subtle" id="cancel-delete"><span data-en="Cancel" data-zh="保留内容">Cancel</span></button><button class="button danger" id="confirm-delete"><span data-en="Delete" data-zh="确认删除">Delete</span></button></div></div></dialog>
+    <dialog id="media-picker" class="media-picker" aria-labelledby="media-picker-title"><div class="dialog-content">
+      <div class="picker-heading"><div><span class="eyebrow"><span data-en="IMAGE" data-zh="图片">IMAGE</span></span><h2 id="media-picker-title"><span data-en="Choose image" data-zh="选择图片">Choose image</span></h2></div><button type="button" class="button subtle" id="close-media-picker" aria-label="Close image picker" data-en-label="Close image picker" data-zh-label="关闭图片选择"><span data-en="Close" data-zh="关闭">Close</span></button></div>
+      <div class="picker-tabs" role="group" aria-label="Image source" data-en-label="Image source" data-zh-label="图片来源"><button type="button" data-media-tab="library" class="active" aria-pressed="true"><span data-en="Media" data-zh="已上传素材">Media</span></button><button type="button" data-media-tab="url" aria-pressed="false"><span data-en="URL" data-zh="图片地址">URL</span></button><button type="button" class="button subtle" id="picker-upload"><span data-en="+ Upload" data-zh="＋ 上传图片">+ Upload</span></button></div>
+      <div id="picker-library"><div id="picker-media-grid" class="media-grid compact"></div></div>
+      <div id="picker-url" hidden><label class="field"><span class="field-label"><span data-en="URL" data-zh="图片地址">URL</span></span><input id="picker-url-input" placeholder="Please enter image URL" data-en-placeholder="Please enter image URL" data-zh-placeholder="请填写图片地址" /><small><span data-en="Local path or HTTP(S) URL." data-zh="支持站内路径和 HTTP(S) 外链；外链直接加载。">Local path or HTTP(S) URL.</span></small></label></div>
+      <div class="picker-selection"><img id="picker-preview" alt="Selected image preview" data-en-alt="Selected image preview" data-zh-alt="所选图片预览" hidden /><p id="picker-selected-label" class="muted"><span data-en="Select an image." data-zh="请选择一张图片。">Select an image.</span></p></div>
+      <label class="field" id="picker-alt-field"><span class="field-label"><span data-en="Alt text" data-zh="图片说明 / Alt">Alt text</span></span><input id="picker-alt" placeholder="Please enter alt text" data-en-placeholder="Please enter alt text" data-zh-placeholder="请填写图片说明" maxlength="300" /></label>
+      <p id="picker-error" class="picker-error" role="alert" hidden></p>
+      <div class="dialog-actions"><button type="button" id="picker-use" class="button primary" disabled><span data-en="Use image" data-zh="使用图片">Use image</span></button></div>
+    </div></dialog>
+    <input id="media-upload-input" type="file" accept="image/jpeg,image/png,image/gif,image/webp" multiple hidden />
+    <input id="backup-upload-input" type="file" accept=".zip,application/zip,application/x-zip-compressed" hidden />
+    <div id="toast" role="status" class="toast" hidden></div>
+  </body>
+</html>

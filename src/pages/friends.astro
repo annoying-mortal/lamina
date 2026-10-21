@@ -1,0 +1,35 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { friends } from '../data/friends';
+import { site } from '../data/site';
+import '../styles/content.css';
+const page = site.pages.friends;
+const ownSiteURL = site.url.trim();
+---
+
+<Layout title={page.title} description={page.description} active="friends">
+  <div class="page-shell content-page friends-page">
+    <header class="content-heading"><p class="eyebrow">{page.eyebrow}</p><div class="heading-row"><h1>{page.title}<span class="heading-period">.</span></h1><span class="collection-count">{String(friends.length).padStart(2, '0')} LINKS</span></div><p class="heading-description">{page.description.split(/\r?\n/).map((line, index) => <>{index > 0 && <br />}{line}</>)}</p></header>
+    <section class="friends-grid" aria-label="Friends">
+      {friends.map(friend => <a class="friend-card" href={friend.url} target="_blank" rel="noopener noreferrer"><div class="friend-top"><span class="friend-avatar" aria-hidden="true">{friend.initials}<span>✳</span>{friend.avatar && <img data-fallback-image src={friend.avatar} alt="" width="49" height="49" loading="lazy" decoding="async" />}</span><span class="friend-external" aria-label="Opens in a new tab">↗</span></div><p class="eyebrow">{friend.label}{friend.demo && <span class="demo-badge friend-demo-badge">Demo</span>}</p><h2>{friend.name}</h2><p class="friend-description">{friend.description}</p><div class="friend-bottom"><span>{friend.domain}</span><span>{friend.kind}</span></div></a>)}
+    </section>
+    {friends.length === 0 && <p class="friend-empty">Enter friend links</p>}
+    <section class="friend-own" aria-labelledby="own-site-title"><div><h2 id="own-site-title">Site information</h2>{site.email && <a class="text-button friend-email" href={`mailto:${site.email}`}>Email <span aria-hidden="true">↗</span></a>}</div><div class="site-information"><dl><div><dt>NAME</dt><dd>{site.name}</dd></div><div><dt>LINK</dt><dd>{ownSiteURL ? <a href={ownSiteURL} id="own-site-url">{ownSiteURL}</a> : <span id="own-site-url">Enter site URL</span>}</dd></div><div><dt>ABOUT</dt><dd>{site.description}</dd></div></dl><button class="text-button" id="copy-site-info">Copy site info <span aria-hidden="true">↗</span></button><p id="copy-site-status" class="copy-site-status" role="status" aria-live="polite"></p></div></section>
+  </div>
+</Layout>
+
+<script>
+  function initializeFriends() {
+    const root = document.querySelector<HTMLElement>('.friends-page');
+    if (!root || root.dataset.initialized) return;
+    root.dataset.initialized = 'true';
+    root.querySelector('#copy-site-info')!.addEventListener('click', async () => {
+      const values = [...root.querySelectorAll('.site-information dd')].map(item => item.textContent?.trim() || '');
+      const status = root.querySelector<HTMLElement>('#copy-site-status')!;
+      try { await navigator.clipboard.writeText(`Name: ${values[0]}\nURL: ${values[1]}\nAbout: ${values[2]}`); status.textContent = 'Copied.'; }
+      catch { status.textContent = 'Select the text to copy.'; }
+    });
+  }
+  initializeFriends();
+  document.addEventListener('astro:page-load', initializeFriends);
+</script>

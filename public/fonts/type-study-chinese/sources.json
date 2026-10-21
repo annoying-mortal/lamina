@@ -1,0 +1,54 @@
+{
+  "sample": "请填写站点名称 请填写个人介绍与项目记录 简体：阅读、链接、设置、档案。繁體：閱讀、連結、設定、檔案。 以清晰的文字，记录每一次观察与发现。 请输入标题 正文内容 联系方式 版权所有 你好，世界！ 0123456789 2026 / 中文预览 简体繁體：龘 靐 齉 龍 鳳 臺 灣 学 學 团 團 ℃ → · ，。；：！？（）「」—",
+  "notes": "Counts measured from full official upstream binaries before subsetting. Glyphs and Unicode mappings are different counts. These WOFF2 specimens only include the sample and printable ASCII, not the full font.",
+  "fonts": [
+    {
+      "source": "https://raw.githubusercontent.com/adobe-fonts/source-han-sans/2.005R/OTF/SimplifiedChinese/SourceHanSansSC-Light.otf",
+      "source_bytes": 16460112,
+      "source_sha256": "b6dfc945aae0daf9b15019f59c2f7b18d17da3b92f00c3ec32fb5f0333696d9c",
+      "full_glyph_count": 65535,
+      "full_unicode_count": 44853,
+      "full_han_mapping_count": 30319,
+      "sample_missing": [],
+      "subset_family": "Study Han Sans",
+      "weight": 300,
+      "basic_cjk_count": 20992,
+      "extension_a_count": 6592,
+      "subset_file": "study-han-sans-light.woff2",
+      "subset_bytes": 45416,
+      "subset_sha256": "cf2bb947bd425a5a2230c03f29903d92845995926bb624555bd65b14dfccbdfb"
+    },
+    {
+      "source": "https://raw.githubusercontent.com/adobe-fonts/source-han-sans/2.005R/OTF/SimplifiedChinese/SourceHanSansSC-Regular.otf",
+      "source_bytes": 16529832,
+      "source_sha256": "f1d8611151880c6c336aabeac4640ef434fa13cbfbf1ffe82d0a71b2a5637256",
+      "full_glyph_count": 65535,
+      "full_unicode_count": 44853,
+      "full_han_mapping_count": 30319,
+      "sample_missing": [],
+      "subset_family": "Study Han Sans",
+      "weight": 400,
+      "basic_cjk_count": 20992,
+      "extension_a_count": 6592,
+      "subset_file": "study-han-sans-regular.woff2",
+      "subset_bytes": 45992,
+      "subset_sha256": "2acc1a2b74b5b24c2e568e18cd7302933d3c970aaf4a9d16a45760667c6ee757"
+    },
+    {
+      "source": "https://github.com/lxgw/LxgwWenKai/releases/download/v1.530/LXGWWenKai-Regular.ttf",
+      "source_bytes": 25928940,
+      "source_sha256": "2d73eea94ad808999d90c0000c239a84a33b09d4bc6ab6c5b8bbf1eda8a7fc8b",
+      "full_glyph_count": 47336,
+      "full_unicode_count": 46926,
+      "full_han_mapping_count": 30918,
+      "sample_missing": [],
+      "subset_family": "Study WenKai",
+      "weight": 400,
+      "basic_cjk_count": 20992,
+      "extension_a_count": 6592,
+      "subset_file": "study-wenkai-regular.woff2",
+      "subset_bytes": 35460,
+      "subset_sha256": "e01fcc4820a1e7cbbf5822da0d1f968f6a730043c1dffd88c8dc99594a2d817b"
+    }
+  ]
+}

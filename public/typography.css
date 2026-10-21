@@ -1,0 +1,35 @@
+/* Three independent typography contexts: site UI, RhineLab, and article reading.
+   Keep the Rhine stack literal so a site-wide font change cannot alter it. */
+@import url('/fonts.css');
+@import url('/fonts/alimama-fangyuan/fonts.css');
+@import url('/fonts/lxgw-wenkai/fonts.css');
+@import url('/fonts/jetbrains-mono/fonts.css');
+
+@font-face{font-family:"Geom";font-style:normal;font-weight:300 900;font-display:swap;src:url('/fonts/geom/geom.woff2') format('woff2')}
+
+:root {
+  --font-cjk: "Alimama FangYuan", "MiSans", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-site: "Geom", var(--font-cjk);
+  --font-rhine: "MiSans", "Mi Sans", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  --font-article: "JetBrains Mono", "LXGW WenKai", "MiSans", "PingFang SC", "Microsoft YaHei", monospace;
+  --font-primary: var(--font-site);
+  --font-sans: var(--font-primary);
+  --font-mono: var(--font-sans);
+}
+
+/* Archive masthead, controls, labels and the CMS archive preview stay unchanged.
+   The login page and canvas textures also consume --font-rhine directly. */
+.archive-section, .preview-canvas[data-view='archive'] {
+  --font-sans: var(--font-rhine);
+  --font-mono: var(--font-rhine);
+  font-family: var(--font-rhine);
+  font-synthesis: none;
+}
+
+/* Article scope excludes the global header/footer and the Blog index.
+   Do not force descendants: KaTeX must retain its own mathematical fonts. */
+.article-page, .markdown-preview, #markdown-body {
+  --font-sans: var(--font-article);
+  --font-mono: var(--font-article);
+  font-family: var(--font-article);
+}
