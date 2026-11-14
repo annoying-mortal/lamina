@@ -20,7 +20,7 @@ function repack(files) {
   files.set('manifest.json', Buffer.from(JSON.stringify(manifest))); return pack(files);
 }
 async function fixture(run, options = {}) {
-  const root = await mkdtemp(join(tmpdir(), 'blog-backup-')), dataDir = join(root, 'src/content'), uploads = join(root, 'public/uploads');
+  const root = await mkdtemp(join(tmpdir(), 'blog-backup-')), dataDir = join(root, 'src/content'), uploads = join(root, 'public/static');
   await mkdir(join(dataDir, 'blog/nested'), { recursive: true }); await mkdir(uploads, { recursive: true });
   const settings = JSON.parse(await readFile(new URL('../src/content/site.json', import.meta.url), 'utf8'));
   Object.assign(settings, { name: 'Backup fixture', favicon: '/uploads/source.png', logo: '/uploads/source.png', orbitImage: '' });
@@ -52,7 +52,7 @@ test('ZIP backup roundtrip restores settings, nested raw Markdown, Library, Frie
   assert.equal(files.get('content/blog/nested/中文 note.md').toString(), rawPost);
   assert.equal([...files.keys()].some(path => path.includes('runtime') || path.includes('private')), false);
   const imageId = `backup-${sha(png)}.png`; assert.ok(files.has(`images/${imageId}`));
-  assert.equal(JSON.parse(files.get('content/site.json')).logo, `/uploads/${imageId}`);
+  assert.equal(JSON.parse(files.get('content/site.json')).logo, `/static/${imageId}`);
   await writeFile(join(dataDir, 'blog/newer.md'), otherPost);
   const changedSettings = JSON.parse(await readFile(join(dataDir, 'site.json'))); changedSettings.name = 'Before restore'; await writeFile(join(dataDir, 'site.json'), JSON.stringify(changedSettings));
   await writeFile(join(dataDir, 'library.json'), '[]'); await writeFile(join(dataDir, 'friends.json'), '[]');
@@ -179,7 +179,7 @@ test('ZIP parser rejects traversal, arbitrary files, duplicates, symlinks, corru
 test('backup APIs enforce authentication, same-origin CSRF and session-bound restore previews', () => fixture(async ({ request, setCsrf, base, jar }) => {
   for (const path of ['/api/backup/export', '/api/backup/inspect', '/api/backup/restore']) assert.equal((await request(path, path.endsWith('export') ? 'GET' : 'POST', path.endsWith('export') ? undefined : {})).status, 401);
   let state = await request('/api/auth/status'); setCsrf(state.body.csrf);
-  const credentials = { username: 'admin', password: 'backup test password 2026' };
+  const credentials = { username: 'admin', password: 'Backup test password 2026' };
   state = await request('/api/auth/setup', 'POST', credentials); assert.equal(state.status, 200); setCsrf(state.body.csrf);
   const exported = (await request('/api/backup/export')).body;
   assert.equal((await request('/api/backup/inspect', 'POST', exported, { 'X-CSRF-Token': '' })).status, 403);
@@ -192,3 +192,21 @@ test('backup APIs enforce authentication, same-origin CSRF and session-bound res
   assert.ok(jar.has('field_admin_session'));
   const restored = await request('/api/backup/restore', 'POST', { token: preview.body.token }); assert.equal(restored.status, 200, restored.body.error);
 }, { auth: {} }));
+
+test('referenced uploaded documents survive export and restore; legacy image ZIP URLs remain accepted', () => fixture(async ({ dataDir, uploads, request }) => {
+  const pdf = Buffer.from('%PDF-1.4\nPortable document\n');
+  await writeFile(join(uploads, 'guide.pdf'), pdf);
+  await writeFile(join(dataDir, 'blog/nested/中文 note.md'), rawPost + '\n[Guide](/static/guide.pdf)\n');
+  const exported = await request('/api/backup/export'); assert.equal(exported.status, 200);
+  const files = unpackBackup(exported.body), id = `backup-${sha(pdf)}.pdf`;
+  assert.deepEqual(files.get(`files/${id}`), pdf);
+  assert.match(files.get('content/blog/nested/中文 note.md').toString(), new RegExp(`/static/${id}`));
+  const preview = await request('/api/backup/inspect', 'POST', exported.body); assert.equal(preview.status, 200, preview.body.error);
+  const restored = await request('/api/backup/restore', 'POST', { token: preview.body.token }); assert.equal(restored.status, 200, restored.body.error);
+  assert.deepEqual(await readFile(join(uploads, id)), pdf);
+  const download = await request(`/static/${id}`); assert.equal(download.status, 200);
+  assert.match(download.headers.get('content-disposition'), /attachment/);
+  assert.deepEqual(download.body, pdf);
+  for (const [path, bytes] of files) if (path.startsWith('content/')) files.set(path, Buffer.from(bytes.toString().replaceAll('/static/', '/uploads/')));
+  const oldPreview = await request('/api/backup/inspect', 'POST', repack(files)); assert.equal(oldPreview.status, 200, oldPreview.body.error);
+}));

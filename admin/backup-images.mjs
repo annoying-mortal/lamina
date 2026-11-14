@@ -5,9 +5,10 @@ import { lookup } from 'node:dns/promises';
 import { isIP } from 'node:net';
 import http from 'node:http';
 import https from 'node:https';
-import { resolve, join, dirname, relative, sep, basename } from 'node:path';
+import { resolve, join, dirname, relative, sep, basename, extname } from 'node:path';
 import { parseDocument, isMap, isSeq, isScalar } from 'yaml';
 import { detectRasterImage } from './image-format.mjs';
+import { fileMimeType } from './media.mjs';
 
 export const IMAGE_LIMIT = 20 * 1024 * 1024;
 const TOTAL_LIMIT = 256 * 1024 * 1024;
@@ -125,7 +126,7 @@ const referenceLabel = value => markdownUrl(value).trim().replace(/\s+/g, ' ').t
 function escapedAt(text, index) { let count = 0; while (index > 0 && text[--index] === '\\') count++; return count % 2 === 1; }
 
 /** Record source spans, so equal URLs in prose, links and examples never change. */
-function findReferences(text, { direct = false, frontmatter = false } = {}) {
+function findReferences(text, { direct = false, frontmatter = false, isFileReference = () => false } = {}) {
   const references = [], spans = new Set();
   function add(start, end, url = markdownUrl(text.slice(start, end)), render = value => value) {
     const key = `${start}:${end}`;
@@ -141,7 +142,7 @@ function findReferences(text, { direct = false, frontmatter = false } = {}) {
       const start = header[0].indexOf('\n') + 1;
       const document = parseDocument(header[1]);
       function visit(node, key = '') {
-        if (isScalar(node) && typeof node.value === 'string' && imageKey.test(key) && node.range) {
+        if (isScalar(node) && typeof node.value === 'string' && (imageKey.test(key) || isFileReference(node.value)) && node.range) {
           const [a, b] = node.range, raw = header[1].slice(a, b);
           add(start + a, start + b, node.value.trim(), value => JSON.stringify(value) + (raw.match(/\r?\n$/)?.[0] || ''));
         } else if (isMap(node)) for (const pair of node.items) visit(pair.value, String(pair.key?.value ?? ''));
@@ -190,7 +191,7 @@ function findReferences(text, { direct = false, frontmatter = false } = {}) {
       if (visible[start] === '<') { start++; end = visible.indexOf('>', start); if (end < 0) continue; after = end + 1; }
       else { let depth = 0; for (; end < visible.length; end++) { if (visible[end] === '\\') { end++; continue; } if (visible[end] === '(') depth++; else if (visible[end] === ')') { if (!depth) break; depth--; } else if (/\s/.test(visible[end]) && !depth) break; } after = end; }
       const closing = /^\s*(?:(?:"[^"\n]*"|'[^'\n]*'|\([^\n]*\))\s*)?\)/.exec(visible.slice(after));
-      if (closing) { if (image) add(start, end); brackets.lastIndex = after + closing[0].length; }
+      if (closing) { if (image || isFileReference(markdownUrl(text.slice(start, end)))) add(start, end); brackets.lastIndex = after + closing[0].length; }
       continue;
     }
     let end = labelEnd, label = match[2];
@@ -200,19 +201,26 @@ function findReferences(text, { direct = false, frontmatter = false } = {}) {
     if (image) imageUses.push({ label, start: match.index, end, alt: text.slice(match.index, labelEnd) });
     else if (visible[match.index - 1] !== '!' && visible[match.index - 1] !== ']') linkUses.add(label);
   }
+  for (const label of linkUses) {
+    const definition = definitions.get(label);
+    if (definition && isFileReference(markdownUrl(text.slice(definition.start, definition.end)))) add(definition.start, definition.end);
+  }
   for (const use of imageUses) {
     const definition = definitions.get(use.label); if (!definition) continue;
     const url = markdownUrl(text.slice(definition.start, definition.end));
     // A shared definition must keep ordinary links pointing at their original URL.
-    if (linkUses.has(use.label)) add(use.start, use.end, url, value => `${use.alt}(<${value}>${definition.title})`);
+    if (linkUses.has(use.label) && !isFileReference(url)) add(use.start, use.end, url, value => `${use.alt}(<${value}>${definition.title})`);
     else add(definition.start, definition.end, url);
   }
-  for (const tag of visible.matchAll(/<(?:img|source)\b(?:[^>"']|"[^"]*"|'[^']*')*>/gi)) {
+  for (const tag of visible.matchAll(/<(?:img|source|a|audio|video)\b(?:[^>"']|"[^"]*"|'[^']*')*>/gi)) {
     if (escapedAt(visible, tag.index)) continue;
-    for (const attr of tag[0].matchAll(/\s(src|srcset)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/gid)) {
+    for (const attr of tag[0].matchAll(/\s(src|srcset|href)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/gid)) {
       const group = attr[2] !== undefined ? 2 : attr[3] !== undefined ? 3 : 4;
       const value = attr[group], offset = tag.index + attr.indices[group][0];
-      if (attr[1].toLowerCase() === 'src') { add(offset, offset + value.length, decodeEntities(value)); continue; }
+      if (attr[1].toLowerCase() !== 'srcset') {
+        if (/^<(?:img|source)\b/i.test(tag[0]) || isFileReference(decodeEntities(value))) add(offset, offset + value.length, decodeEntities(value));
+        continue;
+      }
       let cursor = 0;
       while (cursor < value.length) {
         while (/[\s,]/.test(value[cursor] || '') && cursor < value.length) cursor++;
@@ -236,16 +244,19 @@ export async function prepareBackupImages({ files, projectRoot, dataDir, uploads
   const site = JSON.parse(files.get('content/site.json').toString('utf8'));
   const localOrigins = new Set();
   for (const value of [siteUrl, site.url]) { try { localOrigins.add(new URL(value).origin); } catch {} }
+  function isFileReference(value) {
+    try { const url = new URL(value, 'http://local.invalid'); return (url.origin === 'http://local.invalid' || localOrigins.has(url.origin)) && /^\/(?:static|uploads)\//.test(url.pathname); } catch { return false; }
+  }
   function collect(text, filename, options, commit) {
     const unit = { text, edits: [], commit }; units.push(unit);
-    for (const reference of findReferences(text, options)) {
+    for (const reference of findReferences(text, { ...options, isFileReference })) {
       const key = `${filename}\0${reference.url}`;
       if (!jobs.has(key)) jobs.set(key, { url: reference.raw, sourceUrl: reference.url, filename, targets: [] });
       jobs.get(key).targets.push({ unit, reference });
     }
   }
   function walk(value, filename, key = '', commit = () => {}) {
-    if (typeof value === 'string') collect(value, filename, { direct: imageKey.test(key) }, text => { commit(text); changedJson.add(filename); });
+    if (typeof value === 'string') collect(value, filename, { direct: imageKey.test(key) || isFileReference(value) }, text => { commit(text); changedJson.add(filename); });
     else if (Array.isArray(value)) value.forEach((item, index) => walk(item, filename, key, text => { value[index] = text; }));
     else if (value && typeof value === 'object') for (const [name, item] of Object.entries(value)) walk(item, filename, name, text => { value[name] = text; });
   }
@@ -266,12 +277,16 @@ export async function prepareBackupImages({ files, projectRoot, dataDir, uploads
     }
     const cacheKey = /^https?:\/\//i.test(source) || source.startsWith('/') ? source : `${filename}\0${source}`;
     if (!cache.has(cacheKey)) cache.set(cacheKey, (async () => {
-      let data;
+      let data; const uploaded = /^\/(?:static|uploads)\//.test(source);
       if (/^https?:\/\//i.test(source)) data = await downloadImage(source, { deadline: Math.min(deadline, Date.now() + 12000) });
       else {
         if (source.startsWith('//') || /^[a-z][\w+.-]*:/i.test(source)) fail('Unsupported image URL.');
         const path = safeLocalPath(source);
-        if (path.startsWith('/uploads/')) data = await readLocal(uploadsDir, path.slice(9));
+        if (/^\/(?:static|uploads)\//.test(path)) {
+          const local = path.replace(/^\/(?:static|uploads)\//, '');
+          try { data = await readLocal(uploadsDir, local); }
+          catch (error) { if (!path.startsWith('/uploads/') || !['ENOENT', 'ENOTDIR'].includes(error.code)) throw error; data = await readLocal(join(projectRoot, 'public/uploads'), local); }
+        }
         else if (path.startsWith('/')) data = await readLocal(join(projectRoot, 'public'), path.slice(1));
         else {
           const contentPath = filename.replace(/^content\//, '');
@@ -279,15 +294,23 @@ export async function prepareBackupImages({ files, projectRoot, dataDir, uploads
           catch (error) { if (!['ENOENT', 'ENOTDIR'].includes(error.code)) throw error; data = await readLocal(join(projectRoot, 'public'), path); }
         }
       }
-      const { ext, mime } = validateBackupImage(data);
+      let format, folder = 'images';
+      try { format = validateBackupImage(data); }
+      catch (error) {
+        if (!uploaded) throw error;
+        const extension = extname(source.split(/[?#]/)[0]).slice(1).toLowerCase();
+        format = { ext: /^[a-z0-9]{1,16}$/.test(extension) ? extension : 'bin', mime: fileMimeType(source.split(/[?#]/)[0]) };
+        folder = 'files';
+      }
+      const { ext, mime } = format;
       const id = `backup-${createHash('sha256').update(data).digest('hex')}.${ext}`;
       if (!metadata.has(id)) {
-        total += data.length; if (total > TOTAL_LIMIT) fail('Referenced images exceed the 256 MiB backup limit.');
-        output.set(`images/${id}`, Buffer.from(data));
-        metadata.set(id, { id, name: (basename(source.split(/[?#]/)[0]) || id).slice(0, 200), url: `/uploads/${id}`, mime, size: data.length, createdAt: new Date().toISOString() });
+        total += data.length; if (total > TOTAL_LIMIT) fail('Referenced files exceed the 256 MiB backup limit.');
+        output.set(`${folder}/${id}`, Buffer.from(data));
+        metadata.set(id, { id, name: (basename(source.split(/[?#]/)[0]) || id).slice(0, 200), url: `/static/${id}`, mime, size: data.length, createdAt: new Date().toISOString() });
       }
       const fragment = source.includes('#') ? '#' + source.split('#').slice(1).join('#') : '';
-      return `/uploads/${id}${fragment}`;
+      return `/static/${id}${fragment}`;
     })());
     try {
       const replacement = await cache.get(cacheKey);

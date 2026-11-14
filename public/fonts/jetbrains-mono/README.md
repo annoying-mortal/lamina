@@ -14,4 +14,4 @@ The source TTF files were losslessly encoded as WOFF2 with FontTools 4.60.2. No 
 
 These fonts are redistributed under SIL Open Font License 1.1. Keep `OFL.txt`, `NERD-FONTS-LICENSE` and `UPSTREAM-README.md` with the fonts. The original JetBrains copyright and embedded name-table notices are retained. The included JetBrains license declares no Reserved Font Names. The upstream README records the patched icon sets and their attribution links.
 
-The conversion script and uncompressed source package are private build inputs under `.verification/jetbrains-font-research/`; they are not needed at runtime.
+The original source hashes and converted WOFF2 hashes are recorded in `manifest.json`. The browser uses the bundled WOFF2 files; no build inputs are needed at runtime.

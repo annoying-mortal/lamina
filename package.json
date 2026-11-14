@@ -10,7 +10,7 @@
     "dev": "astro dev --host 127.0.0.1 --port 4321",
     "build": "astro build",
     "publish": "node scripts/publish.mjs",
-    "preview": "astro preview --host 127.0.0.1 --port 4321",
+    "preview": "node scripts/preview.mjs",
     "admin": "node admin/server.mjs",
     "admin:test": "node --test admin/*.test.mjs",
     "test": "node --test admin/*.test.mjs scripts/*.test.mjs",

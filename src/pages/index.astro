@@ -25,8 +25,10 @@ for (const highlight of site.aboutHighlights) {
 }
 const chapters = [
   { id: 'welcome', label: 'Home' }, { id: 'about', label: 'About' },
-  { id: 'archives', label: 'Archive' }, { id: 'contact', label: 'Contact' },
+  { id: 'archives', label: 'Archive' }, { id: 'aboutme', label: 'About me' },
+  { id: 'contact', label: 'Contact' },
 ];
+const favoriteWorks = site.aboutMeWorks.map(slot => ({ ...slot, work: library.find(item => item.id === slot.libraryId) }));
 const launchTime = Date.parse(site.launchedAt);
 const hasLaunchTime = Number.isFinite(launchTime);
 ---
@@ -43,7 +45,7 @@ const hasLaunchTime = Number.isFinite(launchTime);
   </section>
 
   <section class="home-page home-about" id="about" data-home-chapter aria-labelledby="about-title">
-    <div class="home-section-top"><span class="eyebrow">{site.aboutEyebrow}</span><span class="chapter-number">02 / 04</span></div>
+    <div class="home-section-top"><span class="eyebrow">{site.aboutEyebrow}</span><span class="chapter-number">02 / 05</span></div>
     <div class="about-layout">
       <div class="about-statement">
         {logo && <img class="about-logo" data-fallback-image src={logo} alt="" />}
@@ -73,17 +75,42 @@ const hasLaunchTime = Number.isFinite(launchTime);
 
   <ArchiveSection posts={posts} categories={categories} site={site} library={library} />
 
+  <section class="home-page home-interests" id="aboutme" data-home-chapter aria-labelledby="aboutme-title">
+    <div class="home-section-top"><span class="eyebrow">PERSONAL COLLECTION</span><span class="chapter-number">04 / 05</span></div>
+    <div class="interests-layout">
+      <div class="interests-heading">
+        <h2 id="aboutme-title">{personalize(site.aboutMeTitle)}</h2>
+        <p>{personalize(site.aboutMeSubtitle)}</p>
+        <a class="interests-library" href="/library/">Library <span aria-hidden="true">↗</span></a>
+      </div>
+      <div class="interests-grid" aria-label={site.aboutMeSubtitle || 'Favorite works'}>
+        {favoriteWorks.map(({ label, work }, index) => {
+          const Tag = work ? 'a' : 'div';
+          const cover = work ? imageSource(work.cover) : '';
+          return <article class="interest-card" data-interest-slot={index + 1}>
+            <Tag class="interest-cover" href={work ? `/library/#work-${encodeURIComponent(work.id)}` : undefined} aria-label={work ? `View ${work.title}` : `Empty collection slot ${index + 1}`}>
+              <span class="interest-plus" aria-hidden="true">+</span>
+              {cover && <img src={cover} alt={work!.title} data-fallback-image loading="lazy" decoding="async" />}
+            </Tag>
+            <div class="interest-caption"><span>{label || 'tag'}</span><small>{String(index + 1).padStart(2, '0')}</small></div>
+            {work && <h3 class="interest-title">{work.title}</h3>}
+          </article>;
+        })}
+      </div>
+    </div>
+    <div class="home-section-bottom"><span>LIBRARY / PERSONAL PICKS</span><a href="#contact">Contact <span aria-hidden="true">↓</span></a></div>
+  </section>
+
   <section class="home-page home-contact" id="contact" data-home-chapter aria-labelledby="contact-title">
-    <div class="home-section-top"><span class="eyebrow">{site.contactEyebrow}</span><span class="chapter-number">04 / 04</span></div>
+    <div class="home-section-top"><span class="eyebrow">{site.contactEyebrow}</span><span class="chapter-number">05 / 05</span></div>
     <div class="contact-layout">
       <div class="contact-message">
         <h2 id="contact-title">{personalize(site.contactTitle).split(/\r?\n/).map((line, index) => <>{index > 0 && <br />}{index === 0 ? line : <span>{line}</span>}</>)}</h2>
         <p class="contact-description">{personalize(site.contactBody)}</p>
         <div class="contact-links">
-          {site.email && <a href={`mailto:${site.email}`}><span><small>EMAIL</small>{site.email}</span><span aria-hidden="true">↗</span></a>}
-          {site.github && <a href={site.github} target="_blank" rel="noopener noreferrer"><span>GitHub{site.github === 'https://github.com/' && site.demo ? ' · Demo' : ''}</span><span aria-hidden="true">↗</span></a>}
+          {site.github ? <a href={site.github} target="_blank" rel="noopener noreferrer"><span>GitHub{site.github === 'https://github.com/' && site.demo ? ' · Demo' : ''}</span><span aria-hidden="true">↗</span></a> : <div class="contact-placeholder"><span>GitHub</span><span>Enter GitHub URL</span></div>}
+          {site.email ? <a href={`mailto:${site.email}`}><span><small>EMAIL</small>{site.email}</span><span aria-hidden="true">↗</span></a> : <div class="contact-placeholder"><span>Email</span><span>Enter email address</span></div>}
           {site.showRSS && <a href="/rss.xml"><span>RSS</span><span aria-hidden="true">↗</span></a>}
-          {!site.email && !site.github && <p class="contact-empty">Enter contact details</p>}
         </div>
       </div>
       <aside class="home-colophon" aria-label="Site information">

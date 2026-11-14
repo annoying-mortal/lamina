@@ -1,6 +1,7 @@
 node_modules
 dist
 .astro
+.sites-runtime
 .git
 .DS_Store
 *.log
@@ -10,6 +11,7 @@ dist
 coverage
 test-results
 playwright-report
+verification
 .verification
 .published
 .publish-build
@@ -19,3 +21,8 @@ admin/.data
 # supplied by the named volume or compose.files.yaml, not baked into an image.
 src/content
 public/fonts/alimama-fangyuan/alimama-fangyuan.woff2
+
+# Uploaded files are supplied by the persistent volume.
+public/static/*
+!public/static/.gitkeep
+public/uploads/*

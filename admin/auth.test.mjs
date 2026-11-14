@@ -1,5 +1,6 @@
 import test from 'node:test';
 import http from 'node:http';
+import { scryptSync } from 'node:crypto';
 import assert from 'node:assert/strict';
 import { mkdtemp, mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -7,7 +8,7 @@ import { join } from 'node:path';
 import { createServer } from './server.mjs';
 import { createAuth } from './auth.mjs';
 
-const password = '  私人的档案 密码 2026  ';
+const password = '  私人的档案 密码 Aa2026  ';
 async function fixture(run, options = {}) {
   const root = await mkdtemp(join(tmpdir(), 'field-auth-'));
   const authDir = join(root, '.admin');
@@ -41,7 +42,7 @@ test('authentication is enabled by default, protects content APIs and only cache
   assert.match(status.body.csrf, /^[a-f0-9]{64}$/); assert.equal(status.body.name, 'Enter site name');
   assert.equal(status.body.siteUrl, 'http://127.0.0.1:4321');
   assert.ok(status.setCookie[0].includes('HttpOnly')); assert.ok(status.setCookie[0].includes('SameSite=Strict'));
-  for (const path of ['/api/session', '/api/account', '/api/blog', '/api/library', '/api/friends', '/api/settings', '/api/media', '/api/publish/status', '/uploads/anything.png']) assert.equal((await visitor.request(path)).status, 401, path);
+  for (const path of ['/api/session', '/api/account', '/api/blog', '/api/library', '/api/friends', '/api/settings', '/api/media', '/api/publish/status', '/uploads/anything.png', '/static/anything.pdf']) assert.equal((await visitor.request(path)).status, 401, path);
   assert.equal((await visitor.request('/api/settings', 'PUT', {}, { 'X-CSRF-Token': status.body.csrf })).status, 401);
   assert.equal((await visitor.request('/healthz')).status, 200);
   await assert.rejects(readFile(join(authDir, 'auth.json')), { code: 'ENOENT' });
@@ -110,7 +111,7 @@ test('parallel initial setup succeeds exactly once and cannot overwrite the stor
   const other = client(); const otherStatus = await other.request('/api/auth/status');
   const results = await Promise.all([
     visitor.request('/api/auth/setup', 'POST', { username: 'admin', password }, { 'X-CSRF-Token': status.body.csrf }),
-    other.request('/api/auth/setup', 'POST', { username: 'admin', password: 'another-valid-password' }, { 'X-CSRF-Token': otherStatus.body.csrf }),
+    other.request('/api/auth/setup', 'POST', { username: 'admin', password: 'Another-valid-password1' }, { 'X-CSRF-Token': otherStatus.body.csrf }),
   ]);
   assert.deepEqual(results.map(result => result.status).sort(), [200, 409]);
   const before = await readFile(join(authDir, 'auth.json'), 'utf8');
@@ -144,11 +145,19 @@ test('repeated login failures are rate limited independently of bootstrap cookie
   assert.equal(limited.status, 429);
 }, { maxAttempts: 2 }));
 
-test('setup accepts 12–128 characters only and never trims the password', () => fixture(async ({ visitor, status }) => {
+test('setup requires 8–128 characters with digits and both letter cases, and an eight-character password can log in', () => fixture(async ({ visitor, status, client }) => {
   const headers = { 'X-CSRF-Token': status.body.csrf };
-  assert.equal((await visitor.request('/api/auth/setup', 'POST', { username: 'admin', password: 'short' }, headers)).status, 400);
-  assert.equal((await visitor.request('/api/auth/setup', 'POST', { username: 'admin', password: 'x'.repeat(129) }, headers)).status, 400);
-  assert.equal((await visitor.request('/api/auth/setup', 'POST', { username: 'admin', password: '密'.repeat(12) }, headers)).status, 200);
+  for (const invalid of ['Abc1234', 'Aa1' + 'x'.repeat(126), 'abcdef12', 'ABCDEF12', 'Abcdefgh']) {
+    assert.equal((await visitor.request('/api/auth/setup', 'POST', { username: 'admin', password: invalid }, headers)).status, 400, invalid);
+  }
+  assert.equal((await visitor.request('/api/auth/setup', 'POST', { username: 'admin', password: 'Abcd1234' }, headers)).status, 200);
+  assert.equal((await login(client(), 'admin', 'Abcd1234')).status, 200);
+}));
+
+test('setup accepts the 128-character upper boundary', () => fixture(async ({ visitor, status, client }) => {
+  const password = 'Aa1' + 'x'.repeat(125);
+  assert.equal((await visitor.request('/api/auth/setup', 'POST', { username: 'admin', password }, { 'X-CSRF-Token': status.body.csrf })).status, 200);
+  assert.equal((await login(client(), 'admin', password)).status, 200);
 }));
 
 test('first setup refuses nonlocal peers unless the explicit loopback-published private bridge mode is enabled', async () => {
@@ -280,34 +289,38 @@ test('legacy v1 credentials keep their exact password hash and become v2 only on
   const created = await setup();
   await visitor.request('/api/auth/logout', 'POST', {}, { 'X-CSRF-Token': created.body.csrf });
   const legacy = JSON.parse(await readFile(join(authDir, 'auth.json'), 'utf8'));
+  const legacyPassword = '  私人的档案 密码 2026  ';
   legacy.version = 1;
+  legacy.hash = scryptSync(legacyPassword, Buffer.from(legacy.salt, 'hex'), 64, { N: 32768, r: 8, p: 1, maxmem: 128 * 1024 * 1024 }).toString('hex');
   await writeFile(join(authDir, 'auth.json'), JSON.stringify(legacy, null, 2) + '\n', { mode: 0o600 });
   const rawLegacy = await readFile(join(authDir, 'auth.json'), 'utf8');
-  const returning = client(); const loggedIn = await login(returning);
+  const returning = client(); const loggedIn = await login(returning, 'admin', legacyPassword);
   assert.equal(loggedIn.status, 200); assert.equal(loggedIn.body.username, 'admin');
   assert.equal(await readFile(join(authDir, 'auth.json'), 'utf8'), rawLegacy);
   const oldCookie = returning.jar.get('field_admin_session');
-  const renamed = await returning.request('/api/account', 'PUT', { username: 'Reader', currentPassword: password, newPassword: '' }, { 'X-CSRF-Token': loggedIn.body.csrf });
+  const renamed = await returning.request('/api/account', 'PUT', { username: 'Reader', currentPassword: legacyPassword, newPassword: '' }, { 'X-CSRF-Token': loggedIn.body.csrf });
   assert.equal(renamed.status, 200); assert.equal(renamed.body.username, 'Reader');
   assert.notEqual(renamed.body.csrf, loggedIn.body.csrf); assert.notEqual(returning.jar.get('field_admin_session'), oldCookie);
   const updated = JSON.parse(await readFile(join(authDir, 'auth.json'), 'utf8'));
   assert.equal(updated.version, 2); assert.equal(updated.hash, legacy.hash); assert.equal(updated.salt, legacy.salt); assert.equal(updated.createdAt, legacy.createdAt);
   assert.equal((await stat(join(authDir, 'auth.json'))).mode & 0o777, 0o600);
   assert.deepEqual(await readdir(authDir), ['auth.json']);
-  assert.equal((await login(client(), 'Reader')).status, 200);
-  assert.equal((await login(client(), 'admin')).status, 401);
+  assert.equal((await login(client(), 'Reader', legacyPassword)).status, 200);
+  assert.equal((await login(client(), 'admin', legacyPassword)).status, 401);
 }));
 
 test('account changes require current password and CSRF, preserve credentials on failure, and revoke every old session', () => fixture(async ({ visitor, setup, authDir, client }) => {
   const created = await setup(); const other = client(); const otherLogin = await login(other);
   const before = await readFile(join(authDir, 'auth.json'), 'utf8');
   const oldCookie = visitor.jar.get('field_admin_session');
-  const input = { username: 'new-owner', currentPassword: password, newPassword: 'new private password 2026' };
+  const input = { username: 'new-owner', currentPassword: password, newPassword: 'Abcd5678' };
   assert.equal((await visitor.request('/api/account', 'PUT', input)).status, 403);
   assert.equal((await visitor.request('/api/account', 'PUT', input, { 'X-CSRF-Token': otherLogin.body.csrf })).status, 403);
   assert.equal((await visitor.request('/api/account', 'PUT', { ...input, currentPassword: 'incorrect current password' }, { 'X-CSRF-Token': created.body.csrf })).status, 403);
   assert.equal((await visitor.request('/api/account', 'PUT', { ...input, currentPassword: undefined }, { 'X-CSRF-Token': created.body.csrf })).status, 403);
-  assert.equal((await visitor.request('/api/account', 'PUT', { ...input, newPassword: 'short' }, { 'X-CSRF-Token': created.body.csrf })).status, 400);
+  for (const newPassword of ['Abc1234', 'Aa1' + 'x'.repeat(126), 'abcdef12', 'ABCDEF12', 'Abcdefgh']) {
+    assert.equal((await visitor.request('/api/account', 'PUT', { ...input, newPassword }, { 'X-CSRF-Token': created.body.csrf })).status, 400, newPassword);
+  }
   assert.equal((await visitor.request('/api/account', 'PUT', { ...input, username: 'invalid user' }, { 'X-CSRF-Token': created.body.csrf })).status, 400);
   assert.equal(await readFile(join(authDir, 'auth.json'), 'utf8'), before);
   const result = await visitor.request('/api/account', 'PUT', input, { 'X-CSRF-Token': created.body.csrf });

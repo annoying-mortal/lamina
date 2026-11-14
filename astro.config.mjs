@@ -1,5 +1,6 @@
 import { defineConfig } from 'astro/config';
 import { resolve } from 'node:path';
+import { uploadedFileHeaders } from './lib/uploaded-files.mjs';
 import { fileURLToPath } from 'node:url';
 import { satteri } from '@astrojs/markdown-satteri';
 import { markdownMath } from './lib/markdown-math.mjs';
@@ -24,6 +25,12 @@ export default defineConfig({
     shikiConfig: { themes: { light: 'github-light', dark: 'github-dark' }, wrap: true },
   },
   vite: {
+    plugins: [{
+      name: 'uploaded-files',
+      configureServer(server) {
+        server.middlewares.use(uploadedFileHeaders(fileURLToPath(new URL('./public/', import.meta.url))));
+      },
+    }],
     build: { chunkSizeWarningLimit: 900 },
     optimizeDeps: {
       // Home imports the archive lazily; discover all Three entry points before its first visit.

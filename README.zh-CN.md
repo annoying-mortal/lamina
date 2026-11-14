@@ -6,10 +6,10 @@
 
 ## 功能
 
-- **首页与档案** — 个人介绍、亮点展示、联系方式，以及支持键盘、鼠标和触摸操作的三维档案。
+- **首页与档案** — 个人介绍、About me 九格、联系方式，以及支持键盘、鼠标和触摸操作的三维档案。
 - **Blog** — 分类、标签、草稿、搜索、文章目录、RSS、带复制按钮的代码高亮、脚注和 KaTeX 数学公式。
 - **Library 与 Friends** — 收藏条目支持封面、评分、笔记和相关文章；友链支持头像、标签、排序和显示控制。
-- **CMS** — 提供 Blog、Library、Friends、Media、Settings 和 Backup 六个栏目，支持中英文界面和站点设置实时预览。
+- **CMS** — 提供 Settings、Blog、Library、Friends、Files 和 Backup 六个栏目，支持中英文界面和站点设置实时预览。
 - **外观** — 受 RhineLab 启发的日间与夜间主题、可配置的站点标识，以及相互独立的站点、档案和文章字体。
 - **自行部署** — 静态前台与单管理员 Node.js 服务，支持 Docker 部署和 ZIP 内容迁移，无需外部数据库。
 
@@ -36,6 +36,12 @@ npm run admin
 | CMS | <http://127.0.0.1:4322/> |
 
 打开 CMS，创建管理员账号。从 **Settings（设置）** 开始，修改站点名称、首页文案、导航、档案标签、联系方式和 Logo。在 CMS 中保存或直接修改本地文件，都会更新开发中的网站。
+
+顶栏 Logo 建议使用 `/logo.svg` 等 SVG 地址；**Settings → Logo** 留空时，顶栏标识区域保持空白。
+
+后台默认打开 **01 站点设置**，字段按**基础、首页、九部作品、内容**分组。展开需要编辑的小节即可，实时预览也可按需展开。
+
+在 **Settings → 九部作品** 中为九格选择 Library 条目，并填写各格的 **Tag**。空格显示 `+`。联系方式初始显示占位文案，填写后即可使用相应链接。
 
 初始内容包括 Markdown 指南、Library 示例条目、Friends 友链和可编辑的 `Enter…` 占位文案。替换或删除这些记录，并取消自己内容上的 Demo 标记。详见[初始内容与图片来源](docs/content-examples.md)。
 
@@ -69,7 +75,7 @@ Write your article here.
 
 显式设置唯一的 ID 和 slug，可在移动文件时保持地址不变。`pubDate` 和 `description` 分别可作为 `date` 和 `summary` 的别名。
 
-可通过 **Media（素材库）** 上传图片，将文件放在 `public/` 下，或使用外部 HTTP(S) 图片地址。例如，`public/images/photo.jpg` 的引用地址为 `/images/photo.jpg`。素材上传支持 PNG、JPEG、GIF 和 WebP，**每张最大 10 MiB**。已有 SVG 文件可通过其 URL 用作 Logo。
+可通过 **Files（文件）** 上传图片、SVG、文档、压缩包及其他文件，**每个文件最大 10 MiB**。文件保存在 `public/static/`，引用地址为 `/static/…`。图片字段可以选择已上传图片，或使用外部 HTTP(S) 图片地址。原有 `/uploads/…` 链接继续有效。
 
 [Markdown Guide](src/content/blog/markdown-guide.md) 展示了支持的排版格式。CMS 提供轻量预览，最终文字与公式排版以文章页面为准。字段规则、文件编辑和发布方式详见[写作指南](docs/writing.md)（中文）。
 
@@ -95,8 +101,8 @@ docker compose exec admin cat /app/.admin/setup-token
 
 | 命名卷 | 保存内容 |
 | --- | --- |
-| `blog-content` | 文章、设置、Library、Friends 和素材索引 |
-| `blog-uploads` | 上传的图片 |
+| `blog-content` | 文章、设置、Library、Friends 和文件索引 |
+| `blog-uploads` | 上传文件，同时提供 `/static/` 和旧 `/uploads/` 地址 |
 | `blog-published` | 构建版本及当前生效的 `current` 链接 |
 | `blog-admin` | 管理员凭据和恢复快照 |
 
@@ -112,7 +118,7 @@ Docker 从 [`admin/defaults/`](admin/defaults/README.md) 初始化文章和设�
 docker compose -f compose.yaml -f compose.files.yaml up -d --build
 ```
 
-这会挂载 `./src/content/` 和 `./public/uploads/`，让编辑器与 CMS 使用同一份文件。两种方式的修改都会触发发布。后续命令也需同时使用这两份 Compose 文件。
+这会挂载 `./src/content/` 和 `./public/static/`，让编辑器与 CMS 使用同一份文件。两种方式的修改都会触发发布。后续命令也需同时使用这两份 Compose 文件。
 
 可通过 `BLOG_CONTENT_DIR` 和 `BLOG_UPLOADS_DIR` 指定其他已存在的目录。在 Linux 上，需授予容器默认 UID/GID `1000:1000` 对这些目录的写入权限。已有数据卷模式的站点如需迁移，请参阅[文件夹迁移指南](docs/writing.md#已有命名卷先导出再切换)。
 
@@ -138,7 +144,7 @@ ssh -N -L 4322:127.0.0.1:4322 user@your-server
 
 ## 备份与恢复
 
-在 **Backup（备份）** 中，点击 **Download ZIP** 可导出设置、文章（含草稿）、Library、Friends，以及内容引用且受支持的图片。可读取的本地图片和可下载的远程图片会打包并去重。图片引用仅在 ZIP 内改写；无法获取的图片会保留原地址并给出提示。
+在 **Backup（备份）** 中，点击 **Download ZIP** 可导出设置、文章（含草稿）、Library、Friends，以及内容引用的上传文件和图片。可读取的本地文件和可下载的远程图片会打包并去重。文件引用仅在 ZIP 内改写；无法获取的图片会保留原地址并给出提示。
 
 恢复时，选择备份文件，点击 **Inspect ZIP** 检查内容，然后确认 **Restore backup → Replace & restore**。恢复会替换内容和设置，保留已有上传文件及管理员账号，并在替换前保存恢复快照。
 
@@ -152,7 +158,9 @@ ssh -N -L 4322:127.0.0.1:4322 user@your-server
 | 档案界面、3D 标签及档案／登录页文字标识 | MiSans | MiSans |
 | 文章及 CMS Markdown 编辑器／预览 | JetBrains Mono Nerd Font Mono | LXGW WenKai |
 
-KaTeX 使用自身的数学字体。字体栈定义在 [`public/typography.css`](public/typography.css) 中，可在 `/type-study/` 查看效果。
+KaTeX 使用自身的数学字体。字体栈定义在 [`public/typography.css`](public/typography.css) 中。
+
+LXGW WenKai 通过 jsDelivr 的固定版本 [lxgw-wenkai-webfont@1.1.0](https://cdn.jsdelivr.net/npm/lxgw-wenkai-webfont@1.1.0/style.css) 加载，Webfont 包由 Chawye Hsu 维护。原字体由 lxgw 提供，采用 SIL Open Font License 1.1。其他字体由本地提供。
 
 Alimama FangYuan 需单独提供。如需使用，请按所附[许可条款](public/fonts/alimama-fangyuan/LICENSE.txt)，从[记录的来源](public/fonts/alimama-fangyuan/SOURCE.json) 获取原始字体，将 WOFF2 文件放到：
 
@@ -195,10 +203,10 @@ nginx/             静态前台配置
 docs/              写作与初始内容指南
 ```
 
-`src/content/` 中的站点内容纳入版本管理，生成的素材索引除外。上传文件、凭据、环境文件和生成产物由 [`.gitignore`](.gitignore) 排除。修改新 Docker 安装所使用的示例内容时，请同步更新 `admin/defaults/`。
+`src/content/` 中的站点内容纳入版本管理，生成的文件索引除外。上传文件、凭据、环境文件和生成产物由 [`.gitignore`](.gitignore) 排除。修改新 Docker 安装所使用的示例内容时，请同步更新 `admin/defaults/`。
 
 ## 致谢与许可证
 
-档案场景和卡匣模型改编自 [LBEILC/RhineLabUI](https://github.com/LBEILC/RhineLabUI)，上游版本、MIT 声明和模型署名记录在 [THREE-ATTRIBUTION.md](THREE-ATTRIBUTION.md) 中。首页与写作流程的灵感来自 [Nick Chen's blog](https://nickchen.top/) 和 [Astro Theme Hiro](https://github.com/nick-cjyx9/astro-theme-hiro)。
+档案场景和卡匣模型改编自 [LBEILC/RhineLabUI](https://github.com/LBEILC/RhineLabUI)，上游版本、MIT 声明和模型署名记录在 [THREE-ATTRIBUTION.md](THREE-ATTRIBUTION.md) 中。
 
 Lamina 尚未声明项目整体许可证。字体和示例图片各自保留相应声明，详见[字体来源](public/fonts/FONT-SOURCES.md)与[初始内容](docs/content-examples.md)。

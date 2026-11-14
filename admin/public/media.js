@@ -1,7 +1,7 @@
 import { t, translateError } from './i18n.js';
-import { element, imagePreview, safeImageUrl, markdownImage } from './ui.js';
+import { element, imagePreview, safeImageUrl, markdownImage, markdownLink } from './ui.js';
 const $ = selector => document.querySelector(selector);
-const allowed = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp']);
+const imageTypes = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml', 'image/avif', 'image/x-icon']);
 const sizeLabel = size => size < 1024 * 1024 ? `${Math.ceil(size / 1024)} KB` : `${(size / 1024 / 1024).toFixed(1)} MB`;
 
 export function createMediaTools({ api, getSession, message, alertError, onUnauthorized }) {
@@ -38,21 +38,25 @@ export function createMediaTools({ api, getSession, message, alertError, onUnaut
     const list = $('#media-library-grid'); list.replaceChildren();
     for (const record of visible) {
       const card = element('article', 'media-card');
-      const image = element('div', 'media-thumbnail'); image.append(imagePreview(record.url, record.name));
+      const isImage = imageTypes.has(record.mime);
+      const image = element('div', 'media-thumbnail');
+      image.append(isImage ? imagePreview(record.url, record.name) : element('span', 'file-type', record.name.split('.').pop().slice(0, 8).toUpperCase()));
       const title = element('h3', '', record.name); const path = element('code', 'media-path', record.url);
       const meta = element('p', 'media-meta', `${sizeLabel(record.size)} · ${record.mime.replace('image/', '').toUpperCase()}`);
       const actions = element('div', 'media-card-actions');
       const urlButton = element('button', 'button subtle', t('Copy URL', '复制地址')); urlButton.type = 'button'; urlButton.addEventListener('click', () => copy(record.url, t('URL copied.', '地址已复制。')));
-      const markdownButton = element('button', 'button subtle', t('Copy Markdown', '复制 Markdown')); markdownButton.type = 'button'; markdownButton.addEventListener('click', () => copy(markdownImage(record.url, record.name.replace(/\.[^.]+$/, '')), t('Markdown copied.', 'Markdown 已复制。')));
-      actions.append(urlButton, markdownButton); card.append(image, title, meta, path, actions); list.append(card);
+      const markdownButton = element('button', 'button subtle', t('Copy Markdown', '复制 Markdown')); markdownButton.type = 'button'; markdownButton.addEventListener('click', () => copy(isImage ? markdownImage(record.url, record.name.replace(/\.[^.]+$/, '')) : markdownLink(record.url, record.name), t('Markdown copied.', 'Markdown 已复制。')));
+      const download = element('a', 'button subtle', t('Download', '下载')); download.href = record.url; download.download = record.name;
+      actions.append(urlButton, markdownButton, download); card.append(image, title, meta, path, actions); list.append(card);
     }
-    if (!visible.length) list.append(element('p', 'no-results', query ? t('No matches', '没有匹配项') : t('No images', '暂无图片')));
+    if (!visible.length) list.append(element('p', 'no-results', query ? t('No matches', '没有匹配项') : t('No files', '暂无文件')));
     const choices = $('#picker-media-grid'); choices.replaceChildren();
-    for (const record of records) {
+    const images = records.filter(record => imageTypes.has(record.mime));
+    for (const record of images) {
       const button = element('button', `media-choice${record.url === selected ? ' selected' : ''}`); button.type = 'button'; button.dataset.mediaUrl = record.url;
       button.append(imagePreview(record.url, ''), element('span', '', record.name)); button.addEventListener('click', () => choose(record.url, record.name)); choices.append(button);
     }
-    if (!records.length) choices.append(element('p', 'no-results', t('No images', '暂无图片')));
+    if (!images.length) choices.append(element('p', 'no-results', t('No images', '暂无图片')));
   }
   async function refresh() { records = await api('/api/media'); render(); return records; }
   function open({ onSelect, alt = '', initial = '', withAlt = false, title = t('Select image', '选择图片') }) {
@@ -61,7 +65,12 @@ export function createMediaTools({ api, getSession, message, alertError, onUnaut
     setSource(initial ? 'url' : 'library'); choose(initial); picker.showModal();
     refresh().catch(error => { $('#picker-error').textContent = translateError(error.message); $('#picker-error').hidden = false; });
   }
-  function requestUpload() { if (!uploadBusy) $('#media-upload-input').click(); }
+  function requestUpload() {
+    if (uploadBusy) return;
+    const input = $('#media-upload-input');
+    input.accept = picker.open ? [...imageTypes].join(',') : '';
+    input.click();
+  }
   async function upload(files) {
     if (uploadBusy || !files.length) return;
     uploadBusy = true; $('#picker-upload').disabled = true;
@@ -70,20 +79,20 @@ export function createMediaTools({ api, getSession, message, alertError, onUnaut
     let completed = 0;
     try {
       for (const file of files) {
-        if (!allowed.has(file.type)) throw new Error(t(`${file.name}: use JPEG, PNG, GIF or WEBP. For SVG, use a file URL.`, `「${file.name}」请使用 JPEG、PNG、GIF 或 WEBP；SVG 请填写文件地址。`));
+        if (picker.open && !imageTypes.has(file.type)) throw new Error(t('Choose an image for this field.', '此处请选择图片文件。'));
         if (file.size > 10 * 1024 * 1024) throw new Error(t(`${file.name} exceeds 10 MiB.`, `「${file.name}」超过 10 MiB。`));
-        const response = await fetch('/api/media', { method: 'POST', headers: { 'Content-Type': file.type, 'X-File-Name': encodeURIComponent(file.name), 'X-CSRF-Token': getSession().csrf }, body: file });
+        const response = await fetch('/api/media', { method: 'POST', headers: { 'Content-Type': file.type || 'application/octet-stream', 'X-File-Name': encodeURIComponent(file.name), 'X-CSRF-Token': getSession().csrf }, body: file });
         const result = await response.json();
         if (response.status === 401) { onUnauthorized?.(); const error = new Error(t('Session expired. Sign in to upload.', '会话已结束，请登录后上传。')); error.handled = true; throw error; }
         if (!response.ok) throw new Error(result.error || t(`Upload failed (${response.status}).`, `上传失败（${response.status}）。`));
         completed++; records.unshift(result);
         if (picker.open) { setSource('library'); choose(result.url, result.name); }
       }
-      message(t(`${completed} image${completed === 1 ? '' : 's'} uploaded.`, `已上传 ${completed} 张图片。`));
+      message(t(`${completed} file${completed === 1 ? '' : 's'} uploaded.`, `已上传 ${completed} 个文件。`));
     } catch (error) {
       if (error.handled) return;
       const errorText = translateError(error.message);
-      const description = completed ? t(`${completed} uploaded. ${errorText}`, `已上传 ${completed} 张。${errorText}`) : errorText;
+      const description = completed ? t(`${completed} uploaded. ${errorText}`, `已上传 ${completed} 个。${errorText}`) : errorText;
       if (picker.open) { $('#picker-error').textContent = description; $('#picker-error').hidden = false; } else alertError(new Error(description));
     } finally {
       uploadBusy = false; $('#picker-upload').disabled = false; $('#media-upload-input').value = '';

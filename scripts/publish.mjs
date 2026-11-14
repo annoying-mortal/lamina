@@ -63,8 +63,8 @@ export async function publish({ projectRoot = project, publishRoot = process.env
     }
     if (!await has(join(release, 'index.html'))) throw new Error('发布产物缺少首页');
     // Container Nginx serves the persistent uploads volume directly. Avoid
-    // retaining another complete image library in each historical release.
-    if (process.env.SITE_UPLOADS_DIR) await rm(join(release, 'uploads'), { recursive: true, force: true });
+    // retaining another complete file library in each historical release.
+    if (process.env.SITE_UPLOADS_DIR) for (const folder of ['static', 'uploads']) await rm(join(release, folder), { recursive: true, force: true });
     // Track this build's own assets so copied compatibility chunks can expire.
     await writeFile(join(release, '.assets.json'), JSON.stringify(await assetFiles(join(release, '_astro'))));
     // Existing tabs may still request a previous fingerprinted JS chunk.

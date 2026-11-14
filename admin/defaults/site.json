@@ -131,5 +131,45 @@
       "label": "Others",
       "en": "OTHERS"
     }
+  ],
+  "aboutMeTitle": "About me",
+  "aboutMeSubtitle": "构成我的九部作品",
+  "aboutMeWorks": [
+    {
+      "label": "",
+      "libraryId": ""
+    },
+    {
+      "label": "",
+      "libraryId": ""
+    },
+    {
+      "label": "",
+      "libraryId": ""
+    },
+    {
+      "label": "",
+      "libraryId": ""
+    },
+    {
+      "label": "",
+      "libraryId": ""
+    },
+    {
+      "label": "",
+      "libraryId": ""
+    },
+    {
+      "label": "",
+      "libraryId": ""
+    },
+    {
+      "label": "",
+      "libraryId": ""
+    },
+    {
+      "label": "",
+      "libraryId": ""
+    }
   ]
 }

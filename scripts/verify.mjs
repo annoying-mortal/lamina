@@ -47,7 +47,7 @@ try {
   const settings = JSON.parse(await readFile(join(project, 'src/content/site.json'), 'utf8'));
   const routes = ['/', '/blog/', '/library/', '/friends/'];
   const core = new Map(await Promise.all(routes.map(async route => [route, await readRoute(route)])));
-  const htmlFiles = (await filesAt(dist)).filter(path => path.endsWith('.html'));
+  const htmlFiles = (await filesAt(dist)).filter(path => path.endsWith('.html') && !/^(?:static|uploads)\//.test(relative(dist, path)));
   const articles = htmlFiles.filter(path => path.startsWith(join(dist, 'blog') + '/') && path !== join(dist, 'blog/index.html'));
   const blogSource = join(project, 'src/content/blog');
   const sourceArticles = (await filesAt(blogSource)).filter(path => isPostFile(relative(blogSource, path)));
@@ -60,8 +60,10 @@ try {
   }
   check(articles.length === publishedSource.length, `文章输出数 ${articles.length} 与 Markdown 文章数 ${publishedSource.length} 不一致`);
   const home = core.get('/') ?? '';
-  const chapterOffsets = ['welcome', 'about', 'archives', 'contact'].map(id => home.indexOf(`id="${id}"`));
-  check(chapterOffsets.every((offset, index) => offset >= 0 && (index === 0 || offset > chapterOffsets[index - 1])), 'Home 应依次包含首页、个人介绍、三维档案和联系页');
+  const chapterOffsets = ['welcome', 'about', 'archives', 'aboutme', 'contact'].map(id => home.indexOf(`id="${id}"`));
+  check(chapterOffsets.every((offset, index) => offset >= 0 && (index === 0 || offset > chapterOffsets[index - 1])), 'Home 应依次包含首页、个人介绍、三维档案、About me 和联系页');
+  const interestSlots = tags(home, 'article').filter(tag => Object.hasOwn(tag, 'data-interest-slot'));
+  check(interestSlots.length === 9 && interestSlots.every((tag, index) => Number(tag['data-interest-slot']) === index + 1), 'About me 应包含按顺序排列的九个作品槽位');
   const archiveSource = home.match(/<script\b[^>]*id="archive-data"[^>]*>([\s\S]*?)<\/script>/)?.[1];
   check(Boolean(archiveSource), 'Home 缺少 Blog 与 Library 共用的档案数据');
   if (archiveSource) {
@@ -102,7 +104,7 @@ try {
       const value = tag.href ?? tag.src;
       if (!value || !value.startsWith('/') || value.startsWith('//')) continue;
       const pathname = new URL(value, 'http://verify.local').pathname;
-      check(await exists(diskPath(pathname)), `${label} 引用了缺失的本地路径 ${pathname}`);
+      check(await exists(diskPath(pathname)) || (pathname.startsWith('/uploads/') && await exists(diskPath('/static/' + pathname.slice(9)))), `${label} 引用了缺失的本地路径 ${pathname}`);
     }
     if (articles.includes(file)) {
       check(/<article\b/i.test(html), `${label} 缺少 article 语义容器`);

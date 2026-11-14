@@ -5,13 +5,14 @@ import { createMediaTools } from './media.js';
 import { initAccount } from './account.js';
 import { createBackupTools } from './backup.js';
 const $ = selector => document.querySelector(selector);
-const sectionNames = { blog: ['Blog', '文章'], library: ['Library', '收藏'], friends: ['Friends', '友链'], media: ['Media', '素材库'], settings: ['Settings', '站点设置'], backup: ['Backup', '备份'] };
+const sectionNames = { blog: ['Blog', '文章'], library: ['Library', '收藏'], friends: ['Friends', '友链'], media: ['Files', '文件'], settings: ['Settings', '站点设置'], backup: ['Backup', '备份'] };
 const sectionLabel = kind => t(...sectionNames[kind]);
-const state = { kind: 'blog', records: { blog: [], library: [], friends: [] }, settings: null, session: null, current: null, dirty: false, busy: false, backupBusy: false, publishBusy: false, refreshing: false, authRedirecting: false };
+const state = { kind: null, records: { blog: [], library: [], friends: [] }, settings: null, session: null, current: null, dirty: false, busy: false, backupBusy: false, publishBusy: false, refreshing: false, authRedirecting: false };
 const form = $('#editor');
 let toastTimer;
 let navigationVersion = 0;
 let settingsPreviewCleanup;
+let settingsGroup = 'basic';
 const recoveryKey = 'field-admin-recovery-v1';
 const restoredBackupKey = 'field-admin-backup-restored-v1';
 let recoverable = null;
@@ -87,6 +88,8 @@ function isRecoveryRecord(kind, record) {
   if (kind !== 'settings' || !strings(['name', 'title', 'description']) || !record.pages || !Array.isArray(record.categories) || record.categories.length > 100 || !Array.isArray(record.navigation) || record.navigation.length !== 4) return false;
   if (new Set(record.navigation.map(item => item?.id)).size !== 4) return false;
   if (record.aboutHighlights !== undefined && (!Array.isArray(record.aboutHighlights) || record.aboutHighlights.length > 6 || !record.aboutHighlights.every(item => item && ['label', 'title', 'description', 'period', 'url'].every(key => typeof item[key] === 'string')))) return false;
+  if (['aboutMeTitle', 'aboutMeSubtitle'].some(key => record[key] !== undefined && typeof record[key] !== 'string')) return false;
+  if (record.aboutMeWorks !== undefined && (!Array.isArray(record.aboutMeWorks) || record.aboutMeWorks.length !== 9 || !record.aboutMeWorks.every(item => item && ['label', 'libraryId'].every(key => typeof item[key] === 'string')))) return false;
   if (record.orbitImage !== undefined && (typeof record.orbitImage !== 'string' || record.orbitImage.length > 2000)) return false;
   if (record.libraryTypes !== undefined && (!Array.isArray(record.libraryTypes) || record.libraryTypes.length > 30 || !record.libraryTypes.every(item => item && ['id', 'label', 'en'].every(key => typeof item[key] === 'string')))) return false;
   return record.navigation.every(item => item && ['home', 'blog', 'library', 'friends'].includes(item.id) && typeof item.label === 'string' && typeof item.visible === 'boolean')
@@ -155,7 +158,7 @@ function field(name, label, value, options = {}) {
 function checkboxField(name, label, value) {
   const wrapper = element('label', 'check-field'); const input = element('input'); input.type = 'checkbox'; input.name = name; input.checked = Boolean(value); wrapper.append(input, element('span', '', label)); return wrapper;
 }
-function imageField(name, label, value, hint = t("Local path or HTTP(S) URL.", "可填写站内路径或 HTTP(S) 外链，也可从素材库选择。")) {
+function imageField(name, label, value, hint = t("Local path or HTTP(S) URL.", "可填写站内路径或 HTTP(S) 外链，也可从文件中选择。")) {
   const wrapper = element('div', 'field wide image-field'); const control = field(name, label, value, { max: 2000, placeholder: t(`Please enter ${label.toLowerCase()} URL`, `请填写${label}${label.endsWith('地址') ? '' : '地址'}`) });
   const row = element('div', 'image-field-bottom'); const preview = element('div', 'image-field-preview'); const status = element('span', 'muted');
   const input = control.querySelector('input');
@@ -249,7 +252,15 @@ function edit(record) {
   $('#fields').replaceChildren(grid); updatePreviewLink(); renderList();
 }
 function settingsSection(title, description) {
-  const section = element('section', 'settings-section'); section.append(element('h3', '', title)); if (description) section.append(element('p', 'muted settings-description', description)); const grid = element('div', 'form-grid'); section.append(grid); return { section, grid };
+  const section = element('details', 'settings-section');
+  section.append(element('summary', '', title));
+  if (description) section.append(element('p', 'muted settings-description', description));
+  const grid = element('div', 'form-grid'); section.append(grid); return { section, grid };
+}
+function selectSettingsGroup(id) {
+  settingsGroup = id;
+  for (const panel of form.querySelectorAll('[data-settings-group]')) panel.hidden = panel.dataset.settingsGroup !== id;
+  for (const button of form.querySelectorAll('[data-settings-tab]')) button.setAttribute('aria-pressed', String(button.dataset.settingsTab === id));
 }
 function moveRow(rows, row, direction) {
   if (direction === 'up' && row.previousElementSibling) rows.insertBefore(row, row.previousElementSibling);
@@ -336,18 +347,36 @@ function libraryTypeFields(records) {
   add.addEventListener('click', () => { if (rows.children.length >= 30) return; const row = addRow({ id: '', label: '', en: '' }); markDirty(true); row.querySelector('input').focus(); });
   section.append(rows, add); updateOrder(); return section;
 }
+function aboutMeWorkFields(records) {
+  const rows = element('div', 'about-me-work-rows wide');
+  const choices = [{ id: '', label: t('Empty slot', '留空') }, ...state.records.library.map(item => ({ id: item.id, label: item.title }))];
+  for (let index = 0; index < 9; index++) {
+    const item = records[index] || { label: '', libraryId: '' };
+    const row = element('div', 'about-me-work-row'); row.dataset.aboutMeWorkRow = '';
+    row.append(element('span', 'muted', String(index + 1).padStart(2, '0')));
+    const label = field(`aboutMeWorks.${index}.label`, 'Tag', item.label, { max: 80, placeholder: 'tag' });
+    label.querySelector('input').dataset.aboutMeWorkKey = 'label';
+    const available = item.libraryId && !choices.some(choice => choice.id === item.libraryId)
+      ? [...choices, { id: item.libraryId, label: t('Removed work · empty slot', '作品已移除 · 空槽') }] : choices;
+    const work = field(`aboutMeWorks.${index}.libraryId`, t('Library work', 'Library 作品'), item.libraryId, { choices: available });
+    work.querySelector('select').dataset.aboutMeWorkKey = 'libraryId';
+    row.append(label, work); rows.append(row);
+  }
+  return rows;
+}
 function editSettings(record) {
   state.current = structuredClone(record); markDirty(false); $('#empty-editor').hidden = true; form.hidden = false; $('#delete-button').hidden = true;
   $('#editor-eyebrow').hidden = true; $('#editor-title').textContent = t("Settings", "设置"); $('#save-button').textContent = t("Save", "保存设置");
-  const fragment = document.createDocumentFragment();
   const identity = settingsSection(t("Identity", "基本信息"), '');
-  identity.grid.append(field('name', t("Site name", "站点名称"), record.name, { required: true, max: 100 }), field('title', t("Page title", "浏览器标题 / SEO"), record.title, { required: true, max: 200 }), field('description', t("Description", "站点描述"), record.description, { wide: true, multiline: true, rows: 2, max: 1000 }), field('url', t("Site URL", "公开网址"), record.url, { wide: true, type: 'url', placeholder: t("Please enter site URL", "请填写公开网址"), hint: t("Full HTTP(S) URL. Optional.", "完整 HTTP(S) 网址，可留空。") }), imageField('logo', 'Logo', record.logo, t("/logo.svg or HTTP(S) URL. Optional.", "/logo.svg 或 HTTP(S) 地址，可留空。")), imageField('favicon', 'Favicon', record.favicon, t("/favicon.svg or HTTP(S) URL.", "/favicon.svg 或 HTTP(S) 地址。")), field('defaultTheme', t("Theme", "默认主题"), record.defaultTheme, { choices: [{ id: 'system', label: t("System", "跟随系统") }, { id: 'light', label: t("Light", "日间模式") }, { id: 'dark', label: t("Dark", "夜间模式") }], hint: '' }), field('github', t("GitHub URL", "GitHub 地址"), record.github, { type: 'url', max: 2000 }), field('email', t("Email", "联系邮箱"), record.email, { type: 'email', max: 254 }), checkboxField('showRSS', t("RSS", "RSS"), record.showRSS), checkboxField('demo', t("Demo notice", "显示站点示例说明"), record.demo)); fragment.append(identity.section);
+  identity.grid.append(field('name', t("Site name", "站点名称"), record.name, { required: true, max: 100 }), field('title', t("Page title", "浏览器标题 / SEO"), record.title, { required: true, max: 200 }), field('description', t("Description", "站点描述"), record.description, { wide: true, multiline: true, rows: 2, max: 1000 }), field('url', t("Site URL", "公开网址"), record.url, { wide: true, type: 'url', placeholder: t("Please enter site URL", "请填写公开网址"), hint: t("Full HTTP(S) URL. Optional.", "完整 HTTP(S) 网址，可留空。") }), imageField('logo', 'Logo', record.logo, t("SVG recommended, e.g. /logo.svg. Leave blank for an empty header mark.", "建议使用 SVG，如 /logo.svg；留空时顶栏标识为空白。")), imageField('favicon', 'Favicon', record.favicon, t("/favicon.svg or HTTP(S) URL.", "/favicon.svg 或 HTTP(S) 地址。")), field('defaultTheme', t("Theme", "默认主题"), record.defaultTheme, { choices: [{ id: 'system', label: t("System", "跟随系统") }, { id: 'light', label: t("Light", "日间模式") }, { id: 'dark', label: t("Dark", "夜间模式") }], hint: '' }), checkboxField('showRSS', t("RSS", "RSS"), record.showRSS), checkboxField('demo', t("Demo notice", "显示站点示例说明"), record.demo));
   const home = settingsSection(t("Home & Archive", "Home 与档案"), t("Use {name} for the site name.", "使用 {name} 引用站名。"));
-  home.grid.append(field('tagline', t("Heading", "首页主标题"), record.tagline, { wide: true, multiline: true, max: 500 }), field('intro', t("Introduction", "首页简介"), record.intro, { wide: true, multiline: true, rows: 3, max: 2000 }), field('eyebrow', t("Eyebrow", "首页上方小字"), record.eyebrow, { wide: true, max: 200 }), field('homeEdition', t("Bottom text", "首页底部文字"), record.homeEdition, { wide: true, max: 300 }), imageField('orbitImage', t('Orbit image', '圆环图片'), record.orbitImage, t('Home & sign-in', '首页与登录页')), field('archiveTitle', t("Archive title", "档案标题"), record.archiveTitle, { max: 100 }), field('archiveSubtitle', t("Archive subtitle", "档案副标题"), record.archiveSubtitle, { max: 200 })); fragment.append(home.section);
+  home.grid.append(field('tagline', t("Heading", "首页主标题"), record.tagline, { wide: true, multiline: true, max: 500 }), field('intro', t("Introduction", "首页简介"), record.intro, { wide: true, multiline: true, rows: 3, max: 2000 }), field('eyebrow', t("Eyebrow", "首页上方小字"), record.eyebrow, { wide: true, max: 200 }), field('homeEdition', t("Bottom text", "首页底部文字"), record.homeEdition, { wide: true, max: 300 }), imageField('orbitImage', t('Orbit image', '圆环图片'), record.orbitImage, t('Home & sign-in', '首页与登录页')), field('archiveTitle', t("Archive title", "档案标题"), record.archiveTitle, { max: 100 }), field('archiveSubtitle', t("Archive subtitle", "档案副标题"), record.archiveSubtitle, { max: 200 }));
   const about = settingsSection(t("About", "Home · 个人介绍"), '');
-  about.grid.append(field('aboutEyebrow', t("Eyebrow", "上方小字"), record.aboutEyebrow, { wide: true, max: 200 }), field('aboutTitle', t("Heading", "介绍标题"), record.aboutTitle, { wide: true, multiline: true, rows: 2, max: 300 }), field('aboutBody', t("Content", "介绍正文"), record.aboutBody, { wide: true, multiline: true, rows: 3, max: 6000 }), aboutHighlightFields(record.aboutHighlights || state.settings?.aboutHighlights || [])); fragment.append(about.section);
+  about.grid.append(field('aboutEyebrow', t("Eyebrow", "上方小字"), record.aboutEyebrow, { wide: true, max: 200 }), field('aboutTitle', t("Heading", "介绍标题"), record.aboutTitle, { wide: true, multiline: true, rows: 2, max: 300 }), field('aboutBody', t("Content", "介绍正文"), record.aboutBody, { wide: true, multiline: true, rows: 3, max: 6000 }), aboutHighlightFields(record.aboutHighlights || state.settings?.aboutHighlights || []));
+  const aboutMe = settingsSection(t('About me · Nine works', 'About me · 九部作品'), t('Choose nine works from Library. Empty slots show +.', '从 Library 选择九部作品，空槽显示 ＋。'));
+  aboutMe.grid.append(field('aboutMeTitle', t('Heading', '标题'), record.aboutMeTitle ?? state.settings?.aboutMeTitle ?? 'About me', { wide: true, max: 300 }), field('aboutMeSubtitle', t('Subtitle', '副标题'), record.aboutMeSubtitle ?? state.settings?.aboutMeSubtitle ?? '构成我的九部作品', { wide: true, max: 1000 }), aboutMeWorkFields(record.aboutMeWorks || state.settings?.aboutMeWorks || []));
   const contact = settingsSection(t("Contact", "Home · 联系与运行时间"), '');
-  contact.grid.append(field('contactEyebrow', t("Eyebrow", "上方小字"), record.contactEyebrow, { wide: true, max: 200 }), field('contactTitle', t("Heading", "联系页标题"), record.contactTitle, { wide: true, multiline: true, rows: 2, max: 300 }), field('contactBody', t("Content", "联系页正文"), record.contactBody, { wide: true, multiline: true, rows: 3, max: 4000 }), field('launchedAt', t("Launched at", "运行计时起点"), record.launchedAt, { wide: true, max: 40, placeholder: t("Please enter launch date", "请填写运行计时起点"), hint: t("YYYY-MM-DDTHH:mm:ss+08:00 · Optional.", "YYYY-MM-DDTHH:mm:ss+08:00，可留空。") })); fragment.append(contact.section);
+  contact.grid.append(field('github', t("GitHub URL", "GitHub 地址"), record.github, { type: 'url', max: 2000 }), field('email', t("Email", "联系邮箱"), record.email, { type: 'email', max: 254 }), field('contactEyebrow', t("Eyebrow", "上方小字"), record.contactEyebrow, { wide: true, max: 200 }), field('contactTitle', t("Heading", "联系页标题"), record.contactTitle, { wide: true, multiline: true, rows: 2, max: 300 }), field('contactBody', t("Content", "联系页正文"), record.contactBody, { wide: true, multiline: true, rows: 3, max: 4000 }), field('launchedAt', t("Launched at", "运行计时起点"), record.launchedAt, { wide: true, max: 40, placeholder: t("Please enter launch date", "请填写运行计时起点"), hint: t("YYYY-MM-DDTHH:mm:ss+08:00 · Optional.", "YYYY-MM-DDTHH:mm:ss+08:00，可留空。") }));
   const navigation = settingsSection(t("Navigation", "导航"), ''); const rows = element('div', 'navigation-rows wide');
   const updateOrder = () => { [...rows.children].forEach((row, index, all) => { row.querySelector('[data-move="up"]').disabled = index === 0; row.querySelector('[data-move="down"]').disabled = index === all.length - 1; }); };
   for (const item of record.navigation || []) {
@@ -358,21 +387,36 @@ function editSettings(record) {
     for (const [direction, label] of [['up', '↑'], ['down', '↓']]) { const button = element('button', 'button subtle', label); button.type = 'button'; button.dataset.move = direction; button.setAttribute('aria-label', `${direction === 'up' ? t("Move up", "上移") : t("Move down", "下移")} ${item.id}`); button.addEventListener('click', () => { moveRow(rows, row, direction); updateOrder(); markDirty(true); }); moves.append(button); }
     row.append(control, visible, moves); rows.append(row);
   }
-  navigation.grid.append(rows); updateOrder(); fragment.append(navigation.section);
+  navigation.grid.append(rows); updateOrder();
   const pages = settingsSection(t("Pages", "栏目文案"), '');
-  for (const id of ['blog', 'library', 'friends']) { const group = element('div', 'page-settings-group wide'); group.append(element('h4', '', sectionLabel(id)), field(`pages.${id}.title`, t("Title", "标题"), record.pages?.[id]?.title, { required: true, max: 100 }), field(`pages.${id}.eyebrow`, t("Eyebrow", "上方小字"), record.pages?.[id]?.eyebrow, { max: 200 }), field(`pages.${id}.description`, t("Description", "说明"), record.pages?.[id]?.description, { multiline: true, rows: 2, max: 1000 })); pages.grid.append(group); } fragment.append(pages.section);
+  for (const id of ['blog', 'library', 'friends']) { const group = element('div', 'page-settings-group wide'); group.append(element('h4', '', sectionLabel(id)), field(`pages.${id}.title`, t("Title", "标题"), record.pages?.[id]?.title, { required: true, max: 100 }), field(`pages.${id}.eyebrow`, t("Eyebrow", "上方小字"), record.pages?.[id]?.eyebrow, { max: 200 }), field(`pages.${id}.description`, t("Description", "说明"), record.pages?.[id]?.description, { multiline: true, rows: 2, max: 1000 })); pages.grid.append(group); }
   const libraryTypes = settingsSection(t('Library categories', 'Library 分类'), t('Move entries before removing a category.', '删除分类前请先迁移条目。'));
-  libraryTypes.grid.append(libraryTypeFields(record.libraryTypes || state.settings?.libraryTypes || [])); fragment.append(libraryTypes.section);
+  libraryTypes.grid.append(libraryTypeFields(record.libraryTypes || state.settings?.libraryTypes || []));
   const categories = settingsSection(t("Categories", "文章分类"), t("Move posts before removing a category.", "删除分类前请先迁移文章。")); const categoryRows = element('div', 'category-rows wide');
   const addCategory = item => {
     const row = element('div', 'category-row'); row.dataset.categoryRow = '';
     for (const [key, label, max] of [['id', t("ID", "分类 ID"), 80], ['label', t("Name", "名称"), 80], ['en', t("English name", "英文名称"), 100]]) { const control = field(`category.${key}`, label, item[key], { required: true, max, ...(key === 'id' ? { pattern: '[a-z0-9]+(-[a-z0-9]+)*', placeholder: t("Please enter category ID", "请填写分类 ID"), hint: t("Lowercase letters, numbers and hyphens.", "使用小写字母、数字和连字符。") } : {}) }); control.querySelector('input').dataset.categoryKey = key; row.append(control); }
     const remove = element('button', 'text-danger', t("Remove", "移除")); remove.type = 'button'; remove.setAttribute('aria-label', t(`Remove category ${item.label || ''}`, `移除分类 ${item.label || ''}`)); remove.addEventListener('click', () => { row.remove(); markDirty(true); }); row.append(remove); categoryRows.append(row);
   };
-  (record.categories || []).forEach(addCategory); const add = element('button', 'button subtle add-category', t("+ Add category", "＋ 新增分类")); add.type = 'button'; add.addEventListener('click', () => { addCategory({ id: '', label: '', en: '' }); markDirty(true); categoryRows.lastElementChild.querySelector('input').focus(); }); categories.grid.append(categoryRows, add); fragment.append(categories.section);
-  const footer = settingsSection(t("Footer", "页脚")); footer.grid.append(field('footerLabel', t("Label", "英文标识"), record.footerLabel, { max: 100 }), field('footerNote', t("Text", "页脚说明"), record.footerNote, { max: 300 })); fragment.append(footer.section);
-  $('#fields').replaceChildren(fragment); updatePreviewLink();
-  settingsPreviewCleanup?.(); settingsPreviewCleanup = mountSettingsPreview({ form, getValues: formValue, siteUrl: state.session.siteUrl });
+  (record.categories || []).forEach(addCategory); const add = element('button', 'button subtle add-category', t("+ Add category", "＋ 新增分类")); add.type = 'button'; add.addEventListener('click', () => { addCategory({ id: '', label: '', en: '' }); markDirty(true); categoryRows.lastElementChild.querySelector('input').focus(); }); categories.grid.append(categoryRows, add);
+  const footer = settingsSection(t("Footer", "页脚")); footer.grid.append(field('footerLabel', t("Label", "英文标识"), record.footerLabel, { max: 100 }), field('footerNote', t("Text", "页脚说明"), record.footerNote, { max: 300 }));
+  const tabs = element('div', 'settings-tabs'); tabs.setAttribute('role', 'group'); tabs.setAttribute('aria-label', t('Settings groups', '设置分组'));
+  const groups = [
+    ['basic', t('Basics', '基本'), [identity, navigation, footer]],
+    ['home', t('Home', '首页'), [home, about, contact]],
+    ['works', t('Nine works', '九部作品'), [aboutMe]],
+    ['content', t('Content', '栏目'), [pages, libraryTypes, categories]],
+  ];
+  const fragment = document.createDocumentFragment(); fragment.append(tabs);
+  for (const [id, label, sections] of groups) {
+    const button = element('button', 'settings-tab', label); button.type = 'button'; button.dataset.settingsTab = id;
+    button.setAttribute('aria-controls', `settings-${id}`); button.addEventListener('click', () => selectSettingsGroup(id)); tabs.append(button);
+    const panel = element('div', 'settings-group'); panel.id = `settings-${id}`; panel.dataset.settingsGroup = id;
+    for (const [index, { section }] of sections.entries()) { section.open = index === 0; panel.append(section); }
+    fragment.append(panel);
+  }
+  $('#fields').replaceChildren(fragment); selectSettingsGroup(settingsGroup); updatePreviewLink();
+  settingsPreviewCleanup?.(); settingsPreviewCleanup = mountSettingsPreview({ form, getValues: formValue, siteUrl: state.session.siteUrl, library: state.records.library });
 }
 function newRecord() {
   if (state.backupBusy || state.kind === 'backup') return;
@@ -392,13 +436,14 @@ function formValue() {
   const values = Object.fromEntries(new FormData(form).entries()); let input;
   if (state.kind === 'settings') {
     input = {};
-    for (const name of ['name', 'title', 'description', 'url', 'tagline', 'intro', 'eyebrow', 'footerNote', 'footerLabel', 'github', 'email', 'logo', 'favicon', 'orbitImage', 'defaultTheme', 'archiveSubtitle', 'archiveTitle', 'homeEdition', 'aboutEyebrow', 'aboutTitle', 'aboutBody', 'contactEyebrow', 'contactTitle', 'contactBody', 'launchedAt']) input[name] = values[name] || '';
+    for (const name of ['name', 'title', 'description', 'url', 'tagline', 'intro', 'eyebrow', 'footerNote', 'footerLabel', 'github', 'email', 'logo', 'favicon', 'orbitImage', 'defaultTheme', 'archiveSubtitle', 'archiveTitle', 'homeEdition', 'aboutEyebrow', 'aboutTitle', 'aboutBody', 'aboutMeTitle', 'aboutMeSubtitle', 'contactEyebrow', 'contactTitle', 'contactBody', 'launchedAt']) input[name] = values[name] || '';
     for (const name of ['showRSS', 'demo']) input[name] = form.elements.namedItem(name).checked;
     input.navigation = [...form.querySelectorAll('[data-navigation-id]')].map(row => ({ id: row.dataset.navigationId, label: row.querySelector('[data-navigation-label]').value, visible: row.querySelector('[data-navigation-visible]').checked }));
     input.pages = Object.fromEntries(['blog', 'library', 'friends'].map(id => [id, Object.fromEntries(['title', 'eyebrow', 'description'].map(key => [key, values[`pages.${id}.${key}`] || '']))]));
     input.categories = [...form.querySelectorAll('[data-category-row]')].map(row => Object.fromEntries([...row.querySelectorAll('[data-category-key]')].map(control => [control.dataset.categoryKey, control.value])));
     input.libraryTypes = [...form.querySelectorAll('[data-library-type-row]')].map(row => Object.fromEntries([...row.querySelectorAll('[data-library-type-key]')].map(control => [control.dataset.libraryTypeKey, control.value])));
     input.aboutHighlights = [...form.querySelectorAll('[data-about-highlight-row]')].map(row => Object.fromEntries([...row.querySelectorAll('[data-highlight-key]')].map(control => [control.dataset.highlightKey, control.value])));
+    input.aboutMeWorks = [...form.querySelectorAll('[data-about-me-work-row]')].map(row => Object.fromEntries([...row.querySelectorAll('[data-about-me-work-key]')].map(control => [control.dataset.aboutMeWorkKey, control.value])));
   } else {
     input = values; input.demo = form.elements.namedItem('demo').checked;
     if (state.kind === 'friends') { input.id = state.current.id; input.order = Number(input.order); input.visible = form.elements.namedItem('visible').checked; }
@@ -462,7 +507,7 @@ async function updatePublish() {
 function updateSectionLabels() {
   const label = sectionLabel(state.kind);
   $('#page-title').textContent = label;
-  $('#create-button').textContent = state.kind === 'media' ? t('+ Upload', '＋ 上传图片') : t(`+ New ${label}`, `＋ 新建${label}`);
+  $('#create-button').textContent = state.kind === 'media' ? t('+ Upload files', '＋ 上传文件') : t(`+ New ${label}`, `＋ 新建${label}`);
   $('#list-label').textContent = t(`All ${label}`, `全部${label}`);
 }
 async function switchKind(kind) {
@@ -478,11 +523,24 @@ async function switchKind(kind) {
   try {
     if (kind === 'backup') backup.render();
     else if (kind === 'media') await media.refresh();
-    else if (kind === 'settings') { state.settings = await api('/api/settings'); if (version !== navigationVersion) return; editSettings(state.settings); }
+    else if (kind === 'settings') {
+      const [settings, library] = await Promise.all([api('/api/settings'), api('/api/library')]);
+      if (version !== navigationVersion) return;
+      state.settings = settings; state.records.library = library; editSettings(settings);
+    }
     else { state.session = await api('/api/session'); await refreshRecords(); if (version !== navigationVersion) return; if (state.records[kind].length) edit(state.records[kind][0]); else $('#empty-editor').hidden = false; }
     if (version === navigationVersion) window.scrollTo(0, 0);
   } catch (error) { alertError(error); }
 }
+form.addEventListener('invalid', event => {
+  if (state.kind !== 'settings') return;
+  // Reveal the first invalid control before the browser focuses it.
+  if (event.target !== form.querySelector(':invalid')) { event.preventDefault(); return; }
+  const group = event.target.closest('[data-settings-group]');
+  if (group) selectSettingsGroup(group.dataset.settingsGroup);
+  const section = event.target.closest('.settings-section');
+  if (section) section.open = true;
+}, true);
 form.addEventListener('submit', save);
 form.addEventListener('input', () => { markDirty(true); updatePreviewLink(); });
 form.addEventListener('change', () => { markDirty(true); updatePreviewLink(); });
@@ -568,7 +626,7 @@ try {
   state.session = await api('/api/session'); $('#visit-site').href = state.session.siteUrl;
   $('#account-button').hidden = state.session.authEnabled === false;
   await refreshRecords(); await updatePublish(); media.refresh().catch(alertError);
-  if (state.records.blog.length) edit(state.records.blog[0]);
+  await switchKind('settings');
   readRecovery();
   try {
     const restoredBackup = sessionStorage.getItem(restoredBackupKey);

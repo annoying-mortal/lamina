@@ -7,6 +7,7 @@ export type DefaultTheme = 'system' | 'light' | 'dark';
 export interface SiteCategory { id: string; label: string; en: string; }
 export interface PageSettings { title: string; eyebrow: string; description: string; }
 export interface AboutHighlight { label: string; title: string; description: string; period: string; url: string; }
+export interface AboutMeWork { label: string; libraryId: string; }
 export interface SiteSettings {
   name: string; title: string; description: string; url: string;
   tagline: string; intro: string; eyebrow: string; footerNote: string; footerLabel: string;
@@ -14,6 +15,7 @@ export interface SiteSettings {
   showRSS: boolean; demo: boolean; archiveSubtitle: string; archiveTitle: string; homeEdition: string;
   aboutEyebrow: string; aboutTitle: string; aboutBody: string;
   aboutHighlights: AboutHighlight[];
+  aboutMeTitle: string; aboutMeSubtitle: string; aboutMeWorks: AboutMeWork[];
   contactEyebrow: string; contactTitle: string; contactBody: string; launchedAt: string;
   navigation: Array<{ id: NavigationId; label: string; visible: boolean }>;
   pages: Record<'blog' | 'library' | 'friends', PageSettings>;

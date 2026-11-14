@@ -376,6 +376,43 @@ test('About highlights reject malformed rows, oversized content and unsafe links
   assert.equal((await readdir(dataDir)).includes('site.json'), false);
 }));
 
+test('About me migrates nine slots, preserves omitted fields and allows repeated or removed Library references', () => fixture(async ({ request, dataDir }) => {
+  const initial = (await request('/api/settings')).body;
+  const legacy = { ...initial }; delete legacy.revision;
+  for (const key of ['aboutMeTitle', 'aboutMeSubtitle', 'aboutMeWorks']) delete legacy[key];
+  await writeFile(join(dataDir, 'site.json'), JSON.stringify(legacy));
+  const loaded = (await request('/api/settings')).body;
+  assert.equal(loaded.aboutMeTitle, 'About me'); assert.equal(loaded.aboutMeSubtitle, '构成我的九部作品');
+  assert.deepEqual(loaded.aboutMeWorks, Array.from({ length: 9 }, () => ({ label: '', libraryId: '' })));
+  const created = await request('/api/library', 'POST', sampleItem());
+  assert.equal(created.status, 201);
+  const aboutMeWorks = loaded.aboutMeWorks.map((item, index) => index < 2 ? { label: `最喜欢 ${index}`, libraryId: created.body.id } : index === 8 ? { label: 'Missing work', libraryId: 'removed-work' } : item);
+  let saved = await request('/api/settings', 'PUT', { ...loaded, aboutMeTitle: 'About me edited', aboutMeSubtitle: '九部作品', aboutMeWorks });
+  assert.equal(saved.status, 200); assert.deepEqual(saved.body.aboutMeWorks, aboutMeWorks);
+  assert.deepEqual(JSON.parse(await readFile(join(dataDir, 'site.json'), 'utf8')).aboutMeWorks, aboutMeWorks);
+  const olderClient = { ...saved.body, name: 'Old client update' };
+  for (const key of ['aboutMeTitle', 'aboutMeSubtitle', 'aboutMeWorks']) delete olderClient[key];
+  saved = await request('/api/settings', 'PUT', olderClient);
+  assert.equal(saved.status, 200); assert.equal(saved.body.aboutMeTitle, 'About me edited'); assert.equal(saved.body.aboutMeSubtitle, '九部作品'); assert.deepEqual(saved.body.aboutMeWorks, aboutMeWorks);
+  assert.equal((await request(`/api/library/${created.body.id}`, 'DELETE', { revision: created.body.revision })).status, 200);
+  assert.deepEqual((await request('/api/settings')).body.aboutMeWorks, aboutMeWorks);
+  const cleared = await request('/api/settings', 'PUT', { ...saved.body, aboutMeTitle: '', aboutMeSubtitle: '', aboutMeWorks: loaded.aboutMeWorks });
+  assert.equal(cleared.status, 200); assert.equal(cleared.body.aboutMeTitle, ''); assert.equal(cleared.body.aboutMeSubtitle, ''); assert.deepEqual(cleared.body.aboutMeWorks, loaded.aboutMeWorks);
+}));
+
+test('About me rejects malformed slot counts and field types without changing settings', () => fixture(async ({ request, dataDir }) => {
+  const initial = (await request('/api/settings')).body;
+  const rows = initial.aboutMeWorks;
+  const invalid = [
+    { aboutMeTitle: 123 }, { aboutMeTitle: 'x'.repeat(301) }, { aboutMeSubtitle: null }, { aboutMeSubtitle: 'x'.repeat(1001) },
+    ...[null, {}, [], rows.slice(1), [...rows, rows[0]], [null, ...rows.slice(1)], [{}, ...rows.slice(1)]].map(aboutMeWorks => ({ aboutMeWorks })),
+    ...[{ label: 123, libraryId: '' }, { label: '', libraryId: false }, { label: 'x'.repeat(81), libraryId: '' }, { label: '', libraryId: 'x'.repeat(81) }].map(item => ({ aboutMeWorks: [item, ...rows.slice(1)] })),
+  ];
+  for (const fields of invalid) assert.equal((await request('/api/settings', 'PUT', { ...initial, ...fields })).status, 400, JSON.stringify(fields));
+  assert.equal((await readdir(dataDir)).includes('site.json'), false);
+  assert.deepEqual((await request('/api/settings')).body.aboutMeWorks, rows);
+}));
+
 test('dynamic categories and explicit drafts round-trip without restarting the server', () => fixture(async ({ request, dataDir }) => {
   const initial = (await request('/api/settings')).body;
   let settings = (await request('/api/settings', 'PUT', { ...initial, categories: [...initial.categories, { id: 'travel', label: '旅行手记', en: 'TRAVEL' }] })).body;
@@ -440,14 +477,14 @@ test('minimal handwritten Markdown is editable in place and preserves custom fro
   assert.equal(reread.id, post.id); assert.equal(reread.sourcePath, post.sourcePath);
 }));
 
-test('Hiro-style aliases become canonical fields on CMS save without moving the source', () => fixture(async ({ request, dataDir }) => {
+test('Imported aliases become canonical fields on CMS save without moving the source', () => fixture(async ({ request, dataDir }) => {
   await mkdir(join(dataDir, 'blog/imported'));
-  const path = join(dataDir, 'blog/imported/hiro-note.md');
-  await writeFile(path, '---\ntitle: 导入的 Hiro 文章\npubDate: 2026-10-20T23:30:00-07:00\ndescription: 原来的描述\nauthor: 博主\ncustom:\n  description: 自定义嵌套字段应保留\n---\n\n文章正文。\n');
+  const path = join(dataDir, 'blog/imported/alias-note.md');
+  await writeFile(path, '---\ntitle: 导入的文章\npubDate: 2026-10-20T23:30:00-07:00\ndescription: 原来的描述\nauthor: 博主\ncustom:\n  description: 自定义嵌套字段应保留\n---\n\n文章正文。\n');
   const listed = await request('/api/blog');
   assert.equal(listed.status, 200);
   const post = listed.body[0];
-  assert.equal(post.sourcePath, 'imported/hiro-note.md');
+  assert.equal(post.sourcePath, 'imported/alias-note.md');
   assert.equal(post.date, '2026-10-21');
   assert.equal(post.summary, '原来的描述');
   const saved = await request(`/api/blog/${post.id}`, 'PUT', { ...post, summary: '后台更新的摘要', date: '2026-10-22' });
@@ -459,7 +496,7 @@ test('Hiro-style aliases become canonical fields on CMS save without moving the 
   assert.equal(Object.hasOwn(metadata, 'description'), false);
   assert.equal(metadata.author, '博主');
   assert.deepEqual(metadata.custom, { description: '自定义嵌套字段应保留' });
-  assert.deepEqual(await readdir(join(dataDir, 'blog/imported')), ['hiro-note.md']);
+  assert.deepEqual(await readdir(join(dataDir, 'blog/imported')), ['alias-note.md']);
   const fresh = (await request(`/api/blog/${post.id}`)).body;
   assert.equal(fresh.date, metadata.date); assert.equal(fresh.summary, metadata.summary);
 }));

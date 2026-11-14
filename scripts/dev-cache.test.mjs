@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, cp, readFile, realpath, rm } from 'node:fs/promises';
+import { mkdtemp, cp, readFile, realpath, rm, mkdir, writeFile, appendFile } from 'node:fs/promises';
 import { constants } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -30,8 +30,8 @@ async function unusedPort() {
   await new Promise(resolve => listener.close(resolve));
   return port;
 }
-function launch(root, args) {
-  const child = spawn(process.execPath, [join(root, 'node_modules/astro/bin/astro.mjs'), ...args], {
+function launch(root, args, script = join(root, 'node_modules/astro/bin/astro.mjs')) {
+  const child = spawn(process.execPath, [script, ...args], {
     cwd: root,
     env: { ...process.env, ASTRO_TELEMETRY_DISABLED: '1', BUILD_OUTPUT_DIR: join(root, 'dist') },
     stdio: ['ignore', 'pipe', 'pipe'],
@@ -99,9 +99,9 @@ async function sceneGraph(base) {
   return seen;
 }
 
-test('running archive dependency URLs survive concurrent Astro sync and production builds', { timeout: 120000 }, async () => {
+test('dev and preview serve uploads safely while archive dependencies survive sync and builds', { timeout: 120000 }, async () => {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'field-dev-cache-')));
-  let dev;
+  let dev, preview;
   try {
     for (const name of ['src', 'public', 'scripts', 'lib', 'astro.config.mjs', 'package.json', 'package-lock.json', 'tsconfig.json']) {
       await cp(join(project, name), join(root, name), { recursive: true, mode: constants.COPYFILE_FICLONE });
@@ -112,11 +112,26 @@ test('running archive dependency URLs survive concurrent Astro sync and producti
       mode: constants.COPYFILE_FICLONE,
       filter: path => !path.startsWith(join(modules, '.vite')),
     });
+    await mkdir(join(root, 'public/static'), { recursive: true });
+    await mkdir(join(root, 'public/uploads'), { recursive: true });
+    await writeFile(join(root, 'public/static/document.html'), '<script>sample()</script>');
+    await writeFile(join(root, 'public/uploads/旧 file.txt'), 'legacy file');
+    await appendFile(join(root, 'src/content/blog/markdown-guide.md'), '\n[Uploaded document](/uploads/document.html)\n');
     const port = await unusedPort();
     const base = `http://127.0.0.1:${port}`;
     // Astro 7 otherwise auto-backgrounds in agent environments, leaving an orphan after this test.
     dev = launch(root, ['dev', '--ignore-lock', '--host', '127.0.0.1', '--port', String(port)]);
     await ready(base, dev);
+    const checkUploadedFiles = async base => {
+      for (const path of ['/static/document.html', '/%73tatic/document.html', '/static%2Fdocument.html', '/uploads/document.html', '/uploads/%E6%97%A7%20file.txt']) {
+        const response = await fetch(base + path);
+        assert.equal(response.status, 200, path);
+        assert.equal(response.headers.get('content-disposition'), 'attachment', path);
+        assert.match(response.headers.get('content-security-policy'), /sandbox/);
+        assert.equal(await response.text(), path.endsWith('file.txt') ? 'legacy file' : '<script>sample()</script>');
+      }
+    };
+    await checkUploadedFiles(base);
     const graph = await sceneGraph(base);
     const dependencyUrls = [...graph.keys()].filter(url => new URL(url).pathname.startsWith('/node_modules/.vite/'));
     assert.ok(dependencyUrls.length >= 10, 'fetch the optimized Three.js entries and their shared chunks');
@@ -132,6 +147,17 @@ test('running archive dependency URLs survive concurrent Astro sync and producti
       const after = JSON.parse(await readFile(metadataPath, 'utf8'));
       assert.equal(after.browserHash, before.browserHash, `${operation} must not replace dev's optimized dependency metadata`);
     }
+    const verification = spawn(process.execPath, [join(root, 'scripts/verify.mjs')], { cwd: root, env: { ...process.env, BUILD_OUTPUT_DIR: join(root, 'dist') }, stdio: ['ignore', 'pipe', 'pipe'] });
+    let verificationOutput = '';
+    verification.stdout.on('data', chunk => { verificationOutput += chunk; });
+    verification.stderr.on('data', chunk => { verificationOutput += chunk; });
+    const verificationCode = await new Promise((resolve, reject) => { verification.once('close', resolve); verification.once('error', reject); });
+    assert.equal(verificationCode, 0, verificationOutput);
+    const previewPort = await unusedPort();
+    const previewBase = `http://127.0.0.1:${previewPort}`;
+    preview = launch(root, ['--host', '127.0.0.1', '--port', String(previewPort)], join(root, 'scripts/preview.mjs'));
+    await ready(previewBase, preview);
+    await checkUploadedFiles(previewBase);
     const refreshed = await sceneGraph(base);
     assert.ok(refreshed.has(new URL('/src/archive/scene.ts', base).href));
     assert.equal((await fetch(base + '/assets/archive-cassette.glb')).status, 200);
@@ -139,6 +165,7 @@ test('running archive dependency URLs survive concurrent Astro sync and producti
     error.message += `\nDev server output:\n${dev?.output() || '(not started)'}`;
     throw error;
   } finally {
+    await stop(preview);
     await stop(dev);
     await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 200 });
   }

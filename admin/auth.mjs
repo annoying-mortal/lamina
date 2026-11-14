@@ -131,7 +131,8 @@ export function createAuth({ authDir, now = Date.now, sessionTtlMs = 12 * 60 * 6
   async function hash(password, salt) {
     return derive(password, Buffer.from(salt, 'hex'), 64, { N: 32768, r: 8, p: 1, maxmem: 128 * 1024 * 1024 });
   }
-  function validPassword(password) { return typeof password === 'string' && Array.from(password).length >= 12 && Array.from(password).length <= 128; }
+  function validPassword(password) { return typeof password === 'string' && Array.from(password).length >= 8 && Array.from(password).length <= 128; }
+  function validNewPassword(password) { return validPassword(password) && /[a-z]/.test(password) && /[A-Z]/.test(password) && /[0-9]/.test(password); }
   async function status(req, res) {
     const value = session(req);
     const credentials = await config();
@@ -166,7 +167,7 @@ export function createAuth({ authDir, now = Date.now, sessionTtlMs = 12 * 60 * 6
       }
       consumeAttempt(req);
       if (!validUsername(input?.username)) fail(400, '用户名需为 3–32 位，以英文字母或数字开头，仅允许字母、数字、点、下划线和连字符。');
-      if (!validPassword(input?.password)) fail(400, '密码需为 12–128 个字符，允许空格和中文。');
+      if (!validNewPassword(input?.password)) fail(400, '密码需为 8–128 个字符，且包含数字、大写和小写字母。');
       const salt = random();
       const derived = await hash(input.password, salt);
       const value = { version: 2, username: input.username, algorithm: 'scrypt', N: 32768, r: 8, p: 1, salt, hash: derived.toString('hex'), createdAt: new Date(now()).toISOString() };
@@ -197,7 +198,7 @@ export function createAuth({ authDir, now = Date.now, sessionTtlMs = 12 * 60 * 6
       const session = requireSession(req, res); requireCsrf(req, session);
       if (!validUsername(input?.username)) fail(400, '用户名需为 3–32 位，以英文字母或数字开头，仅允许字母、数字、点、下划线和连字符。');
       const changePassword = input?.newPassword !== undefined && input.newPassword !== '';
-      if (changePassword && !validPassword(input.newPassword)) fail(400, '新密码需为 12–128 个字符，允许空格和中文。');
+      if (changePassword && !validNewPassword(input.newPassword)) fail(400, '新密码需为 8–128 个字符，且包含数字、大写和小写字母。');
       consumeAttempt(req);
       const previous = await config();
       const derived = await hash(validPassword(input?.currentPassword) ? input.currentPassword : '', previous?.salt || '00'.repeat(32));

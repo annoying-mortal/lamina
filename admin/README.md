@@ -18,7 +18,7 @@ npm run admin
 
 ## 管理员登录
 
-首次访问 `/` 或 `/login` 会显示身份确认页面，由你设置管理员用户名和密码。用户名为 3–32 个英文大小写字母、数字、点、下划线或连字符，以字母或数字开头，区分大小写。没有默认密码，也不会自动代设密码。密码需为 12–128 个字符，支持中文和空格；前后空格属于密码，不会被裁剪。初始化后同一页面同时验证用户名与密码。
+首次访问 `/` 或 `/login` 会显示身份确认页面，由你设置管理员用户名和密码。用户名为 3–32 个英文大小写字母、数字、点、下划线或连字符，以字母或数字开头，区分大小写。没有默认密码，也不会自动代设密码。新密码需为 8–128 个字符，且同时包含数字、英文大写和小写字母；也可包含中文、符号和空格，前后空格不会被裁剪。初始化后同一页面同时验证用户名与密码。
 
 这是单管理员工作台。旧版 `admin` 账号与密码哈希保持兼容，可使用原密码登录，再通过右上角“账号设置”修改用户名。账号设置需输入当前密码；新密码留空仅更改用户名，填写时需再次确认。成功保存会轮换当前会话与安全令牌，并使其他已登录会话失效。账号表单独立于文章编辑器，密码不会进入未提交内容的恢复存储。
 
@@ -34,12 +34,14 @@ npm run admin
 
 | 栏目 | 操作 |
 | --- | --- |
+| Settings | 基本身份、首页与档案文案、About me 九格、导航、栏目介绍、文章分类、主题及页脚 |
 | Blog | 新增、编辑、删除，Markdown 编辑／预览，插入图片，草稿与发布 |
 | Library | 音乐／书籍／影视记录，标签、封面、评分、短评及关联文章 |
 | Friends | 站名、网址、头像或文字标识、简介、标签、顺序、显隐 |
-| Media | 上传图片、预览、复制地址和 Markdown |
-| Settings | 基本身份、首页与档案文案、导航、栏目介绍、文章分类、主题及页脚 |
+| Files | 上传文件、图片预览、复制地址和 Markdown |
 | Backup | 导出 ZIP、检查导入内容、确认恢复，替换前自动保存回滚快照 |
+
+Settings 的九部作品从 Library 选择作品，每格可填写 Tag；空槽显示 `+`。联系方式留空时显示填写占位，填写 GitHub 地址或邮箱后启用相应链接。
 
 编辑后使用 Save 或 `⌘ / Ctrl + S`。编辑区顶部的 Save 和修改状态固定显示，无需滚动到底部。有未保存修改时，切换栏目或记录会提示确认。保存采用临时文件加原子替换；同一记录被其他窗口或本地编辑器更新时，`revision` 校验会拒绝旧修改，避免静默覆盖。遇到冲突应先保留编辑中的文本，再重新载入最新内容并合并。删除文章、收藏和友链需再次确认，没有回收站。
 
@@ -49,7 +51,7 @@ npm run admin
 
 新建文章默认勾选 Draft（草稿）。草稿不会出现在 Home、Blog、RSS 中，不生成公开文章页，后台也不提供公开页面跳转。取消草稿并保存后才会公开。
 
-手写文件最少需要 `title`、`date` 与正文；`summary`、`readTime`、`id`、`slug` 等缺省值由文件读取流程生成，CMS 读取到的是同一组值。支持子目录和 Hiro 的 `description`／`pubDate` 别名，仅支持 `.md`，不支持 `.mdx`。手写文件未填 `draft` 时默认为公开，与 CMS 新建表单默认勾选草稿不同。
+手写文件最少需要 `title`、`date` 与正文；`summary`、`readTime`、`id`、`slug` 等缺省值由文件读取流程生成，CMS 读取到的是同一组值。支持子目录和 `description`／`pubDate` 字段别名，仅支持 `.md`，不支持 `.mdx`。手写文件未填 `draft` 时默认为公开，与 CMS 新建表单默认勾选草稿不同。
 
 创建后的 ID 保持不变；文章 slug 可编辑，但会改变其网址。正文使用 Markdown，预览安全地构建文本和图片 DOM，不执行原始 HTML。完整字体、代码高亮和文章排版以公开页面为准。
 
@@ -57,11 +59,13 @@ npm run admin
 
 ### 站点设置与友链
 
+后台默认打开 **01 站点设置**，后续栏目依次是文章、收藏、友链、文件和备份。设置按基础、首页、九部作品、内容分组，小节与预览可折叠；切换分组保留未保存的输入。九部作品从 Library 选择，各格使用自由填写的 **Tag**。
+
 站点设置可修改站名、浏览器标题、介绍、公开网址、GitHub／邮箱、Logo、Favicon、默认主题、首页文案及各栏目文案。首页标题和简介支持换行，简介中的 `{name}` 会替换为站点名称。
 
-Settings 的预览窗口直接读取尚未保存的表单值，可查看 Home、About、Archive、Contact、Blog、Library 与 Friends。聚焦对应字段会自动切换预览，也可手动选择页面及预览主题；预览操作不会保存或发布内容，完成后点击 Save。
+Settings 的预览窗口直接读取尚未保存的表单值，可查看 Home、About、Archive、About me、Contact、Blog、Library 与 Friends。聚焦对应字段会自动切换预览，也可手动选择页面及预览主题；预览操作不会保存或发布内容，完成后点击 Save。
 
-Home 现在按首页、个人介绍、三维内容档案、联系与运行时间四段展示。About 和 Contact可分别编辑眉题、标题和正文。启用时间 `launchedAt` 使用带时区格式，例如 `2026-10-20T21:28:15+08:00`，也可填写 UTC 的 `Z` 格式。前台按该日期计算天、时、分、秒；清空则不显示计时。此数值表示自启用以来的时间，不是服务健康监控。联系页直接使用既有邮箱、GitHub 和 RSS 设置。
+Home 按首页、个人介绍、三维内容档案、About me 九部作品、联系与运行时间五段展示。About 和 Contact 可分别编辑眉题、标题和正文。启用时间 `launchedAt` 使用带时区格式，例如 `2026-10-20T21:28:15+08:00`，也可填写 UTC 的 `Z` 格式。前台按该日期计算天、时、分、秒；清空则不显示计时。此数值表示自启用以来的时间，不是服务健康监控。联系页直接使用既有邮箱、GitHub 和 RSS 设置。
 
 About 下的 Highlights 用于简短展示个人成就、教学实践、项目或经历，最多六条，可新增、删除和排序。每条包含 Label、Title、Summary、Period 与可选 HTTP(S) URL，只有 Title 必填。表单修改即时呈现在 About 预览中；语言切换和会话恢复保留当前记录与顺序。对应 JSON 字段为 `aboutHighlights: [{ label, title, description, period, url }]`；旧设置未提供该字段时使用三条英文占位，填写 `[]` 可清空展示。
 
@@ -69,32 +73,34 @@ About 下的 Highlights 用于简短展示个人成就、教学实践、项目�
 
 友链的顺序值越小越靠前，取消“在友链页面显示”可暂时隐藏。头像可用图片，留空则使用文字标识；站点域名从网址自动提取。
 
-### 上传与使用图片
+### 上传与使用文件
 
-在“素材库”点击“上传图片”，或从任何图片选择器内上传。支持 **PNG、JPEG、GIF、WEBP，每张最大 10 MiB**。SVG 不提供上传，但可填写已有 `public` 文件地址或 HTTP(S) 图床地址。
+新上传统一使用 `/static/`；旧 `/uploads/` URL 保持可用。Docker 沿用 `blog-uploads` 卷，仅将挂载目标改为 `public/static`。本地旧 `public/uploads` 文件也继续读取。
+
+在“文件”点击“上传文件”，支持图片、SVG、文档、压缩包和其他文件，**每个最大 10 MiB**。图片选择器只显示可作为图片使用的文件；普通文件可以复制 URL 或 Markdown 链接。
 
 所有图片输入都支持两种来源：
 
-- 站内文件：上传内容保存在本地 `public/uploads/`，使用 `/uploads/文件名`。已有 `public/covers/example.svg` 对应 `/covers/example.svg`，路径不带 `/public`。
+- 站内文件：上传内容保存在本地 `public/static/`，使用 `/static/文件名`。例如 `public/images/markdown-example.svg` 对应 `/images/markdown-example.svg`，路径不带 `/public`。
 - 外链图片：直接填写 `http://` 或 `https://` 地址，访客浏览器直接加载。日常编辑不代理或下载；主动导出备份时会尝试下载引用的图片并打包。
 
-正文点击“插入图片”，选择已上传素材或填写地址，再输入图片说明；保存后即成为 Markdown 插图。也可在素材库复制 Markdown，或手动填写：
+正文点击“插入图片”，选择已上传图片或填写地址，再输入图片说明；保存后即成为 Markdown 插图。也可在文件复制 Markdown，或手动填写：
 
 ```md
-![Enter image description](</uploads/example.png>)
+![Enter image description](</static/example.png>)
 
 ![Enter image description](<https://images.example.com/photo.webp>)
 ```
 
-收藏封面、友链头像、Logo 和 Favicon 共用同一个图片选择器，均可即时预览。空收藏封面显示文字封面，空友链头像显示文字标识，空 Logo 仅显示站名，不生成字母标识。自己的 SVG 可放在 `public/logo.svg`，Logo 地址填写 `/logo.svg`（也支持 SVG 外链）。首页圆环与登录页图形使用 Settings 中的圆环图片（`orbitImage`）。Favicon 需保留有效地址，默认 `/favicon.svg` 为透明占位，可用自己的文件替换。
+收藏封面、友链头像、Logo 和 Favicon 共用同一个图片选择器，均可即时预览。空收藏封面显示文字封面，空友链头像显示文字标识，空 Logo 使用透明 SVG 占位。自己的 SVG 可放在 `public/logo.svg`，Logo 地址填写 `/logo.svg`（也支持 SVG 外链）。首页圆环与登录页图形使用 Settings 中的圆环图片（`orbitImage`）。Favicon 需保留有效地址，默认 `/favicon.svg` 为透明占位，可用自己的文件替换。
 
-图片 URL 可被多篇文章和多个栏目复用。素材库不提供删除，也不会自动清理未引用图片，避免造成已有文章断图。素材索引 `src/content/media.json` 只供后台使用，不作为前台公开文件；上传图片本身可通过 `/uploads/` 访问。
+图片 URL 可被多篇文章和多个栏目复用。文件页不提供删除；已有引用可持续使用。文件索引 `src/content/media.json` 只供后台使用，不作为前台公开文件；上传文件本身可通过 `/static/` 访问。
 
 ## 备份与恢复
 
-进入 **Backup → Download ZIP** 导出当前站点。ZIP 包含站点设置、全部文章（含草稿及原始子目录）、Library、Friends 和这些内容引用的图片。可读取的本地图片与可下载的外链图片会按内容哈希去重，备份内的引用改为 `/uploads/backup-…`；导出不会修改正在使用的源文件。恢复后这些图片可独立使用，不再依赖原图床地址。无法读取、不可访问或不符合图片限制的地址保留原值，并记录在清单的 `warnings` 中；下载后会显示提示条数，可在 Import 中检查同一 ZIP 查看详情。
+进入 **Backup → Download ZIP** 导出当前站点。ZIP 包含站点设置、全部文章（含草稿及原始子目录）、Library、Friends 和这些内容引用的文件及图片。可读取的本地文件与可下载的外链图片会按内容哈希去重，备份内的引用改为 `/static/backup-…`；导出不会修改正在使用的源文件。恢复后这些图片可独立使用，不再依赖原图床地址。无法读取、不可访问或不符合图片限制的地址保留原值，并记录在清单的 `warnings` 中；下载后会显示提示条数，可在 Import 中检查同一 ZIP 查看详情。
 
-导入分两步：选择 ZIP 后点击 **Inspect ZIP**，检查文章、收藏、友链、图片数量及提示；检查本身不会修改站点。点击 **Restore backup** 后，还需在确认窗口点击 **Replace & restore**。恢复会替换设置、文章、收藏与友链，补入备份图片和素材索引；未被备份引用的已有上传文件不会删除。成功后页面重新载入，更新品牌、分类、记录和素材列表，并清除旧的未保存编辑暂存，避免误恢复到导入前的内容。
+导入分两步：选择 ZIP 后点击 **Inspect ZIP**，检查文章、收藏、友链、文件数量及提示；检查本身不会修改站点。点击 **Restore backup** 后，还需在确认窗口点击 **Replace & restore**。恢复会替换设置、文章、收藏与友链，补入备份文件和文件索引；未被备份引用的已有上传文件不会删除。成功后页面重新载入，更新品牌、分类、记录和文件列表，并清除旧的未保存编辑暂存，避免误恢复到导入前的内容。
 
 预览令牌绑定当前登录会话，有效期 15 分钟；服务器最多保留三个待恢复预览，重启后失效。如果预览后内容有变动、发布正在运行，或恢复尝试失败，需重新点击 Inspect ZIP 再确认。导出、检查及恢复期间应保持页面打开。
 
@@ -112,9 +118,12 @@ content/friends.json
 content/media.json
 content/blog/<原始子目录与文件名>.md
 images/backup-<sha256>.<图片扩展名>
+files/backup-<sha256>.<文件扩展名>
 ```
 
-`manifest.json` 含 `format`、`version`、`createdAt`、`summary`、`warnings` 及 `files: [{ path, size, sha256 }]`。检查会验证路径、ZIP 结构、每个文件的大小与 SHA-256、内容格式及记录关系。仅接受本格式 ZIP；不支持加密、多卷或 ZIP64。限制为压缩文件 256 MiB、解压总量 512 MiB、10,000 个条目、每张图片 20 MiB、每份 JSON 8 MiB、每篇 Markdown 2 MiB。普通素材上传仍保持每张 10 MiB 的限制。
+`summary.images` 为兼容旧备份保留字段名，表示打包文件总数。旧版 `images/` 和 `/uploads/` 备份仍可恢复。
+
+`manifest.json` 含 `format`、`version`、`createdAt`、`summary`、`warnings` 及 `files: [{ path, size, sha256 }]`。检查会验证路径、ZIP 结构、每个文件的大小与 SHA-256、内容格式及记录关系。仅接受本格式 ZIP；不支持加密、多卷或 ZIP64。限制为压缩文件 256 MiB、解压总量 512 MiB、10,000 个条目、每个打包文件 20 MiB、每份 JSON 8 MiB、每篇 Markdown 2 MiB。普通文件上传仍保持每个 10 MiB 的限制。
 
 ## 内容位置与持久化
 
@@ -124,10 +133,10 @@ images/backup-<sha256>.<图片扩展名>
 | `src/content/library.json` | Library收藏 |
 | `src/content/friends.json` | Friends |
 | `src/content/site.json` | 站点设置和动态分类 |
-| `src/content/media.json` | 上传素材索引 |
-| `public/uploads/` | 上传图片文件 |
+| `src/content/media.json` | 上传文件索引 |
+| `public/static/` | 上传文件 |
 
-默认 `compose.yaml` 使用四个命名卷：`blog-content` 保存上述内容及索引，`blog-uploads` 保存图片，`blog-published` 保存发布版本，`blog-admin` 保存非公开管理员凭据。后台写入上传卷，Nginx 只读挂载并直接提供图片。首次部署从 `admin/defaults/` 填充示例与模板，镜像不包含宿主 `src/content/` 中的个人内容。旧内容卷升级时保留已有文件，只补缺失的站点设置，以及空的 Library／Friends 文件。初始化后删除的示例不会因重启或重建镜像而恢复；内容、图片与密码均保留。
+默认 `compose.yaml` 使用四个命名卷：`blog-content` 保存上述内容及索引，`blog-uploads` 保存文件，`blog-published` 保存发布版本，`blog-admin` 保存非公开管理员凭据。后台写入上传卷，Nginx 只读挂载并直接提供文件。首次部署从 `admin/defaults/` 填充示例与模板，镜像不包含宿主 `src/content/` 中的个人内容。旧内容卷升级时保留已有文件，只补缺失的站点设置，以及空的 Library／Friends 文件。初始化后删除的示例不会因重启或重建镜像而恢复；内容、图片与密码均保留。
 
 需要直接在宿主机文件夹写文章的新项目可使用：
 
@@ -135,7 +144,7 @@ images/backup-<sha256>.<图片扩展名>
 docker compose -f compose.yaml -f compose.files.yaml up -d --build
 ```
 
-它用宿主 `src/content/` 和 `public/uploads/` 替代内容／图片卷，发布卷与管理员凭据卷仍保持不变。可用 `BLOG_CONTENT_DIR`、`BLOG_UPLOADS_DIR` 指向其它已存在的目录；全新的空内容目录会自动填入初始示例。**已有命名卷用户必须先导出完整旧内容和图片，再切换挂载**，否则运行中的站点会改读宿主目录，旧卷的数据不会自动合并。详细导出命令见 [迁移步骤](../docs/writing.md#已有命名卷先导出再切换)。
+它用宿主 `src/content/` 和 `public/static/` 替代内容／图片卷，发布卷与管理员凭据卷仍保持不变。可用 `BLOG_CONTENT_DIR`、`BLOG_UPLOADS_DIR` 指向其它已存在的目录；全新的空内容目录会自动填入初始示例。**已有命名卷用户必须先导出完整旧内容和图片，再切换挂载**，否则运行中的站点会改读宿主目录，旧卷的数据不会自动合并。详细导出命令见 [迁移步骤](../docs/writing.md#已有命名卷先导出再切换)。
 
 请按所用模式备份内容、图片、发布版本与凭据，不要在未备份时执行 `docker compose down -v`。完整命令、初始化和原子发布流程见 [项目说明](../README.md)。
 
@@ -166,7 +175,7 @@ ADMIN_ALLOW_REMOTE_SETUP: "1"
 
 这是需要管理员密码的本机管理工具，默认不面向公网。服务验证 Host／Origin／CSRF 和会话，校验内容、路径、图片类型和长度；没有让请求传入任意发布命令的接口，也没有通过环境变量跳过鉴权的入口。
 
-容器模式下，后台调用既定的 `scripts/publish.mjs`，一次只运行一个构建，期间后续修改合并排队。监听和发布状态通过发布状态 API 提供；读取或构建失败时源文件保留、旧页面继续服务，可在后台状态与日志查看原因，修正后重试。后台上传图片写入所配置的图片目录或卷，Nginx 直接提供这些图片。
+容器模式下，后台调用既定的 `scripts/publish.mjs`，一次只运行一个构建，期间后续修改合并排队。监听和发布状态通过发布状态 API 提供；读取或构建失败时源文件保留、旧页面继续服务，可在后台状态与日志查看原因，修正后重试。后台上传文件写入所配置的 static 目录或卷，Nginx 直接提供文件。
 
 也可在项目根目录手动运行 `npm run publish`，构建并验证成功后切换 `.published/current`。它与 `npm run build` 输出的 `dist/` 分开，不会启动服务或上传到外部平台。
 
@@ -183,15 +192,15 @@ ADMIN_ALLOW_REMOTE_SETUP: "1"
 - `GET`／`POST /api/blog`、`/api/library`、`/api/friends`：列表与创建。
 - `GET`／`PUT`／`DELETE /api/blog/:id`、`/api/library/:id`、`/api/friends/:id`：单条记录；修改和删除需携带当前 `revision`。
 - `GET`／`PUT /api/settings`：设置对象及 `revision`；保存需携带当前版本。
-- `GET /api/media`：素材记录数组；每项含 ID、名称、URL、MIME、大小与创建时间。
-- `POST /api/media`：原始图片字节，`Content-Type` 为真实图片 MIME，`X-File-Name` 为 `encodeURIComponent(file.name)`；成功返回素材记录。不提供删除接口。
-- `GET /api/backup/export`：下载 ZIP，响应为 `application/zip` 与附件文件名；`X-Backup-Warnings` 返回图片提示条数。
+- `GET /api/media`：文件记录数组；每项含 ID、名称、URL、MIME、大小与创建时间。
+- `POST /api/media`：原始文件字节，`Content-Type` 为文件 MIME（未知类型使用 application/octet-stream），`X-File-Name` 为 `encodeURIComponent(file.name)`；成功返回文件记录。不提供删除接口。
+- `GET /api/backup/export`：下载 ZIP，响应为 `application/zip` 与附件文件名；`X-Backup-Warnings` 返回文件提示条数。
 - `POST /api/backup/inspect`：上传原始 ZIP 字节，`Content-Type: application/zip`，`X-File-Name` 为 `encodeURIComponent(file.name)`；返回 `{ token, filename, summary: { blog, library, friends, images }, warnings, createdAt, expiresAt }`，不写入内容。
 - `POST /api/backup/restore`：JSON `{ token }`，恢复已检查的备份；成功返回 `{ restored: true, summary, rollbackId, publish }`。令牌仅供一次恢复尝试，之后需重新检查。
 - `GET /api/publish/status`：发布状态；`watch` 包含文件监听状态与错误。
 - `POST /api/publish`：自动发布模式下重新发布。
 
-除健康检查、鉴权状态和登录静态资源外，API 需登录 cookie。修改请求还需同源 `Origin` 与 `X-CSRF-Token`。除图片和备份上传发送原始字节外，其余修改请求使用 `Content-Type: application/json`。不支持跨域调用。HTTP 401 表示未登录、会话失效或登录失败，403 表示来源／CSRF 校验失败，429 表示登录尝试过于频繁，409 表示记录冲突、重复 ID／slug、已完成初始化、仍被引用的分类、备份预览过期／内容变化或当前模式不允许发布。
+除健康检查、鉴权状态和登录静态资源外，API 需登录 cookie。修改请求还需同源 `Origin` 与 `X-CSRF-Token`。除文件和备份上传发送原始字节外，其余修改请求使用 `Content-Type: application/json`。不支持跨域调用。HTTP 401 表示未登录、会话失效或登录失败，403 表示来源／CSRF 校验失败，429 表示登录尝试过于频繁，409 表示记录冲突、重复 ID／slug、已完成初始化、仍被引用的分类、备份预览过期／内容变化或当前模式不允许发布。
 
 ```sh
 npm run admin:test

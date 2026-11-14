@@ -11,8 +11,9 @@ verification/
 .published/
 .publish-build/
 admin/.data/
+public/static/*
+!public/static/.gitkeep
 public/uploads/*
-!public/uploads/.gitkeep
 src/content/media.json
 .admin/
 # Original font supplied by each deployer; embedded locally, not redistributed.

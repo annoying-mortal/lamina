@@ -5,17 +5,17 @@ import { parsePostSource, assertUniquePosts, isPostFile } from '../lib/posts.mjs
 const source = (metadata = '', body = '## 开始\n\n这是 **第一篇** 手写文章。') => `---\ntitle: 我的文章\ndate: 2026-10-20\n${metadata}---\n\n${body}\n`;
 const parse = (raw, filename = 'notes/first.md') => parsePostSource(raw, { filename, defaultCategoryId: 'thinking' }).post;
 
-test('minimal Markdown has the same deterministic defaults across reads and supports Hiro field names', () => {
+test('minimal Markdown has the same deterministic defaults across reads and supports field aliases', () => {
   const post = parse(source());
   assert.match(post.id, /^FILE-[a-f0-9]{16}$/);
   assert.equal(post.slug, 'notes-first'); assert.equal(post.categoryId, 'thinking');
   assert.equal(post.draft, false); assert.deepEqual(post.tags, []); assert.equal(post.readTime, 1);
   assert.equal(post.summary, '开始 这是 第一篇 手写文章。');
   assert.deepEqual(parse(source()), post);
-  const hiro = parse('---\ntitle: Hiro\npubDate: 2026-10-20\ndescription: 导入摘要\n---\n正文');
-  assert.equal(hiro.date, '2026-10-20'); assert.equal(hiro.summary, '导入摘要');
+  const aliased = parse('---\ntitle: Imported post\npubDate: 2026-10-20\ndescription: 导入摘要\n---\n正文');
+  assert.equal(aliased.date, '2026-10-20'); assert.equal(aliased.summary, '导入摘要');
   for (const quoted of ['', '"']) {
-    const timestamp = parse(`---\ntitle: Hiro\npubDate: ${quoted}2026-10-20T23:30:00-07:00${quoted}\n---\n正文`);
+    const timestamp = parse(`---\ntitle: Imported post\npubDate: ${quoted}2026-10-20T23:30:00-07:00${quoted}\n---\n正文`);
     assert.equal(timestamp.date, '2026-10-21');
   }
   const chinese = parse(source(), '随笔/你好.md');

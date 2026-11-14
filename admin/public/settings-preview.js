@@ -2,16 +2,17 @@ import { element, siteImageUrl } from './ui.js';
 import { t } from './i18n.js';
 
 const names = {
-  home: ['Home', '首页'], about: ['About', '介绍'], archive: ['Archive', '档案'],
+  home: ['Home', '首页'], about: ['About', '介绍'], archive: ['Archive', '档案'], aboutMe: ['About me', '九部作品'],
   contact: ['Contact', '联系'], blog: ['Blog', '文章'], library: ['Library', '收藏'], friends: ['Friends', '友链'],
 };
 const views = Object.keys(names);
 
-export function mountSettingsPreview({ form, getValues, siteUrl }) {
+export function mountSettingsPreview({ form, getValues, siteUrl, library = [] }) {
   const fields = form.querySelector('#fields');
   const shell = element('div', 'settings-editor-body');
-  const panel = element('aside', 'settings-preview');
+  const panel = element('details', 'settings-preview');
   panel.setAttribute('aria-label', t('Settings preview', '设置预览'));
+  panel.append(element('summary', 'settings-preview-toggle', t('Live preview', '实时预览')));
   const heading = element('div', 'settings-preview-heading');
   heading.append(element('span', '', t('Preview', '预览')));
   const controls = element('div', 'settings-preview-controls');
@@ -42,13 +43,14 @@ export function mountSettingsPreview({ form, getValues, siteUrl }) {
 
   function update() {
     frame = 0;
+    if (!panel.open) return;
     const settings = getValues();
     function text(value, fallback = '') {
       return String(value || fallback).replaceAll('{name}', String(settings.name || ''));
     }
-    function logo(className = 'preview-brand') {
+    function logo(className = 'preview-brand', showName = false) {
       const brand = element('div', className);
-      const label = element('span', '', text(settings.name, 'Enter site name'));
+      const label = element('span', '', showName ? text(settings.name, 'Enter site name') : '');
       const url = siteImageUrl(settings.logo, siteUrl);
       if (url) {
         const image = element('img');
@@ -77,7 +79,7 @@ export function mountSettingsPreview({ form, getValues, siteUrl }) {
     chrome.append(element('span', '', text(settings.title, 'Enter browser title')));
     canvas.replaceChildren();
     canvas.dataset.view = view;
-    if (!['about', 'archive', 'contact'].includes(view)) {
+    if (!['about', 'aboutMe', 'archive', 'contact'].includes(view)) {
       const header = element('div', 'preview-site-header');
       header.append(logo());
       const nav = element('div', 'preview-nav');
@@ -132,8 +134,26 @@ export function mountSettingsPreview({ form, getValues, siteUrl }) {
         highlights.append(section);
       }
       if (groups.length) body.append(highlights);
+    } else if (view === 'aboutMe') {
+      body.append(element('h2', '', text(settings.aboutMeTitle)), element('p', '', text(settings.aboutMeSubtitle)));
+      const grid = element('div', 'preview-about-me-works');
+      for (const slot of settings.aboutMeWorks) {
+        const work = library.find(item => item.id === slot.libraryId);
+        const card = element('div', 'preview-about-me-work');
+        const cover = element('div', 'preview-work-cover', '+');
+        cover.classList.toggle('empty', !work);
+        const url = work && siteImageUrl(work.cover, siteUrl);
+        if (url) {
+          const image = element('img'); image.src = url; image.alt = ''; image.referrerPolicy = 'no-referrer';
+          image.addEventListener('error', () => { image.hidden = true; }, { once: true }); cover.append(image);
+        }
+        card.append(cover, element('small', '', slot.label || 'tag'));
+        if (work) card.append(element('span', '', work.title));
+        grid.append(card);
+      }
+      body.append(grid);
     } else if (view === 'archive') {
-      const brand = logo('preview-archive-brand');
+      const brand = logo('preview-archive-brand', true);
       brand.append(element('small', '', text(settings.archiveSubtitle)), element('strong', '', text(settings.archiveTitle)));
       const selection = element('div', 'preview-archive-selection');
       selection.append(element('small', '', 'BLOG / LIBRARY'));
@@ -143,8 +163,8 @@ export function mountSettingsPreview({ form, getValues, siteUrl }) {
     } else if (view === 'contact') {
       body.append(element('small', '', text(settings.contactEyebrow)), element('h2', '', text(settings.contactTitle)), element('p', '', text(settings.contactBody)));
       const links = element('div', 'preview-contact-links');
-      if (settings.email) links.append(element('span', '', settings.email));
-      if (settings.github) links.append(element('span', '', 'GitHub ↗'));
+      links.append(element('span', '', settings.github ? 'GitHub ↗' : t('Enter GitHub URL', '请填写 GitHub 地址')));
+      links.append(element('span', '', settings.email || t('Enter email', '请填写邮箱')));
       if (settings.showRSS) links.append(element('span', '', 'RSS ↗'));
       body.append(links);
       if (settings.launchedAt && Number.isFinite(Date.parse(settings.launchedAt))) {
@@ -178,7 +198,8 @@ export function mountSettingsPreview({ form, getValues, siteUrl }) {
   function focus(event) {
     const name = event.target?.name || '';
     let next;
-    if (name.startsWith('about')) next = 'about';
+    if (name.startsWith('aboutMe')) next = 'aboutMe';
+    else if (name.startsWith('about')) next = 'about';
     else if (name.startsWith('contact') || name === 'launchedAt' || ['github', 'email'].includes(name)) next = 'contact';
     else if (name.startsWith('archive')) next = 'archive';
     else if (name.startsWith('pages.')) next = name.split('.')[1];
@@ -188,6 +209,7 @@ export function mountSettingsPreview({ form, getValues, siteUrl }) {
     if (next && next !== view && views.includes(next)) { view = next; select.value = view; schedule(); }
   }
   const system = matchMedia('(prefers-color-scheme: dark)');
+  panel.addEventListener('toggle', schedule);
   select.addEventListener('input', event => event.stopPropagation());
   select.addEventListener('change', event => { event.stopPropagation(); view = select.value; schedule(); });
   themeButton.addEventListener('click', () => { manualTheme = panel.dataset.previewTheme === 'dark' ? 'light' : 'dark'; schedule(); });

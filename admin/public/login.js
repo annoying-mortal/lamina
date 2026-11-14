@@ -69,7 +69,9 @@ function showStatus(state) {
   $('#setup-token-field').hidden = !state.setupTokenRequired;
   $('#setup-token').required = Boolean(state.setupTokenRequired);
   $('#password').autocomplete = state.configured ? 'current-password' : 'new-password';
-  $('#password').minLength = state.configured ? 1 : 12;
+  $('#password').minLength = state.configured ? 1 : 8;
+  if (state.configured) $('#password').removeAttribute('pattern');
+  else $('#password').pattern = '(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9]).{8,128}';
   $('#session-status').textContent = state.configured ? 'SESSION LOCKED' : 'IDENTITY NOT REGISTERED';
   const expired = new URLSearchParams(location.search).has('expired');
   localizedText('#login-status', expired ? 'Session expired. Sign in to restore your draft.' : '', expired ? '会话已结束，请登录以恢复草稿。' : '');

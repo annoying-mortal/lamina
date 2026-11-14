@@ -6,10 +6,10 @@ Introduce yourself, publish Markdown articles, and collect books, music, and oth
 
 ## Features
 
-- **Home and archive** — personal introduction, highlights, contact details, and a 3D archive with keyboard, mouse, and touch controls.
+- **Home and archive** — personal introduction, a nine-tile About me grid, contact details, and a 3D archive with keyboard, mouse, and touch controls.
 - **Blog** — categories, tags, drafts, search, table of contents, RSS, highlighted code with copy buttons, footnotes, and KaTeX mathematics.
 - **Library and Friends** — collections with covers, ratings, notes, and related articles; friend links with avatars, labels, ordering, and visibility.
-- **CMS** — Blog, Library, Friends, Media, Settings, and Backup, with English and Chinese interfaces and a live preview of site settings.
+- **CMS** — Settings, Blog, Library, Friends, Files, and Backup, with English and Chinese interfaces and a live preview of site settings.
 - **Appearance** — RhineLab-inspired light and dark themes, configurable branding, and separate typography for the site, archive, and articles.
 - **Self-hosting** — a static frontend and single-administrator Node.js service, Docker deployment, and ZIP content migration. No external database.
 
@@ -36,6 +36,12 @@ npm run admin
 | CMS | <http://127.0.0.1:4322/> |
 
 Open the CMS to create your administrator account. Start in **Settings** to edit the site name, Home text, navigation, archive labels, contact details, and logo. CMS saves and local file edits update the development site.
+
+For the header logo, an SVG URL such as `/logo.svg` is recommended; leave **Settings → Logo** empty for a blank header mark.
+
+Settings opens first and groups fields into **Basics**, **Home**, **Nine works**, and **Content**. Expand the section you want to edit; the live preview is optional.
+
+In **Settings → Nine works**, choose Library entries for the nine tiles and give each a **Tag**. Empty tiles show `+`. Contact details start as placeholders; fill them in to make the links available.
 
 The starter content includes a Markdown guide, sample Library entries, Friends links, and editable `Enter…` placeholders. Replace or delete these records and clear the Demo flag on your own content. See [starter content and image sources](docs/content-examples.md).
 
@@ -69,7 +75,7 @@ Set `draft: false` to publish. Drafts stay out of public pages, the archive, Blo
 
 Use explicit, unique IDs and slugs to keep addresses stable when moving files. `pubDate` and `description` are accepted as aliases for `date` and `summary`.
 
-Upload images through **Media**, place files under `public/`, or use external HTTP(S) image URLs. For example, `public/images/photo.jpg` is referenced as `/images/photo.jpg`. Media uploads support PNG, JPEG, GIF, and WebP, up to **10 MiB each**. An existing SVG can be used as a logo through its URL.
+Upload images, SVGs, documents, archives, and other files through **Files**, up to **10 MiB each**. Uploads are saved in `public/static/` and linked as `/static/…`. Image fields can select uploaded images or use external HTTP(S) image URLs. Existing `/uploads/…` links continue to work.
 
 The [Markdown Guide](src/content/blog/markdown-guide.md) demonstrates the supported formatting. The CMS provides a lightweight preview; article pages show the final typography and mathematics. See the [writing guide](docs/writing.md) (Chinese) for field rules, file editing, and publishing.
 
@@ -96,7 +102,7 @@ Enter the token and create your account. CMS saves automatically build and publi
 | Named volume | Stores |
 | --- | --- |
 | `blog-content` | Articles, settings, Library, Friends, and media index |
-| `blog-uploads` | Uploaded images |
+| `blog-uploads` | Uploaded files, served at `/static/` and the legacy `/uploads/` prefix |
 | `blog-published` | Built releases and the active `current` link |
 | `blog-admin` | Administrator credentials and recovery snapshots |
 
@@ -112,7 +118,7 @@ For a new installation that should use the host's content and uploads:
 docker compose -f compose.yaml -f compose.files.yaml up -d --build
 ```
 
-This mounts `./src/content/` and `./public/uploads/`, so the editor and CMS use the same files. Both kinds of edits trigger publication. Use both Compose files for subsequent commands.
+This mounts `./src/content/` and `./public/static/`, so the editor and CMS use the same files. Both kinds of edits trigger publication. Use both Compose files for subsequent commands.
 
 `BLOG_CONTENT_DIR` and `BLOG_UPLOADS_DIR` can select other existing directories. On Linux, grant the container's default UID/GID `1000:1000` write access to these directories. To move an existing volume-based installation, follow the [folder migration guide](docs/writing.md#已有命名卷先导出再切换).
 
@@ -138,7 +144,7 @@ Then open <http://localhost:4322/>. Public CMS hosting requires additional Host,
 
 ## Backup and restore
 
-In **Backup**, **Download ZIP** exports settings, posts (including drafts), Library, Friends, and supported images referenced by the content. Readable local images and downloadable remote images are bundled and deduplicated. Image references are rewritten inside the ZIP; unavailable images keep their original URLs with a warning.
+In **Backup**, **Download ZIP** exports settings, posts (including drafts), Library, Friends, and referenced uploaded files and images. Readable local files and downloadable remote images are bundled and deduplicated. References are rewritten inside the ZIP; unavailable images keep their original URLs with a warning.
 
 To restore, select a backup, choose **Inspect ZIP**, review the contents, then confirm **Restore backup → Replace & restore**. Restoration replaces content and settings, preserves existing uploaded files and the administrator account, and saves a recovery snapshot first.
 
@@ -152,7 +158,9 @@ These are content backups. Unreferenced uploads, credentials, fonts, application
 | Archive UI, 3D labels, and archive/login wordmarks | MiSans | MiSans |
 | Articles and CMS Markdown editor/preview | JetBrains Mono Nerd Font Mono | LXGW WenKai |
 
-KaTeX uses its own math fonts. Font stacks are defined in [`public/typography.css`](public/typography.css); `/type-study/` displays them.
+KaTeX uses its own math fonts. Font stacks are defined in [`public/typography.css`](public/typography.css).
+
+LXGW WenKai loads from the fixed [lxgw-wenkai-webfont@1.1.0 package on jsDelivr](https://cdn.jsdelivr.net/npm/lxgw-wenkai-webfont@1.1.0/style.css), maintained by Chawye Hsu. The original font by lxgw uses the SIL Open Font License 1.1. Other fonts are served locally.
 
 Alimama FangYuan is supplied separately. To use it, obtain the original font from its [recorded source](public/fonts/alimama-fangyuan/SOURCE.json) under the included [terms](public/fonts/alimama-fangyuan/LICENSE.txt) and place the WOFF2 at:
 
@@ -199,6 +207,6 @@ Site content in `src/content/` is versioned, except the generated media index. U
 
 ## Credits and license
 
-The archive scene and cassette model are adapted from [LBEILC/RhineLabUI](https://github.com/LBEILC/RhineLabUI); the upstream revision, MIT notice, and model attribution are recorded in [THREE-ATTRIBUTION.md](THREE-ATTRIBUTION.md). The homepage and writing workflow draw inspiration from [Nick Chen's blog](https://nickchen.top/) and [Astro Theme Hiro](https://github.com/nick-cjyx9/astro-theme-hiro).
+The archive scene and cassette model are adapted from [LBEILC/RhineLabUI](https://github.com/LBEILC/RhineLabUI); the upstream revision, MIT notice, and model attribution are recorded in [THREE-ATTRIBUTION.md](THREE-ATTRIBUTION.md).
 
 Lamina has no project-wide license declared yet. Fonts and example artwork have their own notices, documented in [Font sources](public/fonts/FONT-SOURCES.md) and [Starter content](docs/content-examples.md).

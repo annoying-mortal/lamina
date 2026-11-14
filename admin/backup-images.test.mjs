@@ -9,7 +9,7 @@ const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR
 const svg = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><circle cx="5" cy="5" r="4"/></svg>');
 async function fixture(action) {
   const projectRoot = await mkdtemp(join(tmpdir(), 'backup-images-'));
-  const dataDir = join(projectRoot, 'src/content'); const uploadsDir = join(projectRoot, 'public/uploads');
+  const dataDir = join(projectRoot, 'src/content'); const uploadsDir = join(projectRoot, 'public/static');
   await mkdir(join(dataDir, 'blog/nested'), { recursive: true }); await mkdir(uploadsDir, { recursive: true });
   const files = new Map([
     ['content/site.json', Buffer.from(JSON.stringify({ url: 'https://site.example', logo: '/logo.svg', orbitImage: '/uploads/a.png' }))],
@@ -28,8 +28,8 @@ test('portable image snapshot covers settings, covers, avatars and Markdown whil
   assert.equal(remoteCalls, 1); assert.equal(result.imageCount, 2); assert.deepEqual(result.warnings, []);
   assert.deepEqual(options.files, before);
   const settings = JSON.parse(result.files.get('content/site.json'));
-  assert.match(settings.logo, /^\/uploads\/backup-[a-f0-9]{64}\.svg$/);
-  assert.match(settings.orbitImage, /^\/uploads\/backup-[a-f0-9]{64}\.png$/);
+  assert.match(settings.logo, /^\/static\/backup-[a-f0-9]{64}\.svg$/);
+  assert.match(settings.orbitImage, /^\/static\/backup-[a-f0-9]{64}\.png$/);
   assert.equal(JSON.parse(result.files.get('content/library.json'))[0].cover, settings.orbitImage);
   const body = result.files.get('content/blog/nested/a.md').toString();
   assert.match(body, /custom: preserve/); assert.ok(!body.includes('images.example')); assert.ok(body.includes(settings.logo));
@@ -40,7 +40,7 @@ test('same-origin absolute image paths and relative Markdown images are captured
   options.files.set('content/blog/nested/a.md',Buffer.from('![local](./figure.png)\n![site](https://site.example/uploads/a.png?v=3)'));
   const result = await prepareBackupImages({...options,downloadImage:async()=>{throw new Error('Network should not be used');}});
   assert.deepEqual(result.warnings,[]); assert.equal(result.imageCount,2);
-  assert.equal((result.files.get('content/blog/nested/a.md').toString().match(/\/uploads\/backup-/g) || []).length,2);
+  assert.equal((result.files.get('content/blog/nested/a.md').toString().match(/\/static\/backup-/g) || []).length,2);
 }));
 test('missing or inaccessible images retain their URLs with query-redacted warnings', () => fixture(async options => {
   options.files.set('content/library.json',Buffer.from(JSON.stringify([{cover:'https://images.example/private?token=secret'}])));
@@ -129,4 +129,24 @@ test('image warnings remain bounded for extremely long malformed and remote URLs
   options.files.set('content/blog/a.md', Buffer.from(`![bad](${url})\n![invalid](http://[${'x'.repeat(12000)})`));
   const result = await prepareBackupImages({ ...options, downloadImage: async () => { throw new Error('unavailable'); } });
   assert.equal(result.warnings.length, 2); assert.ok(result.warnings.every(warning => warning.length < 3000));
+}));
+
+test('uploaded documents are included from inline/reference links, HTML and JSON without fetching external links', () => fixture(async options => {
+  const document = Buffer.from('%PDF-1.4\nSample document\n');
+  const legacy = join(options.projectRoot, 'public/uploads');
+  await mkdir(legacy); await writeFile(join(legacy, 'guide.pdf'), document);
+  await writeFile(join(options.uploadsDir, 'notes.txt'), 'notes');
+  options.files.set('content/blog/a.md', Buffer.from('[PDF](/uploads/guide.pdf)\n[notes][file]\n[file]: /static/notes.txt\n<a href="https://site.example/static/notes.txt">notes</a>\n[remote](https://example.com/document.pdf)\n`[example](/static/ignored.txt)`'));
+  options.files.set('content/library.json', Buffer.from(JSON.stringify([{ url: '/static/notes.txt' }])));
+  const result = await prepareBackupImages({ ...options, downloadImage: async () => { throw new Error('No remote file downloads'); } });
+  assert.deepEqual(result.warnings, []);
+  const files = [...result.files.keys()].filter(path => path.startsWith('files/'));
+  assert.equal(files.length, 2);
+  const body = result.files.get('content/blog/a.md').toString();
+  assert.match(body, /\[PDF\]\(\/static\/backup-[a-f0-9]+\.pdf\)/);
+  assert.match(body, /\[file\]: \/static\/backup-[a-f0-9]+\.txt/);
+  assert.match(body, /href="\/static\/backup-[a-f0-9]+\.txt"/);
+  assert.ok(body.includes('[remote](https://example.com/document.pdf)'));
+  assert.ok(body.includes('`[example](/static/ignored.txt)`'));
+  assert.match(JSON.parse(result.files.get('content/library.json'))[0].url, /^\/static\/backup-/);
 }));

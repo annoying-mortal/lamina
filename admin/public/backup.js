@@ -42,7 +42,7 @@ export function createBackupTools({ api, onBusy, onRestored, clearError }) {
     content.append(element('span', 'eyebrow', t('RESTORE BACKUP', '恢复备份')));
     const title = element('h2', '', t('Replace this site’s content?', '替换当前站点内容？'));
     title.id = 'backup-restore-title';
-    content.append(title, element('p', '', t('This replaces site settings, Blog, Library and Friends with the inspected backup, and restores its images.', '此操作将使用已检查的备份替换站点设置、文章、收藏和友链，并恢复备份中的图片。')));
+    content.append(title, element('p', '', t('This replaces site settings, Blog, Library and Friends with the inspected backup, and restores its files.', '此操作将使用已检查的备份替换站点设置、文章、收藏和友链，并恢复备份中的文件。')));
     content.append(element('p', 'muted', t('A snapshot of the original files is saved on the server for manual recovery. Your administrator account and password stay unchanged.', '替换前会在服务器保存原始文件快照，供手动回滚恢复。管理员账号与密码保持不变。')));
     const actions = element('div', 'dialog-actions');
     actions.append(button('cancel-backup-restore', t('Cancel', '取消'), () => dialog.close()));
@@ -58,7 +58,7 @@ export function createBackupTools({ api, onBusy, onRestored, clearError }) {
     result.append(title);
     if (preview.createdAt) result.append(element('p', 'backup-meta', t('Created · ', '创建时间 · ') + new Date(preview.createdAt).toLocaleString(getLocale() === 'zh' ? 'zh-CN' : 'en-GB')));
     const counts = element('dl', 'backup-counts');
-    for (const [key, label] of [['blog', t('Blog', '文章')], ['library', t('Library', '收藏')], ['friends', t('Friends', '友链')], ['images', t('Images', '图片')]]) {
+    for (const [key, label] of [['blog', t('Blog', '文章')], ['library', t('Library', '收藏')], ['friends', t('Friends', '友链')], ['images', t('Files', '文件')]]) {
       const pair = element('div'); pair.append(element('dt', '', label), element('dd', '', String(preview.summary?.[key] ?? 0))); counts.append(pair);
     }
     result.append(counts);
@@ -88,7 +88,7 @@ export function createBackupTools({ api, onBusy, onRestored, clearError }) {
     const exportHeading = element('div', 'backup-heading');
     exportHeading.append(element('span', 'eyebrow', '01'), element('h2', '', t('Export', '导出备份')));
     const exportBody = element('div', 'backup-body');
-    exportBody.append(element('p', '', t('One ZIP with site settings, Blog (including drafts), Library, Friends and referenced images.', '一个 ZIP 文件，包含站点设置、文章（含草稿）、收藏、友链及引用的图片。')));
+    exportBody.append(element('p', '', t('One ZIP with site settings, Blog (including drafts), Library, Friends and referenced files.', '一个 ZIP 文件，包含站点设置、文章（含草稿）、收藏、友链及引用的文件。')));
     exportBody.append(element('p', 'muted', t('Available remote images are included. If an image cannot be downloaded, its original URL is retained with a warning. Accounts, passwords and fonts are excluded.', '可下载的外链图片会一并打包；无法下载的图片保留原始地址并给出提示。不包含管理员账号、密码或字体。')));
     const exportActions = element('div', 'backup-actions');
     exportActions.append(button('backup-export-button', busy === 'export' ? t('Preparing ZIP…', '正在准备 ZIP…') : t('Download ZIP ↓', '下载 ZIP ↓'), exportBackup));
@@ -96,7 +96,7 @@ export function createBackupTools({ api, onBusy, onRestored, clearError }) {
       const link = element('a', 'button subtle', t('Save ZIP again', '重新保存 ZIP')); link.id = 'backup-download-link'; link.href = download.url; link.download = download.name; exportActions.append(link);
     }
     exportBody.append(exportActions);
-    if (download?.warningCount > 0) exportBody.append(element('p', 'backup-meta', t(`The ZIP contains ${download.warningCount} image warning(s). Inspect it below to review them.`, `ZIP 包含 ${download.warningCount} 条图片提示，可在下方检查备份以查看详情。`)));
+    if (download?.warningCount > 0) exportBody.append(element('p', 'backup-meta', t(`The ZIP contains ${download.warningCount} file warning(s). Inspect it below to review them.`, `ZIP 包含 ${download.warningCount} 条文件提示，可在下方检查备份以查看详情。`)));
     exportSection.append(exportHeading, exportBody);
     const importSection = element('section', 'backup-section');
     const importHeading = element('div', 'backup-heading');
@@ -117,11 +117,11 @@ export function createBackupTools({ api, onBusy, onRestored, clearError }) {
     const feedback = element('div', 'backup-feedback');
     const progress = element('p', 'backup-status'); progress.id = 'backup-status'; progress.setAttribute('role', 'status'); progress.setAttribute('aria-live', 'polite');
     const messages = {
-      export: t('Collecting content and images. Keep this page open…', '正在收集内容和图片，请保持此页面打开…'),
+      export: t('Collecting content and files. Keep this page open…', '正在收集内容和文件，请保持此页面打开…'),
       inspect: t('Uploading and checking the archive. Keep this page open…', '正在上传并检查备份，请保持此页面打开…'),
       restore: t('Saving a rollback snapshot and restoring your site. Keep this page open…', '正在保存回滚快照并恢复站点，请保持此页面打开…'),
       downloaded: t('Your ZIP is ready. If the download did not start, use “Save ZIP again”.', 'ZIP 已准备好；若未开始下载，请点击“重新保存 ZIP”。'),
-      restored: t('Backup restored. Settings, content and images have been refreshed.', '备份已恢复，站点设置、内容与图片已刷新。'),
+      restored: t('Backup restored. Settings, content and files have been refreshed.', '备份已恢复，站点设置、内容与文件已刷新。'),
     };
     progress.textContent = messages[busy || status] || ''; progress.hidden = !progress.textContent;
     feedback.append(progress);

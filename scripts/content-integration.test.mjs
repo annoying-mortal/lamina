@@ -68,6 +68,14 @@ test('文件与 CMS 共用内容，监听发布更新静态页面且失败保留
     const item = { id: 'qa-local-cover', title: '本地封面', original: '', type: 'book', typeLabel: '书籍', creator: '', date: '2026-10-20', rating: '', cover: image.url, note: '', detail: '', article: '/blog/qa-public-image/', tags: [], demo: false };
     await json('/api/library', 'POST', item);
     await json('/api/library', 'POST', { ...item, id: 'qa-remote-cover', title: '图床封面', cover: 'https://images.example.test/cover.png?size=2' });
+    const currentSettings = await json('/api/settings');
+    await json('/api/settings', 'PUT', {
+      ...currentSettings, aboutMeTitle: '我的爱好', aboutMeSubtitle: '构成我的九部作品',
+      aboutMeWorks: Array.from({ length: 9 }, (_, index) => ({
+        label: ['最治愈的作品', '最难忘的作品', '最怀念的作品'][index] || '',
+        libraryId: ['qa-local-cover', 'qa-remote-cover', 'deleted-library-item'][index] || '',
+      })),
+    });
     await command(root, [join(root, 'node_modules/astro/bin/astro.mjs'), 'build']);
     const home = await readFile(join(root, 'dist/index.html'), 'utf8');
     const blog = await readFile(join(root, 'dist/blog/index.html'), 'utf8');
@@ -77,8 +85,18 @@ test('文件与 CMS 共用内容，监听发布更新静态页面且失败保留
     const rss = await readFile(join(root, 'dist/rss.xml'), 'utf8');
     assert.ok(blog.includes(`name="description" content="${settings.description}"`));
     assert.match(home, /集成测试站/); assert.match(home, /你好 集成测试站/); assert.match(home, /文章目录/);
-    const chapterOffsets = ['welcome', 'about', 'archives', 'contact'].map(id => home.indexOf(`id="${id}"`));
+    const chapterOffsets = ['welcome', 'about', 'archives', 'aboutme', 'contact'].map(id => home.indexOf(`id="${id}"`));
     assert.ok(chapterOffsets.every((offset, index) => offset >= 0 && (index === 0 || offset > chapterOffsets[index - 1])), 'Home chapters retain the requested reading order');
+    const interests = home.slice(chapterOffsets[3], chapterOffsets[4]);
+    assert.equal((interests.match(/data-interest-slot=/g) || []).length, 9);
+    assert.match(interests, /我的爱好/); assert.match(interests, /构成我的九部作品/);
+    assert.match(interests, /最治愈的作品/); assert.match(interests, /最难忘的作品/);
+    assert.ok(interests.includes(image.url), 'About me uses the selected Library cover');
+    assert.match(interests, /href="\/library\/#work-qa-local-cover"/);
+    assert.match(interests, /href="\/library\/#work-qa-remote-cover"/);
+    assert.equal((interests.match(/<div class="interest-cover"/g) || []).length, 7, 'Empty and removed Library selections render placeholders');
+    assert.ok(!interests.includes('work-deleted-library-item'), 'A removed Library item does not create a broken link');
+    assert.match(home.slice(chapterOffsets[4]), /Enter GitHub URL/);
     assert.match(home, /认识 集成测试站/); assert.match(home, /从后台编辑的个人介绍/); assert.match(home, /从后台编辑的联系文案/);
     assert.match(home, /data-launched-at="2026-10-20T08:30:00\+08:00"/); assert.match(home, /mailto:hello@example.test/);
     const archiveSource = home.match(/<script\b[^>]*id="archive-data"[^>]*>([\s\S]*?)<\/script>/)?.[1];

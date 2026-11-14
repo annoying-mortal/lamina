@@ -18,7 +18,7 @@ services:
     pids_limit: 100
     volumes:
       - blog-published:/usr/share/nginx/html:ro
-      - blog-uploads:/var/www/uploads:ro
+      - blog-uploads:/var/www/static:ro
       - ./public/fonts/alimama-fangyuan:/var/www/site-fonts/alimama-fangyuan:ro
     depends_on:
       admin:
@@ -37,7 +37,7 @@ services:
       ADMIN_LOOPBACK_PUBLISHED: 1
       ADMIN_ALLOWED_HOSTS: "127.0.0.1:${ADMIN_PORT:-4322},localhost:${ADMIN_PORT:-4322},[::1]:${ADMIN_PORT:-4322}"
       SITE_PUBLISH_ROOT: /published
-      SITE_UPLOADS_DIR: /app/public/uploads
+      SITE_UPLOADS_DIR: /app/public/static
       SITE_URL: ${SITE_URL:-http://localhost:8080}
     ports:
       - "127.0.0.1:${ADMIN_PORT:-4322}:4322"
@@ -45,7 +45,7 @@ services:
     volumes:
       - blog-content:/app/src/content
       - blog-published:/published
-      - blog-uploads:/app/public/uploads
+      - blog-uploads:/app/public/static
       - blog-admin:/app/.admin
       - ./public/fonts/alimama-fangyuan:/app/public/fonts/alimama-fangyuan:ro
     cap_drop:

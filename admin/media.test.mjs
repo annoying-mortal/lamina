@@ -13,9 +13,9 @@ const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR
 async function fixture(run) {
   const root = await mkdtemp(join(tmpdir(), 'field-media-'));
   const dataDir = join(root, 'src/content');
-  const mediaDir = join(root, 'public/uploads');
+  const mediaDir = join(root, 'public/static');
   await mkdir(dataDir, { recursive: true });
-  const server = createServer({ projectRoot: root, dataDir, mediaDir, autoPublish: false, auth: false });
+  const server = createServer({ projectRoot: root, dataDir, autoPublish: false, auth: false });
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   const base = `http://127.0.0.1:${server.address().port}`;
   const session = await (await fetch(base + '/api/session')).json();
@@ -34,7 +34,7 @@ test('图片URL支持中文路径、查询串和图床，拒绝危险协议与�
 test('上传持久化图片及原名，后台预览读取同一字节，不公开素材索引', () => fixture(async ({ upload, base, mediaDir, dataDir }) => {
   const response = await upload(); assert.equal(response.status, 201);
   const item = await response.json();
-  assert.equal(item.name, '本地 插图.png'); assert.equal(item.mime, 'image/png'); assert.match(item.url, /^\/uploads\/[0-9a-f-]+\.png$/);
+  assert.equal(item.name, '本地 插图.png'); assert.equal(item.mime, 'image/png'); assert.match(item.url, /^\/static\/[0-9a-f-]+\.png$/);
   assert.deepEqual(await readFile(join(mediaDir, item.id)), png);
   assert.equal(JSON.parse(await readFile(join(dataDir, 'media.json'), 'utf8'))[0].id, item.id);
   const list = await (await fetch(base + '/api/media')).json(); assert.equal(list.length, 1); assert.equal(list[0].url, item.url);
@@ -42,8 +42,7 @@ test('上传持久化图片及原名，后台预览读取同一字节，不公�
   assert.equal((await fetch(base + '/uploads/.media.json')).status, 404);
 }));
 
-test('上传拒绝SVG、伪装类型、损坏签名、路径文件名与超限图片', () => fixture(async ({ upload }) => {
-  assert.equal((await upload(Buffer.from('<svg></svg>'), { 'Content-Type': 'image/svg+xml' })).status, 415);
+test('上传拒绝伪装图片、损坏签名、路径文件名与超限文件', () => fixture(async ({ upload }) => {
   assert.equal((await upload(png, { 'Content-Type': 'image/jpeg' })).status, 415);
   assert.equal((await upload(Buffer.from('<script>alert(1)</script>'))).status, 415);
   assert.equal((await upload(png.subarray(0, 24))).status, 415);
@@ -118,3 +117,50 @@ test('上传在读取完毕及轮到写入时重新鉴权，撤销后的排队�
     await rm(root, { recursive: true, force: true });
   }
 });
+
+
+test('文件上传到 static：PDF、文本、ZIP、无扩展名文件可下载，SVG 可作为图片使用', () => fixture(async ({ upload, base, mediaDir }) => {
+  const examples = [
+    ['说明.pdf', '%PDF-1.7 sample', 'application/pdf'],
+    ['notes.txt', 'hello world', 'text/plain'],
+    ['archive.zip', 'PK sample', 'application/zip'],
+    ['README', 'no extension', 'application/octet-stream'],
+    ['logo.svg', '<svg xmlns="http://www.w3.org/2000/svg"><circle r="10"/></svg>', 'image/svg+xml'],
+    ['page.html', '<script>alert(1)</script>', 'application/octet-stream'],
+  ];
+  for (const [name, data, mime] of examples) {
+    const response = await upload(Buffer.from(data), { 'Content-Type': 'application/octet-stream', 'X-File-Name': encodeURIComponent(name) });
+    assert.equal(response.status, 201, name);
+    const record = await response.json();
+    assert.equal(record.mime, mime); assert.equal(record.name, name);
+    assert.match(record.url, /^\/static\/[0-9a-f-]+\.[a-z0-9]+$/);
+    assert.equal(await readFile(join(mediaDir, record.id), 'utf8'), data);
+    const download = await fetch(base + record.url);
+    assert.equal(download.status, 200);
+    assert.equal(download.headers.get('content-type'), mime);
+    assert.equal(download.headers.get('x-content-type-options'), 'nosniff');
+    assert.match(download.headers.get('content-security-policy'), /sandbox/);
+    if (mime === 'image/svg+xml') assert.equal(download.headers.get('content-disposition'), null);
+    else assert.equal(download.headers.get('content-disposition'), `attachment; filename*=UTF-8''${encodeURIComponent(name)}`);
+    assert.equal(await download.text(), data);
+    assert.equal(await (await fetch(base + record.url.replace('/static/', '/uploads/'))).text(), data, 'old prefix aliases new storage');
+  }
+  const records = await (await fetch(base + '/api/media')).json();
+  assert.equal(records.length, examples.length);
+  assert.ok(examples.every(([name, , mime]) => records.some(record => record.name === name && record.mime === mime)));
+}));
+
+test('已有 uploads 文件继续列出和访问，不移动或覆盖原文件', () => fixture(async ({ root, upload, base }) => {
+  const legacy = join(root, 'public/uploads');
+  await mkdir(legacy, { recursive: true });
+  await writeFile(join(legacy, 'legacy.png'), png);
+  const response = await upload(); assert.equal(response.status, 201);
+  const list = await (await fetch(base + '/api/media')).json();
+  assert.equal(list.length, 2);
+  assert.equal(list.find(item => item.id === 'legacy.png').url, '/uploads/legacy.png');
+  for (const prefix of ['/uploads/', '/static/']) {
+    assert.deepEqual(Buffer.from(await (await fetch(base + prefix + 'legacy.png')).arrayBuffer()), png);
+  }
+  assert.deepEqual(await readFile(join(legacy, 'legacy.png')), png);
+  assert.equal((await fetch(base + '/static/%2e%2e%2Fsrc%2Fcontent%2Fmedia.json')).status, 404);
+}));

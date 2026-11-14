@@ -6,6 +6,7 @@ import { inflateRawSync } from 'node:zlib';
 import { zipSync } from 'fflate';
 import { parsePostSource, assertUniquePosts, isPostFile } from '../lib/posts.mjs';
 import { prepareBackupImages, validateBackupImage } from './backup-images.mjs';
+import { fileMimeType } from './media.mjs';
 
 export const BACKUP_LIMITS = Object.freeze({ compressed: 256 * 1024 * 1024, expanded: 512 * 1024 * 1024, entries: 10000, image: 20 * 1024 * 1024, json: 8 * 1024 * 1024, markdown: 2 * 1024 * 1024 });
 const FORMAT = 'personal-blog-backup';
@@ -18,8 +19,9 @@ const jsonBytes = value => Buffer.from(JSON.stringify(value, null, 2) + '\n');
 const decode = bytes => { try { return new TextDecoder('utf-8', { fatal: true }).decode(bytes); } catch { fail(400, 'Backup contains invalid UTF-8 text.'); } };
 const parseJson = (bytes, name) => { try { return JSON.parse(decode(bytes)); } catch (error) { if (error.status) throw error; fail(400, `${name} contains invalid JSON.`); } };
 const imageName = /^images\/(backup-([a-f0-9]{64})\.(png|jpg|gif|webp|svg|ico|avif))$/;
-const allowed = path => path === 'manifest.json' || /^content\/(site|library|friends|media)\.json$/.test(path) || (path.startsWith('content/blog/') && isPostFile(path.slice(13))) || imageName.test(path);
-const fileLimit = path => path.startsWith('images/') ? BACKUP_LIMITS.image : path.endsWith('.md') ? BACKUP_LIMITS.markdown : BACKUP_LIMITS.json;
+const uploadName = /^files\/(backup-([a-f0-9]{64})\.([a-z0-9]{1,16}))$/;
+const allowed = path => path === 'manifest.json' || /^content\/(site|library|friends|media)\.json$/.test(path) || (path.startsWith('content/blog/') && isPostFile(path.slice(13))) || imageName.test(path) || uploadName.test(path);
+const fileLimit = path => /^(?:images|files)\//.test(path) ? BACKUP_LIMITS.image : path.endsWith('.md') ? BACKUP_LIMITS.markdown : BACKUP_LIMITS.json;
 function safePath(path) {
   check(path.length > 0 && path.length <= 1000 && !/[\\\u0000-\u001f\u007f:]/.test(path) && !path.startsWith('/') && !path.split('/').some(part => !part || part.startsWith('.') || part.startsWith('~')), 'Unsafe path in ZIP backup.');
   return path;
@@ -184,8 +186,8 @@ export function createBackupStore({ projectRoot, dataDir, uploadsDir, backupDir 
     assertUniquePosts(posts);
     const images = new Map();
     for (const [path, bytes] of files) {
-      const match = imageName.exec(path); if (!match) continue;
-      const detected = validateBackupImage(bytes);
+      const match = imageName.exec(path) || uploadName.exec(path); if (!match) continue;
+      const detected = path.startsWith('images/') ? validateBackupImage(bytes) : { ext: match[3], mime: fileMimeType(match[1]) };
       check(hash(bytes) === match[2] && detected.ext === match[3], `Image filename or content checksum is invalid: ${path}`);
       images.set(match[1], { mime: detected.mime, size: bytes.length });
     }
@@ -193,7 +195,7 @@ export function createBackupStore({ projectRoot, dataDir, uploadsDir, backupDir 
     check(Array.isArray(media) && media.length <= BACKUP_LIMITS.entries, 'Invalid backup media index.');
     const mediaIds = new Set();
     for (const item of media) {
-      check(isObject(item) && images.has(item.id) && !mediaIds.has(item.id) && item.url === `/uploads/${item.id}` && item.mime === images.get(item.id).mime && item.size === images.get(item.id).size && typeof item.name === 'string' && item.name.length <= 240 && !/[\u0000-\u001f\u007f/\\]/.test(item.name) && typeof item.createdAt === 'string' && Number.isFinite(Date.parse(item.createdAt)), 'Invalid backup media record.');
+      check(isObject(item) && images.has(item.id) && !mediaIds.has(item.id) && [`/uploads/${item.id}`, `/static/${item.id}`].includes(item.url) && item.mime === images.get(item.id).mime && item.size === images.get(item.id).size && typeof item.name === 'string' && item.name.length <= 240 && !/[\u0000-\u001f\u007f/\\]/.test(item.name) && typeof item.createdAt === 'string' && Number.isFinite(Date.parse(item.createdAt)), 'Invalid backup media record.');
       mediaIds.add(item.id);
     }
     check(mediaIds.size === images.size, 'Backup media index does not match packaged images.');
@@ -253,7 +255,7 @@ export function createBackupStore({ projectRoot, dataDir, uploadsDir, backupDir 
       const desired = new Map();
       for (const [path, bytes] of prepared.files) {
         if (path === 'content/media.json') continue;
-        desired.set(path.startsWith('images/') ? join(uploadsDir, path.slice(7)) : join(dataDir, path.slice(8)), bytes);
+        desired.set(/^(?:images|files)\//.test(path) ? join(uploadsDir, path.slice(path.indexOf('/') + 1)) : join(dataDir, path.slice(8)), bytes);
       }
       let originalMedia = [];
       if (original.has('content/media.json')) { try { const media = JSON.parse(decode(original.get('content/media.json'))); if (Array.isArray(media)) originalMedia = media.filter(isObject); } catch {} }

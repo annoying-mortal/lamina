@@ -19,7 +19,7 @@
   "email": "",
   "logo": "",
   "favicon": "/favicon.svg",
-  "defaultTheme": "system",
+  "defaultTheme": "light",
   "showRSS": true,
   "demo": false,
   "archiveSubtitle": "Enter archive subtitle",
@@ -130,6 +130,46 @@
       "id": "others",
       "label": "Others",
       "en": "OTHERS"
+    }
+  ],
+  "aboutMeTitle": "About me",
+  "aboutMeSubtitle": "构成我的九部作品",
+  "aboutMeWorks": [
+    {
+      "label": "",
+      "libraryId": ""
+    },
+    {
+      "label": "",
+      "libraryId": ""
+    },
+    {
+      "label": "",
+      "libraryId": ""
+    },
+    {
+      "label": "",
+      "libraryId": ""
+    },
+    {
+      "label": "",
+      "libraryId": ""
+    },
+    {
+      "label": "",
+      "libraryId": ""
+    },
+    {
+      "label": "",
+      "libraryId": ""
+    },
+    {
+      "label": "",
+      "libraryId": ""
+    },
+    {
+      "label": "",
+      "libraryId": ""
     }
   ]
 }

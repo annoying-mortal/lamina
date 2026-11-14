@@ -120,7 +120,7 @@ An image from this site's `public/images` directory:
 
 ![A geometric orbit diagram with an orbiting point and fine reference lines.](/images/markdown-example.svg "Local SVG example")
 
-The source is `![Description](/images/markdown-example.svg)`. Files uploaded in the CMS use the same form with a `/uploads/…` path.
+The source is `![Description](/images/markdown-example.svg)`. Files uploaded in the CMS use a `/static/…` path. Use `![Description](/static/image.png)` for images and `[Download file](/static/file.pdf)` for other files.
 
 An image referenced directly from a remote image host:
 

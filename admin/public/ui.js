@@ -24,10 +24,11 @@ export function imagePreview(value, alt = '') {
   const url = safeImageUrl(value); if (url) img.src = url; else img.hidden = true;
   img.addEventListener('error', () => { img.hidden = true; }); return img;
 }
-export function markdownImage(url, alt = '') {
+export function markdownLink(url, label = '') {
   const safe = safeImageUrl(url);
-  return safe ? `![${String(alt).replace(/\\/g, '\\\\').replace(/\[/g, '\\[').replace(/\]/g, '\\]').replace(/[\r\n]/g, ' ')}](<${safe.replace(/</g, '%3C').replace(/>/g, '%3E')}>)` : '';
+  return safe ? `[${String(label).replace(/\\/g, '\\\\').replace(/\[/g, '\\[').replace(/\]/g, '\\]').replace(/[\r\n]/g, ' ')}](<${safe.replace(/</g, '%3C').replace(/>/g, '%3E')}>)` : '';
 }
+export function markdownImage(url, alt = '') { const link = markdownLink(url, alt); return link ? `!${link}` : ''; }
 function inlineText(text, container) {
   const pattern = /!\[([^\]]*)\]\(\s*(<[^>]+>|[^\s)]+)(?:\s+"[^"]*")?\s*\)/g;
   let cursor = 0;

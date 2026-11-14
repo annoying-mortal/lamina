@@ -11,15 +11,15 @@ services:
         bind:
           create_host_path: false
       - type: bind
-        source: ${BLOG_UPLOADS_DIR:-./public/uploads}
-        target: /app/public/uploads
+        source: ${BLOG_UPLOADS_DIR:-./public/static}
+        target: /app/public/static
         bind:
           create_host_path: false
   blog:
     volumes:
       - type: bind
-        source: ${BLOG_UPLOADS_DIR:-./public/uploads}
-        target: /var/www/uploads
+        source: ${BLOG_UPLOADS_DIR:-./public/static}
+        target: /var/www/static
         read_only: true
         bind:
           create_host_path: false

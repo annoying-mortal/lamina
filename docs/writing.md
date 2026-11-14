@@ -73,7 +73,7 @@ docker compose -f compose.yaml -f compose.files.yaml up -d --build
 | 宿主机 | 容器用途 |
 | --- | --- |
 | `./src/content/` | CMS 与构建读取文章、站点设置、Library、友链及素材索引 |
-| `./public/uploads/` | CMS 写入图片，Nginx 只读提供 `/uploads/` |
+| `./public/static/` | CMS 写入文件，Nginx 只读提供 `/static/` |
 | 原有 `blog-published` 命名卷 | 发布版本与 `current` |
 | 原有 `blog-admin` 命名卷 | 管理员凭据 |
 
@@ -92,7 +92,7 @@ docker compose -f compose.yaml -f compose.files.yaml up -d --build
 
 请把所选变量保存在本地 `.env` 或后续每次使用相同的值；`.env` 不应提交到仓库。配置要求目录已经存在，避免拼错路径后自动生成空目录。
 
-若要沿用本地编辑过的站点，请改为复制完整 `src/content/` 与 `public/uploads/`，或直接使用默认文件夹挂载。Docker 镜像本身只包含 `admin/defaults/` 的初始示例，不会把本地个人文章或 CMS 设置打包为新站点的默认内容。
+若要沿用本地编辑过的站点，请改为复制完整 `src/content/` 与 `public/static/`，或直接使用默认文件夹挂载。Docker 镜像本身只包含 `admin/defaults/` 的初始示例，不会把本地个人文章或 CMS 设置打包为新站点的默认内容。
 
 Linux 上，容器中的内容工作台以 UID/GID `1000:1000` 运行；宿主内容目录和上传目录需允许该用户读写。只调整这些专用内容目录的权限，避免将整个项目开放为任意用户可写。
 
@@ -107,7 +107,7 @@ docker compose -f compose.yaml stop admin blog
 mkdir ../personal-blog-export
 mkdir ../personal-blog-export/content ../personal-blog-export/uploads
 docker compose -f compose.yaml cp admin:/app/src/content/. ../personal-blog-export/content/
-docker compose -f compose.yaml cp admin:/app/public/uploads/. ../personal-blog-export/uploads/
+docker compose -f compose.yaml cp admin:/app/public/static/. ../personal-blog-export/uploads/
 ```
 
 确认导出目录包含自己最新的文章、`site.json`、`library.json`、`friends.json`、素材索引（若有）和上传图片，并单独备份。只有确认完整后，再让两份配置使用导出的目录：
@@ -152,7 +152,7 @@ Enter content.
 
 `id` 和 `slug` 应保持唯一。基于路径推导时，重命名或移动文件可能改变 ID 和网址；需要固定地址时，显式填写并保留这两个字段。`slug` 只接受小写英文字母、数字和中间的连字符，不带斜线。分类 ID 来自站点设置，请使用已存在的分类；不确定时可省略。日期使用 `YYYY-MM-DD`。
 
-为兼容 Hiro 写作习惯，也接受 `pubDate` 作为 `date` 的别名、`description` 作为 `summary` 的别名。例如：
+也接受 `pubDate` 作为 `date` 的别名、`description` 作为 `summary` 的别名。例如：
 
 ```md
 ---
@@ -164,21 +164,23 @@ description: Enter summary
 Enter content.
 ```
 
-建议每组只选一种字段名。当前项目的分类、草稿与发布规则仍以本项目为准，并不等于支持 Hiro 的所有扩展。
+建议每组只选一种字段名。
 
 也接受带时区的 ISO 时间戳，例如 `pubDate: 2026-01-01T08:30:00Z`，按 UTC 日期归档。CMS 保存时会统一写为 `date`、`summary`，去掉对应的兼容别名，其他自定义字段仍保留。以 `.` 或 `~` 开头的文件、目录视为隐藏文件或编辑器备份，不作为文章发布。
 
 ## 正文图片
 
-将文件放到 `public/uploads/`，或在 CMS 素材库上传，再引用公开路径。也可引用 HTTPS 图床；日常浏览由访客浏览器直接加载。主动在 CMS 的 Backup 中导出 ZIP 时，后台会尝试下载引用的外链图片，并把备份内的图片地址改为可迁移的本地地址；无法下载的图片保留原 URL 并给出提示，当前源文件不会被导出操作修改。
+将文件放到 `public/static/`，或在 CMS 的“文件”页上传，再引用公开路径。也可引用 HTTPS 图床；日常浏览由访客浏览器直接加载。主动在 CMS 的 Backup 中导出 ZIP 时，后台会尝试下载引用的外链图片，并把备份内的图片地址改为可迁移的本地地址；无法下载的图片保留原 URL 并给出提示，当前源文件不会被导出操作修改。
 
 ```md
-![Enter image description](/uploads/my-photo.jpg)
+![Enter image description](/static/my-photo.jpg)
 
 ![Enter image description](https://images.example.com/my-photo.webp)
 ```
 
-以上图片地址只是语法示例，使用前换成真实文件或地址。不要写 `/public/uploads/…`，也不要填写自己的电脑绝对路径。Docker 文件夹模式下，应把图片放进当前 `BLOG_UPLOADS_DIR` 所指的目录。CMS 素材库会维护上传索引；直接复制到目录的文件可按 URL 引用，不代表它已经出现在素材库列表中。
+普通文件使用链接语法，如 `[下载文档](/static/guide.pdf)`。文件页可直接复制 Markdown 链接。
+
+以上图片地址只是语法示例，使用前换成真实文件或地址。不要写 `/public/static/…`，也不要填写自己的电脑绝对路径。Docker 文件夹模式下，应把图片放进当前 `BLOG_UPLOADS_DIR` 所指的目录。CMS 文件页会维护上传索引；直接复制到目录的文件也会显示在列表中。
 
 ## 数学公式与正文排版
 
@@ -203,9 +205,3 @@ CMS 每次保存都校验读取时的版本。如果你在编辑器里修改了�
 自动发布会合并连续保存，并将构建期间的新修改排入后续发布。格式错误、字段校验失败或构建失败时，新源文件仍保留，之前成功发布的页面继续服务；在 CMS 发布状态与后台日志查看原因，修正后再次保存，或手动重新发布。监听异常也会在发布状态中显示；关闭监听后，需要通过 CMS 发布操作或 `npm run publish` 更新正式页面。
 
 若尚未成功发布过任何版本，就没有可供保留的旧站点。上传目录由 Nginx 直接提供，不随文章的 `current` 链接回滚；覆盖同名图片会立即影响引用它的旧页面，替换图片时建议使用新文件名。
-
-## 参考来源
-
-内容组织借鉴作者公开的 [Astro Theme Hiro](https://github.com/nick-cjyx9/astro-theme-hiro)：固定 Markdown 目录与 CMS 写回同一份文件。它采用 [MIT 许可证](https://github.com/nick-cjyx9/astro-theme-hiro/blob/master/LICENSE)，其 Decap CMS 使用 GitHub backend；本项目继续使用自己的本地内容工作台和容器发布流程。
-
-公开 Hiro 模板的首页与当前 [nickchen.top](https://nickchen.top/) 的完整线上 UI 存在差异。本项目没有迁移该模板，也没有把它的 Cloudflare／D1 依赖作为文件写作的前提。

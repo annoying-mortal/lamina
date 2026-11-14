@@ -74,3 +74,22 @@ test('发布失败保留已上线版本，成功时原子切换并保留旧资�
     await assert.rejects(readFile(join(root, 'current/_astro/old.js')), { code: 'ENOENT' });
   } finally { await rm(root, { recursive: true, force: true }); }
 });
+
+test('volume-backed uploads are omitted from historical releases for both URL prefixes', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'blog-static-release-'));
+  const previous = process.env.SITE_UPLOADS_DIR;
+  process.env.SITE_UPLOADS_DIR = join(root, 'file-volume');
+  try {
+    await publish({ publishRoot: root, build: async out => {
+      await mkdir(join(out, 'static'), { recursive: true }); await mkdir(join(out, 'uploads'));
+      await writeFile(join(out, 'index.html'), 'site');
+      await writeFile(join(out, 'static/guide.pdf'), 'document');
+      await writeFile(join(out, 'uploads/legacy.png'), 'image');
+    } });
+    assert.equal(await readFile(join(root, 'current/index.html'), 'utf8'), 'site');
+    for (const name of ['static', 'uploads']) await assert.rejects(readdir(join(root, 'current', name)), { code: 'ENOENT' });
+  } finally {
+    if (previous === undefined) delete process.env.SITE_UPLOADS_DIR; else process.env.SITE_UPLOADS_DIR = previous;
+    await rm(root, { recursive: true, force: true });
+  }
+});

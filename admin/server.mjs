@@ -8,7 +8,7 @@ import { Buffer } from 'node:buffer';
 import { stringify } from 'yaml';
 import { normalizeImageUrl } from '../lib/image-url.mjs';
 import { parsePostSource, assertUniquePosts, isPostFile } from '../lib/posts.mjs';
-import { homeSettings, ABOUT_HIGHLIGHT_LIMIT } from '../lib/home-settings.mjs';
+import { homeSettings, ABOUT_HIGHLIGHT_LIMIT, ABOUT_ME_WORK_COUNT } from '../lib/home-settings.mjs';
 import { librarySettings, normalizeLibraryTypeId } from '../lib/library-settings.mjs';
 import { createMediaStore } from './media.mjs';
 import { createAuth } from './auth.mjs';
@@ -30,16 +30,12 @@ const assetFiles = new Map([
   ['/settings-preview.js', ['settings-preview.js', 'text/javascript; charset=utf-8']],
 ]);
 const displayFontPaths = new Set([
-  '/fonts/chogokuboso-gothic/chogokuboso-gothic.woff2',
   '/fonts/geom/geom.woff2',
   '/fonts/alimama-fangyuan/alimama-fangyuan.woff2',
-  '/fonts/michroma/michroma.woff2', '/fonts/montserrat/montserrat.woff2',
-  '/fonts/oxanium/oxanium.woff2', '/fonts/syncopate/syncopate-regular.woff2',
-  '/fonts/syncopate/syncopate-bold.woff2',
 ]);
 const fontStylePaths = new Set([
   '/fonts.css', '/typography.css', '/fonts/alimama-fangyuan/fonts.css',
-  '/fonts/lxgw-wenkai/fonts.css', '/fonts/jetbrains-mono/fonts.css',
+  '/fonts/jetbrains-mono/fonts.css',
 ]);
 const fontDocs = new Map([['/fonts/NOTICE.txt', 'text/plain; charset=utf-8'], ['/fonts/MiSans-license.pdf', 'application/pdf'], ['/fonts/misans-webfont-4.3.1/source.json', 'application/json; charset=utf-8'], ['/fonts/misans-webfont-4.3.1/UPSTREAM-README.md', 'text/plain; charset=utf-8']]);
 const revision = value => createHash('sha256').update(typeof value === 'string' ? value : JSON.stringify(value)).digest('hex').slice(0, 24);
@@ -124,6 +120,11 @@ function validSettings(value) {
   assert(email === '' || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email), '电子邮箱格式不正确。');
   assert(['system', 'light', 'dark'].includes(value.defaultTheme), '默认主题应为 system、light 或 dark。');
   const home = { ...homeSettings(value), ...value };
+  assert(Array.isArray(home.aboutMeWorks) && home.aboutMeWorks.length === ABOUT_ME_WORK_COUNT, `About me must contain exactly ${ABOUT_ME_WORK_COUNT} slots.`);
+  const aboutMeWorks = home.aboutMeWorks.map(item => {
+    assert(isObject(item), 'Each About me slot must be an object.');
+    return { label: string(item.label, 'About me label', 80, false), libraryId: string(item.libraryId, 'About me Library ID', 80, false) };
+  });
   assert(Array.isArray(home.aboutHighlights) && home.aboutHighlights.length <= ABOUT_HIGHLIGHT_LIMIT, `About highlights must contain no more than ${ABOUT_HIGHLIGHT_LIMIT} items.`);
   const aboutHighlights = home.aboutHighlights.map(item => {
     assert(isObject(item), 'Each About highlight must be an object.');
@@ -146,6 +147,7 @@ function validSettings(value) {
     homeEdition: string(value.homeEdition ?? '', '首页版本文字', 200, false), navigation, pages, categories, libraryTypes,
     aboutEyebrow: string(home.aboutEyebrow, '个人介绍上方小字', 200, false), aboutTitle: string(home.aboutTitle, '个人介绍标题', 300, false), aboutBody: string(home.aboutBody, '个人介绍正文', 6000, false),
     aboutHighlights,
+    aboutMeTitle: string(home.aboutMeTitle, 'About me title', 300, false), aboutMeSubtitle: string(home.aboutMeSubtitle, 'About me subtitle', 1000, false), aboutMeWorks,
     contactEyebrow: string(home.contactEyebrow, '联系页上方小字', 200, false), contactTitle: string(home.contactTitle, '联系页标题', 300, false), contactBody: string(home.contactBody, '联系页正文', 4000, false),
     launchedAt: launchDate(value.launchedAt),
   };
@@ -231,7 +233,7 @@ export function createServer(options = {}) {
   const libraryPath = join(dataDir, 'library.json');
   const friendsPath = join(dataDir, 'friends.json');
   const settingsPath = join(dataDir, 'site.json');
-  const uploadsDir = resolve(options.mediaDir || process.env.SITE_UPLOADS_DIR || join(projectRoot, 'public/uploads'));
+  const uploadsDir = resolve(options.mediaDir || process.env.SITE_UPLOADS_DIR || join(projectRoot, 'public/static'));
   const media = createMediaStore({ projectRoot, mediaDir: uploadsDir, mediaIndexPath: join(dataDir, 'media.json') });
   const siteUrl = options.siteUrl || process.env.ADMIN_SITE_URL || process.env.SITE_URL || 'http://127.0.0.1:4321';
   const autoPublish = options.autoPublish ?? process.env.ADMIN_AUTO_PUBLISH === '1';
@@ -364,7 +366,7 @@ export function createServer(options = {}) {
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('X-Frame-Options', 'DENY');
     res.setHeader('Referrer-Policy', 'same-origin');
-    res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' http: https: blob:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");
+    res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self' https://cdn.jsdelivr.net; font-src 'self' https://cdn.jsdelivr.net; img-src 'self' http: https: blob:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");
     const json = (status, value) => { res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' }); res.end(JSON.stringify(value)); };
     try {
       validateAccess(req);
@@ -397,18 +399,16 @@ export function createServer(options = {}) {
         res.writeHead(200, { 'Content-Type': contentType }); res.end(await readFile(join(here, 'public', file))); return;
       }
       const font = /^\/fonts\/misans-webfont-4\.3\.1\/(light|regular|demibold|bold)\/(\d{1,3})\.woff2$/.exec(pathname);
-      // Login and CMS previews share these fonts; expose runtime assets only,
-      // including the complete WenKai partition (000–093 for each weight).
-      const readingFont = /^\/fonts\/lxgw-wenkai\/(light|regular|medium)\/0(?:[0-8]\d|9[0-3])\.woff2$/.test(pathname);
+      // Login and CMS previews share these fonts; expose runtime assets only.
       const displayFont = displayFontPaths.has(pathname) || /^\/fonts\/jetbrains-mono\/jetbrains-mono-(400|500|600|700)-(normal|italic)\.woff2$/.test(pathname);
       const fontStyle = fontStylePaths.has(pathname);
-      if (req.method === 'GET' && (fontStyle || displayFont || readingFont || (font && Number(font[2]) <= 188) || fontDocs.has(pathname))) {
+      if (req.method === 'GET' && (fontStyle || displayFont || (font && Number(font[2]) <= 188) || fontDocs.has(pathname))) {
         let content;
         try { content = await readFile(join(projectRoot, 'public', pathname.slice(1))); }
         catch (error) { if (error.code === 'ENOENT') fail(404, '字体资源不存在。'); throw error; }
-        const type = fontStyle ? 'text/css; charset=utf-8' : font || displayFont || readingFont ? 'font/woff2' : fontDocs.get(pathname);
+        const type = fontStyle ? 'text/css; charset=utf-8' : font || displayFont ? 'font/woff2' : fontDocs.get(pathname);
         if (font) res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
-        if (displayFont || readingFont) res.setHeader('Cache-Control', 'public, max-age=3600');
+        if (displayFont) res.setHeader('Cache-Control', 'public, max-age=3600');
         res.writeHead(200, { 'Content-Type': type }); res.end(content); return;
       }
       const session = auth ? auth.requireSession(req, res) : { csrf: token };
@@ -466,7 +466,7 @@ export function createServer(options = {}) {
         }
         fail(405, 'Unsupported backup request.');
       }
-      if (req.method === 'GET' && (pathname === '/api/media' || pathname.startsWith('/uploads/'))) await mutationQueue;
+      if (req.method === 'GET' && (pathname === '/api/media' || pathname.startsWith('/static/') || pathname.startsWith('/uploads/'))) await mutationQueue;
       if (await media.handle(req, res, pathname, action => serialize(() => runAuthorized(action)))) return;
       if (req.method === 'GET' && pathname === '/api/session') { await mutationQueue; const settings = await readSettings(); json(200, { csrf: session.csrf, authEnabled: Boolean(auth), ...(auth ? { username: session.username } : {}), categories: settings.categories, libraryTypes: settings.libraryTypes.filter(item => item.id !== 'all'), siteUrl, publish }); return; }
       if (req.method === 'GET' && pathname === '/api/publish/status') { json(200, publish); return; }
