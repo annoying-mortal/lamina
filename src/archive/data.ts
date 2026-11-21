@@ -48,7 +48,8 @@ export interface ArchiveRecord extends Omit<ArchivePost, 'slug'> {
   domain?: string;
 }
 export interface ArchiveCategory { id: string; label: string }
-export interface ArchiveData { posts: ArchiveRecord[]; categories: ArchiveCategory[]; branding?: { title: string; subtitle: string } }
+type ArchiveLane = ArchiveCategory & { tabLabel: string };
+export interface ArchiveData { posts: ArchiveRecord[]; categories: ArchiveLane[]; branding?: { title: string; subtitle: string } }
 
 /** Blog categories, Library types and Friends share one scene with independent identities. */
 export function createArchiveCollection(posts: ArchivePost[], categories: readonly ArchiveCategory[], library: ArchiveLibraryItem[] = [], libraryTypes: readonly ArchiveCategory[] = DEFAULT_LIBRARY_TYPES, friends: readonly ArchiveFriend[] = []): ArchiveData {
@@ -74,12 +75,13 @@ export function createArchiveCollection(posts: ArchivePost[], categories: readon
     })),
   ];
   const populated = new Set(entries.map(entry => entry.categoryId));
+  const blogCategories = categories.filter(category => populated.has(`blog:${category.id}`));
   return {
     posts: entries,
     categories: [
-      ...categories.map(category => ({ id: `blog:${category.id}`, label: `Blog · ${category.label}` })),
-      ...libraryCategories.map(category => ({ id: `library:${category.id}`, label: `Library · ${category.label}` })),
-      { id: 'friends', label: 'Friends' },
+      ...blogCategories.map(category => ({ id: `blog:${category.id}`, label: `Blog · ${category.label}`, tabLabel: blogCategories.length === 1 ? 'Blog' : category.label })),
+      ...libraryCategories.map(category => ({ id: `library:${category.id}`, label: `Library · ${category.label}`, tabLabel: category.label })),
+      { id: 'friends', label: 'Friends', tabLabel: 'Friends' },
     ].filter(category => populated.has(category.id)),
   };
 }
@@ -113,7 +115,7 @@ export function archiveRecordPresentation(record: ArchiveRecord) {
 }
 
 export let records: ArchiveRecord[] = [];
-export let categoryRecords: ArchiveCategory[] = [];
+export let categoryRecords: ArchiveLane[] = [];
 export let archiveColumns: string[] = [];
 export let archiveBranding = { title: 'Enter archive title', subtitle: 'Enter archive subtitle' };
 let filesByLane: number[][] = [];

@@ -28,6 +28,7 @@ test('Blog, Library and Friends keep distinct identities and destinations in one
   configureArchive(data);
   assert.deepEqual(archiveColumns, ['blog:music', 'library:albums', 'friends']);
   assert.deepEqual(categoryRecords.map(category => category.label), ['Blog · 音乐笔记', 'Library · Albums', 'Friends']);
+  assert.deepEqual(categoryRecords.map(category => category.tabLabel), ['Blog', 'Albums', 'Friends']);
   assert.deepEqual(columnFiles(0), [0]);
   assert.deepEqual(columnFiles(1), [1]);
   assert.equal(fileLocation(1).lane, 1);
@@ -53,6 +54,7 @@ test('archive payload excludes build-only article data and empty navigation lane
   const entry = { ...post, entry: { body: 'full article' }, sourcePath: 'nested/post.md' };
   const data = createArchiveCollection([entry], [...categories, { id: 'empty', label: 'Empty', en: 'EMPTY' }], [collection]);
   assert.deepEqual(data.categories.map(category => category.id), ['blog:music', 'library:albums']);
+  assert.equal(data.categories[0].tabLabel, 'Blog');
   for (const key of ['entry', 'sourcePath', 'slug']) assert.equal(Object.hasOwn(data.posts[0], key), false);
   configureArchive(data);
   assert.deepEqual(columnFiles(-1), [1]);
@@ -69,7 +71,14 @@ test('Home archive follows configured Library names and order while omitting the
   configureArchive(data);
   assert.deepEqual(archiveColumns, ['library:notes', 'library:albums']);
   assert.deepEqual(categoryRecords.map(category => category.label), ['Library · Notes', 'Library · Records']);
+  assert.deepEqual(categoryRecords.map(category => category.tabLabel), ['Notes', 'Records']);
   assert.deepEqual(data.posts.map(record => record.category), ['Records', 'Notes']);
   assert.deepEqual(columnFiles(0), [1]);
   assert.deepEqual(columnFiles(1), [0]);
+});
+
+test('populated blog categories remain distinguishable in the tab bar', () => {
+  const second = { ...post, id: 'second', categoryId: 'travel', category: 'Travel' };
+  const data = createArchiveCollection([post, second], [...categories, { id: 'travel', label: 'Travel' }]);
+  assert.deepEqual(data.categories.map(category => category.tabLabel), ['音乐笔记', 'Travel']);
 });

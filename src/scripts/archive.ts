@@ -82,8 +82,9 @@ function initArchive() {
     button.type = 'button';
     button.className = 'archive-category-button';
     button.dataset.category = category.id;
+    button.title = category.label;
     const label = document.createElement('span');
-    label.textContent = category.label;
+    label.textContent = category.tabLabel;
     const count = document.createElement('small');
     count.textContent = String(columnFiles(lane).length).padStart(2, '0');
     button.append(label, count);
