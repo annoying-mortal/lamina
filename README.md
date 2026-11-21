@@ -6,9 +6,9 @@ Introduce yourself, publish Markdown articles, and collect books, music, and oth
 
 ## Features
 
-- **Home and archive** — personal introduction, a nine-tile About me grid, contact details, and a 3D archive with keyboard, mouse, and touch controls.
+- **Home and archive** — personal introduction, a nine-tile About me grid, contact details, and a 3D archive for posts, Library entries, and public friend links, with keyboard, mouse, and touch controls.
 - **Blog** — categories, tags, drafts, search, table of contents, RSS, highlighted code with copy buttons, footnotes, and KaTeX mathematics.
-- **Library and Friends** — collections with covers, ratings, notes, and related articles; friend links with avatars, labels, ordering, and visibility.
+- **Library and Friends** — collections with covers, ratings, notes, and related articles; a two-column friend directory with avatars and optional descriptions. Visitors can submit a link for manual review in the CMS.
 - **CMS** — Settings, Blog, Library, Friends, Files, and Backup, with English and Chinese interfaces and a live preview of site settings.
 - **Appearance** — RhineLab-inspired light and dark themes, configurable branding, and separate typography for the site, archive, and articles.
 - **Self-hosting** — a static frontend and single-administrator Node.js service, Docker deployment, and ZIP content migration. No external database.
@@ -75,7 +75,7 @@ Set `draft: false` to publish. Drafts stay out of public pages, the archive, Blo
 
 Use explicit, unique IDs and slugs to keep addresses stable when moving files. `pubDate` and `description` are accepted as aliases for `date` and `summary`.
 
-Upload images, SVGs, documents, archives, and other files through **Files**, up to **10 MiB each**. Uploads are saved in `public/static/` and linked as `/static/…`. Image fields can select uploaded images or use external HTTP(S) image URLs. Existing `/uploads/…` links continue to work.
+Upload images, SVGs, documents, archives, and other files through **Files**, up to **256 MiB each**. Uploads are saved in `public/static/` and linked as `/static/…`. Image fields can select uploaded images or use external HTTP(S) image URLs. Existing `/uploads/…` links continue to work.
 
 The [Markdown Guide](src/content/blog/markdown-guide.md) demonstrates the supported formatting. The CMS provides a lightweight preview; article pages show the final typography and mathematics. See the [writing guide](docs/writing.md) (Chinese) for field rules, file editing, and publishing.
 
@@ -104,7 +104,7 @@ Enter the token and create your account. CMS saves automatically build and publi
 | `blog-content` | Articles, settings, Library, Friends, and media index |
 | `blog-uploads` | Uploaded files, served at `/static/` and the legacy `/uploads/` prefix |
 | `blog-published` | Built releases and the active `current` link |
-| `blog-admin` | Administrator credentials and recovery snapshots |
+| `blog-admin` | Administrator credentials, pending friend applications, and recovery snapshots |
 
 Docker seeds articles and settings from [`admin/defaults/`](admin/defaults/README.md). In this mode, the running site uses its volumes rather than the host's `src/content/`.
 
@@ -132,7 +132,7 @@ PORT=8080
 ADMIN_PORT=4322
 ```
 
-Rebuild after changing `SITE_URL`. **Settings → Public URL** takes precedence for canonical and RSS URLs; use the same address if you fill it in. Point an HTTPS reverse proxy at the website's loopback port.
+Rebuild after changing `SITE_URL`. **Settings → Public URL** takes precedence for canonical and RSS URLs; use the same address if you fill it in. Point an HTTPS reverse proxy at the website's loopback port. For friend applications, set `SITE_URL` to the origin visitors use and forward the original `Host` header.
 
 The CMS can remain private, accessed from your computer through an SSH tunnel:
 

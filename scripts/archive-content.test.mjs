@@ -16,21 +16,23 @@ const collection = {
 };
 const categories = [{ id: 'music', label: '音乐笔记', en: 'MUSIC NOTES' }];
 
-test('Blog and Library keep distinct identities and destinations in one archive', () => {
-  const data = createArchiveCollection([post], categories, [collection]);
-  assert.deepEqual(data.posts.map(record => record.id), ['blog:same-id', 'library:same-id']);
-  assert.deepEqual(data.posts.map(record => record.categoryId), ['blog:music', 'library:albums']);
-  assert.deepEqual(data.posts.map(record => record.href), ['/blog/first-post/', '/library/#work-same-id']);
+test('Blog, Library and Friends keep distinct identities and destinations in one archive', () => {
+  const friend = { id: 'same-id', name: 'Another blog', url: 'https://friend.example.test/notes/', domain: 'friend.example.test', avatar: '', description: '', kind: 'Blog', label: '', demo: false };
+  const data = createArchiveCollection([post], categories, [collection], undefined, [friend]);
+  assert.deepEqual(data.posts.map(record => record.id), ['blog:same-id', 'library:same-id', 'friend:same-id']);
+  assert.deepEqual(data.posts.map(record => record.categoryId), ['blog:music', 'library:albums', 'friends']);
+  assert.deepEqual(data.posts.map(record => record.href), ['/blog/first-post/', '/library/#work-same-id', friend.url]);
   assert.equal(data.posts[1].cover, '/uploads/record.jpg');
   assert.equal(data.posts[1].creator, '创作者');
   assert.equal(data.posts[1].rating, '8.5');
   configureArchive(data);
-  assert.deepEqual(archiveColumns, ['blog:music', 'library:albums']);
-  assert.deepEqual(categoryRecords.map(category => category.label), ['Blog · 音乐笔记', 'Library · Albums']);
+  assert.deepEqual(archiveColumns, ['blog:music', 'library:albums', 'friends']);
+  assert.deepEqual(categoryRecords.map(category => category.label), ['Blog · 音乐笔记', 'Library · Albums', 'Friends']);
   assert.deepEqual(columnFiles(0), [0]);
   assert.deepEqual(columnFiles(1), [1]);
   assert.equal(fileLocation(1).lane, 1);
-  assert.equal(records.length, 2);
+  assert.deepEqual(columnFiles(2), [2]);
+  assert.equal(records.length, 3);
 });
 
 test('Library-only archives remain navigable and encode their deep links', () => {
@@ -45,6 +47,16 @@ test('Library-only archives remain navigable and encode their deep links', () =>
   assert.deepEqual(records, []);
   assert.deepEqual(archiveColumns, []);
   assert.deepEqual(columnFiles(0), []);
+});
+
+test('archive payload excludes build-only article data and empty navigation lanes', () => {
+  const entry = { ...post, entry: { body: 'full article' }, sourcePath: 'nested/post.md' };
+  const data = createArchiveCollection([entry], [...categories, { id: 'empty', label: 'Empty', en: 'EMPTY' }], [collection]);
+  assert.deepEqual(data.categories.map(category => category.id), ['blog:music', 'library:albums']);
+  for (const key of ['entry', 'sourcePath', 'slug']) assert.equal(Object.hasOwn(data.posts[0], key), false);
+  configureArchive(data);
+  assert.deepEqual(columnFiles(-1), [1]);
+  assert.deepEqual(columnFiles(2), [0]);
 });
 
 test('Home archive follows configured Library names and order while omitting the aggregate tab', () => {

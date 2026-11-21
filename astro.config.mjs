@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { satteri } from '@astrojs/markdown-satteri';
 import { markdownMath } from './lib/markdown-math.mjs';
 import { markdownCode } from './lib/markdown-code.mjs';
+import { friendApplicationProxy } from './scripts/friend-application-proxy.mjs';
 
 export default defineConfig({
   site: process.env.SITE_URL || 'http://localhost:4321',
@@ -25,10 +26,20 @@ export default defineConfig({
     shikiConfig: { themes: { light: 'github-light', dark: 'github-dark' }, wrap: true },
   },
   vite: {
+    server: {
+      fs: {
+        // Keep Vite's default deny list; CMS credentials and applications are private.
+        deny: ['.env', '.env.*', '*.{crt,pem,key,p12,pfx,cer,der}', '.npmrc', '.yarnrc.yml', '**/.git/**', '**/.admin/**'],
+      },
+    },
     plugins: [{
-      name: 'uploaded-files',
+      name: 'public-runtime-routes',
+      enforce: 'post',
       configureServer(server) {
         server.middlewares.use(uploadedFileHeaders(fileURLToPath(new URL('./public/', import.meta.url))));
+        // Astro prepends its trailing-slash guard after plugin setup. Install
+        // this exact API route after that, before page-only slash handling.
+        return () => server.middlewares.stack.unshift({ route: '', handle: friendApplicationProxy() });
       },
     }],
     build: { chunkSizeWarningLimit: 900 },

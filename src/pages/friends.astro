@@ -10,11 +10,41 @@ const ownSiteURL = site.url.trim();
 <Layout title={page.title} description={page.description} active="friends">
   <div class="page-shell content-page friends-page">
     <header class="content-heading"><p class="eyebrow">{page.eyebrow}</p><div class="heading-row"><h1>{page.title}<span class="heading-period">.</span></h1><span class="collection-count">{String(friends.length).padStart(2, '0')} LINKS</span></div><p class="heading-description">{page.description.split(/\r?\n/).map((line, index) => <>{index > 0 && <br />}{line}</>)}</p></header>
-    <section class="friends-grid" aria-label="Friends">
-      {friends.map(friend => <a class="friend-card" href={friend.url} target="_blank" rel="noopener noreferrer"><div class="friend-top"><span class="friend-avatar" aria-hidden="true">{friend.initials}<span>✳</span>{friend.avatar && <img data-fallback-image src={friend.avatar} alt="" width="49" height="49" loading="lazy" decoding="async" />}</span><span class="friend-external" aria-label="Opens in a new tab">↗</span></div><p class="eyebrow">{friend.label}{friend.demo && <span class="demo-badge friend-demo-badge">Demo</span>}</p><h2>{friend.name}</h2><p class="friend-description">{friend.description}</p><div class="friend-bottom"><span>{friend.domain}</span><span>{friend.kind}</span></div></a>)}
-    </section>
-    {friends.length === 0 && <p class="friend-empty">Enter friend links</p>}
+    {friends.length ? (
+      <ul class="friend-directory" aria-label={page.title} role="list">
+        {friends.map(friend => (
+          <li>
+            <a class="friend-link" href={friend.url} target="_blank" rel="noopener noreferrer">
+              <div class="friend-profile">
+                <span class="friend-avatar" aria-hidden="true">
+                  {friend.initials}
+                  {friend.avatar && <img data-fallback-image src={friend.avatar} alt="" width="112" height="112" loading="lazy" decoding="async" />}
+                </span>
+                <h2>{friend.name}</h2>
+                {friend.description && <p>{friend.description}</p>}
+              </div>
+            </a>
+          </li>
+        ))}
+      </ul>
+    ) : <p class="friend-empty">Enter friend links</p>}
     <section class="friend-own" aria-labelledby="own-site-title"><div><h2 id="own-site-title">Site information</h2>{site.email && <a class="text-button friend-email" href={`mailto:${site.email}`}>Email <span aria-hidden="true">↗</span></a>}</div><div class="site-information"><dl><div><dt>NAME</dt><dd>{site.name}</dd></div><div><dt>LINK</dt><dd>{ownSiteURL ? <a href={ownSiteURL} id="own-site-url">{ownSiteURL}</a> : <span id="own-site-url">Enter site URL</span>}</dd></div><div><dt>ABOUT</dt><dd>{site.description}</dd></div></dl><button class="text-button" id="copy-site-info">Copy site info <span aria-hidden="true">↗</span></button><p id="copy-site-status" class="copy-site-status" role="status" aria-live="polite"></p></div></section>
+    <section class="friend-apply" aria-labelledby="apply-title">
+      <div>
+        <h2 id="apply-title">Apply for a friend link</h2>
+        <p>Your contact details are only visible to the site owner.</p>
+      </div>
+      <form id="friend-application" method="post" action="/api/friend-applications">
+        <label>Name<input name="name" autocomplete="name" maxlength="80" required /></label>
+        <label>Website URL<input name="url" type="url" autocomplete="url" placeholder="https://" maxlength="2000" required /></label>
+        <label class="application-contact">Contact (email, QQ, etc.)<input name="contact" maxlength="254" required /></label>
+        <div class="application-submit">
+          <button type="submit" class="button button-solid" disabled>Send application <span aria-hidden="true">↗</span></button>
+          <span class="application-status" role="status"></span>
+          <noscript>Enable JavaScript to send your application.</noscript>
+        </div>
+      </form>
+    </section>
   </div>
 </Layout>
 
@@ -23,6 +53,40 @@ const ownSiteURL = site.url.trim();
     const root = document.querySelector<HTMLElement>('.friends-page');
     if (!root || root.dataset.initialized) return;
     root.dataset.initialized = 'true';
+    const form = root.querySelector<HTMLFormElement>('#friend-application')!;
+    const submit = form.querySelector('button')!;
+    const status = form.querySelector<HTMLElement>('[role="status"]')!;
+    submit.disabled = false;
+    form.addEventListener('submit', async event => {
+      event.preventDefault();
+      if (submit.disabled) return;
+      submit.disabled = true;
+      status.textContent = 'Sending…';
+      try {
+        const response = await fetch(form.action, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'omit',
+          body: JSON.stringify(Object.fromEntries(new FormData(form))),
+        });
+        if (response.ok && response.headers.get('Content-Type')?.includes('application/json')) {
+          form.reset();
+          status.textContent = 'Application received.';
+        } else if (response.status === 409) {
+          status.textContent = 'An application for this website is already pending.';
+        } else if (response.status === 429) {
+          status.textContent = 'Too many requests. Please try again later.';
+        } else if ([400, 413, 422].includes(response.status)) {
+          status.textContent = 'Check your name, contact details, and HTTP or HTTPS website URL.';
+        } else {
+          status.textContent = 'Could not send your application. Please try again later.';
+        }
+      } catch {
+        status.textContent = 'Could not connect. Please try again.';
+      } finally {
+        submit.disabled = false;
+      }
+    });
     root.querySelector('#copy-site-info')!.addEventListener('click', async () => {
       const values = [...root.querySelectorAll('.site-information dd')].map(item => item.textContent?.trim() || '');
       const status = root.querySelector<HTMLElement>('#copy-site-status')!;

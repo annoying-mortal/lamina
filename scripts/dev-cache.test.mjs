@@ -7,6 +7,7 @@ import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:net';
+import { createServer as createHttpServer } from 'node:http';
 import { setTimeout as delay } from 'node:timers/promises';
 import { init, parse } from 'es-module-lexer';
 
@@ -30,10 +31,10 @@ async function unusedPort() {
   await new Promise(resolve => listener.close(resolve));
   return port;
 }
-function launch(root, args, script = join(root, 'node_modules/astro/bin/astro.mjs')) {
+function launch(root, args, script = join(root, 'node_modules/astro/bin/astro.mjs'), environment = {}) {
   const child = spawn(process.execPath, [script, ...args], {
     cwd: root,
-    env: { ...process.env, ASTRO_TELEMETRY_DISABLED: '1', BUILD_OUTPUT_DIR: join(root, 'dist') },
+    env: { ...process.env, ASTRO_TELEMETRY_DISABLED: '1', BUILD_OUTPUT_DIR: join(root, 'dist'), ...environment },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   let output = '';
@@ -102,7 +103,17 @@ async function sceneGraph(base) {
 test('dev and preview serve uploads safely while archive dependencies survive sync and builds', { timeout: 120000 }, async () => {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'field-dev-cache-')));
   let dev, preview;
+  const submissions = [];
+  const backend = createHttpServer(async (req, res) => {
+    const buffers = [];
+    for await (const chunk of req) buffers.push(chunk);
+    submissions.push({ method: req.method, url: req.url, host: req.headers.host, origin: req.headers.origin, body: Buffer.concat(buffers).toString() });
+    res.writeHead(201, { 'Content-Type': 'application/json' });
+    res.end('{"received":true}');
+  });
   try {
+    await new Promise(resolve => backend.listen(0, '127.0.0.1', resolve));
+    const proxyEnvironment = { ADMIN_PORT: String(backend.address().port) };
     for (const name of ['src', 'public', 'scripts', 'lib', 'astro.config.mjs', 'package.json', 'package-lock.json', 'tsconfig.json']) {
       await cp(join(project, name), join(root, name), { recursive: true, mode: constants.COPYFILE_FICLONE });
     }
@@ -116,11 +127,15 @@ test('dev and preview serve uploads safely while archive dependencies survive sy
     await mkdir(join(root, 'public/uploads'), { recursive: true });
     await writeFile(join(root, 'public/static/document.html'), '<script>sample()</script>');
     await writeFile(join(root, 'public/uploads/旧 file.txt'), 'legacy file');
+    await mkdir(join(root, '.admin'), { recursive: true });
+    const privateMarker = 'PRIVATE_APPLICATION_EMAIL_AND_QQ';
+    await writeFile(join(root, '.admin/friend-applications.json'), JSON.stringify({ email: privateMarker, qq: privateMarker }));
+    await writeFile(join(root, '.env.private'), privateMarker);
     await appendFile(join(root, 'src/content/blog/markdown-guide.md'), '\n[Uploaded document](/uploads/document.html)\n');
     const port = await unusedPort();
     const base = `http://127.0.0.1:${port}`;
     // Astro 7 otherwise auto-backgrounds in agent environments, leaving an orphan after this test.
-    dev = launch(root, ['dev', '--ignore-lock', '--host', '127.0.0.1', '--port', String(port)]);
+    dev = launch(root, ['dev', '--ignore-lock', '--host', '127.0.0.1', '--port', String(port)], undefined, proxyEnvironment);
     await ready(base, dev);
     const checkUploadedFiles = async base => {
       for (const path of ['/static/document.html', '/%73tatic/document.html', '/static%2Fdocument.html', '/uploads/document.html', '/uploads/%E6%97%A7%20file.txt']) {
@@ -131,7 +146,26 @@ test('dev and preview serve uploads safely while archive dependencies survive sy
         assert.equal(await response.text(), path.endsWith('file.txt') ? 'legacy file' : '<script>sample()</script>');
       }
     };
+    const checkPublicSubmissions = async base => {
+      const before = submissions.length;
+      const response = await fetch(base + '/api/friend-applications', { method: 'POST', headers: { Origin: base, 'Content-Type': 'application/json' }, body: '{"name":"Example"}' });
+      assert.equal(response.status, 201);
+      assert.deepEqual(await response.json(), { received: true });
+      assert.deepEqual(submissions.at(-1), { method: 'POST', url: '/api/friend-applications', host: new URL(base).host, origin: base, body: '{"name":"Example"}' });
+      for (const path of ['/api/friend-applications', '/api/friend-applications/', '/api/friend-applications?all=1', '/api/settings', '/api/auth/status', '/api/friends']) {
+        const denied = await fetch(base + path);
+        assert.ok([403, 404, 405].includes(denied.status), `${path} should stay private`);
+        await denied.text();
+      }
+      for (const path of ['/.admin/friend-applications.json', '/%2eadmin/friend-applications.json', `/.admin/friend-applications.json?raw`, `/@fs${root}/.admin/friend-applications.json`, '/.env.private']) {
+        const denied = await fetch(base + path);
+        assert.ok([403, 404].includes(denied.status), `${path} should not be served`);
+        assert.ok(!(await denied.text()).includes(privateMarker), path);
+      }
+      assert.equal(submissions.length, before + 1, 'only the one exact POST reaches the backend');
+    };
     await checkUploadedFiles(base);
+    await checkPublicSubmissions(base);
     const graph = await sceneGraph(base);
     const dependencyUrls = [...graph.keys()].filter(url => new URL(url).pathname.startsWith('/node_modules/.vite/'));
     assert.ok(dependencyUrls.length >= 10, 'fetch the optimized Three.js entries and their shared chunks');
@@ -155,9 +189,10 @@ test('dev and preview serve uploads safely while archive dependencies survive sy
     assert.equal(verificationCode, 0, verificationOutput);
     const previewPort = await unusedPort();
     const previewBase = `http://127.0.0.1:${previewPort}`;
-    preview = launch(root, ['--host', '127.0.0.1', '--port', String(previewPort)], join(root, 'scripts/preview.mjs'));
+    preview = launch(root, ['--host', '127.0.0.1', '--port', String(previewPort)], join(root, 'scripts/preview.mjs'), proxyEnvironment);
     await ready(previewBase, preview);
     await checkUploadedFiles(previewBase);
+    await checkPublicSubmissions(previewBase);
     const refreshed = await sceneGraph(base);
     assert.ok(refreshed.has(new URL('/src/archive/scene.ts', base).href));
     assert.equal((await fetch(base + '/assets/archive-cassette.glb')).status, 200);
@@ -167,6 +202,8 @@ test('dev and preview serve uploads safely while archive dependencies survive sy
   } finally {
     await stop(preview);
     await stop(dev);
+    backend.closeAllConnections();
+    await new Promise(resolve => backend.close(resolve));
     await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 200 });
   }
 });

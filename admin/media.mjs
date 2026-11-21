@@ -4,7 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { Buffer } from 'node:buffer';
 import { detectRasterImage } from './image-format.mjs';
 
-const LIMIT = 10 * 1024 * 1024;
+export const FILE_LIMIT = 256 * 1024 * 1024;
 const types = {
   '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.avif': 'image/avif',
   '.pdf': 'application/pdf', '.txt': 'text/plain', '.md': 'text/markdown', '.csv': 'text/csv', '.json': 'application/json',
@@ -15,14 +15,14 @@ export const fileMimeType = filename => types[extname(filename).toLowerCase()] |
 const rasterTypes = new Set(['image/png', 'image/jpeg', 'image/gif', 'image/webp']);
 function fail(status, message) { throw Object.assign(new Error(message), { status }); }
 async function bytes(req) {
-  if (Number(req.headers['content-length']) > LIMIT) fail(413, '文件不能超过 10 MiB。');
+  if (Number(req.headers['content-length']) > FILE_LIMIT) fail(413, '文件不能超过 256 MiB。');
   return new Promise((accept, reject) => {
     const chunks = []; let size = 0; let settled = false;
     const error = (status, message) => { if (!settled) { settled = true; reject(Object.assign(new Error(message), { status })); } };
     req.on('data', chunk => {
       if (settled) return;
       size += chunk.length;
-      if (size > LIMIT) { error(413, '文件不能超过 10 MiB。'); return; }
+      if (size > FILE_LIMIT) { error(413, '文件不能超过 256 MiB。'); return; }
       chunks.push(chunk);
     });
     req.on('end', () => { if (!settled) { settled = true; accept(Buffer.concat(chunks)); } });

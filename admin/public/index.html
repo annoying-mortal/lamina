@@ -28,12 +28,12 @@
       </aside>
       <main>
         <div class="workspace-utilities"><span class="eyebrow"><span data-en="WORKSPACE" data-zh="工作台">WORKSPACE</span></span><div><div class="language-switch" role="group" aria-label="Language"><button type="button" data-admin-language="en" aria-pressed="true">EN</button><button type="button" data-admin-language="zh" aria-pressed="false">中文</button></div><button type="button" class="theme-button" data-theme-toggle aria-label="Switch to dark mode"><svg class="sun-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg><svg class="moon-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="M20.5 14.2A8.6 8.6 0 0 1 9.8 3.5a8.7 8.7 0 1 0 10.7 10.7Z"/></svg></button><button type="button" id="account-button" class="account-button" aria-haspopup="dialog"><span data-en="Account" data-zh="账号设置">Account</span></button><button type="button" id="logout-button" class="logout-button"><span data-en="Sign out " data-zh="退出登录 ">Sign out </span><span aria-hidden="true">↗</span></button></div></div>
-        <header class="topbar"><div><h1 id="page-title"><span data-en="Blog" data-zh="文章">Blog</span></h1></div><div class="topbar-actions"><button id="publish-button" class="button subtle" hidden><span data-en="Publish" data-zh="重新发布">Publish</span></button><button id="create-button" class="button primary"><span data-en="+ New Blog" data-zh="＋ 新建文章">+ New Blog</span></button></div></header>
+        <header class="topbar"><div><h1 id="page-title"><span data-en="Blog" data-zh="文章">Blog</span></h1></div><div class="topbar-actions"><button id="publish-button" class="button subtle" hidden><span data-en="Publish" data-zh="重新发布">Publish</span></button><button type="button" id="friend-applications-button" class="button subtle" aria-haspopup="dialog" hidden><span data-en="Applications" data-zh="友链申请">Applications</span></button><button id="create-button" class="button primary"><span data-en="+ New Blog" data-zh="＋ 新建文章">+ New Blog</span></button></div></header>
         <div id="publish-status" class="publish-status" role="status"><span data-en="Connecting…" data-zh="连接本地内容库…">Connecting…</span></div>
         <div id="alert" class="alert" role="alert" hidden></div>
         <div id="recovery-banner" class="recovery-banner" role="status" hidden><div><strong><span data-en="Unsaved changes recovered" data-zh="上次未提交的修改仍在这里。">Unsaved changes recovered</span></strong><p id="recovery-description"><span data-en="Review before saving." data-zh="可恢复编辑，再检查并保存。">Review before saving.</span></p></div><div><button type="button" id="restore-recovery" class="button subtle"><span data-en="Restore" data-zh="恢复编辑">Restore</span></button><button type="button" id="discard-recovery" class="button subtle"><span data-en="Discard" data-zh="丢弃暂存">Discard</span></button></div></div>
         <section id="media-panel" class="media-panel" hidden aria-label="Files" data-en-label="Files" data-zh-label="文件">
-          <div class="media-intro"><p><span data-en="Images, documents and other files · Saved in /static/ · Up to 10 MiB each." data-zh="图片、文档及其他文件 · 保存至 /static/ · 单个不超过 10 MiB。">Images, documents and other files · Saved in /static/ · Up to 10 MiB each.</span></p></div>
+          <div class="media-intro"><p><span data-en="User-uploaded images, documents and other files" data-zh="用户上传的图片、文档及其他文件">User-uploaded images, documents and other files</span></p></div>
           <label class="search-label media-search"><span>⌕</span><input id="media-search" type="search" placeholder="Please enter file name" data-en-placeholder="Please enter file name" data-zh-placeholder="请填写文件名称" aria-label="Search files" data-en-label="Search files" data-zh-label="搜索文件" /></label>
           <div id="media-library-grid" class="media-grid"></div>
         </section>
@@ -56,6 +56,12 @@
         </div>
       </main>
     </div>
+    <dialog id="friend-applications-dialog" class="friend-applications-dialog" aria-labelledby="friend-applications-title"><div class="dialog-content">
+      <div class="picker-heading"><h2 id="friend-applications-title"><span data-en="Friend applications" data-zh="友链申请">Friend applications</span></h2><button type="button" id="close-friend-applications" class="button subtle"><span data-en="Close" data-zh="关闭">Close</span></button></div>
+      <div class="friend-applications-toolbar"><span id="friend-applications-count" class="muted"></span><button type="button" id="refresh-friend-applications" class="button subtle"><span data-en="Refresh" data-zh="刷新">Refresh</span></button></div>
+      <p id="friend-applications-status" role="status" hidden></p>
+      <ul id="friend-applications-list" class="friend-applications-list" role="list"></ul>
+    </div></dialog>
     <dialog id="account-dialog" class="account-dialog" aria-labelledby="account-title">
       <div class="dialog-content">
         <div class="picker-heading"><div><span class="eyebrow"><span data-en="ACCOUNT" data-zh="账号">ACCOUNT</span></span><h2 id="account-title"><span data-en="Account" data-zh="账号设置">Account</span></h2></div><button type="button" id="close-account" class="button subtle" aria-label="Close account settings" data-en-label="Close account settings" data-zh-label="关闭账号设置"><span data-en="Close" data-zh="关闭">Close</span></button></div>

@@ -13,6 +13,9 @@ let toastTimer;
 let navigationVersion = 0;
 let settingsPreviewCleanup;
 let settingsGroup = 'basic';
+let friendApplications = [];
+let friendApplicationsBusy = false;
+let friendApplicationsError = '';
 const recoveryKey = 'field-admin-recovery-v1';
 const restoredBackupKey = 'field-admin-backup-restored-v1';
 let recoverable = null;
@@ -245,7 +248,7 @@ function edit(record) {
       imageField('avatar', t("Avatar", "头像地址"), record.avatar, t("Optional.", "留空使用下方的文字标识。")), field('initials', t("Initials", "文字标识"), record.initials, { max: 8, placeholder: t("Please enter initials", "请填写文字标识") }),
       field('kind', t("Type", "类型"), record.kind, { max: 80, placeholder: t("Please enter type", "请填写类型") }), field('label', t("Label", "英文标签"), record.label, { max: 100, placeholder: t("Please enter label", "请填写英文标签") }),
       field('order', t("Order", "显示顺序"), record.order ?? 0, { type: 'number', min: 0, numericMax: 99999, hint: t("Lowest first.", "数字越小越靠前。") }),
-      field('description', t("Description", "站点简介"), record.description, { wide: true, multiline: true, rows: 3, max: 2000 }), checkboxField('visible', t("Visible", "在友链页面显示"), record.visible !== false)
+      field('description', t("Description", "站点简介"), record.description, { wide: true, multiline: true, rows: 3, max: 2000 }), checkboxField('visible', t("Show publicly", "公开显示"), record.visible !== false)
     );
   }
   grid.append(checkboxField('demo', t("Demo", "示例内容"), record.demo));
@@ -416,7 +419,7 @@ function editSettings(record) {
     fragment.append(panel);
   }
   $('#fields').replaceChildren(fragment); selectSettingsGroup(settingsGroup); updatePreviewLink();
-  settingsPreviewCleanup?.(); settingsPreviewCleanup = mountSettingsPreview({ form, getValues: formValue, siteUrl: state.session.siteUrl, library: state.records.library });
+  settingsPreviewCleanup?.(); settingsPreviewCleanup = mountSettingsPreview({ form, getValues: formValue, siteUrl: state.session.siteUrl, library: state.records.library, hasFriends: state.records.friends.some(friend => friend.visible) });
 }
 function newRecord() {
   if (state.backupBusy || state.kind === 'backup') return;
@@ -504,6 +507,49 @@ async function updatePublish() {
   state.publishBusy = status.state === 'building' || status.state === 'queued';
   $('#publish-status').classList.toggle('failed', status.state === 'failed' || watch?.state === 'error'); $('#publish-button').hidden = !status.enabled; $('#publish-button').disabled = state.backupBusy || state.publishBusy;
 }
+function renderFriendApplications() {
+  $('#friend-applications-button').textContent = `${t('Applications', '友链申请')} (${friendApplications.length})`;
+  $('#friend-applications-count').textContent = t(`${friendApplications.length} application${friendApplications.length === 1 ? '' : 's'}`, `${friendApplications.length} 条申请`);
+  $('#refresh-friend-applications').disabled = friendApplicationsBusy;
+  const status = $('#friend-applications-status');
+  status.hidden = !friendApplicationsBusy && !friendApplicationsError;
+  status.className = friendApplicationsError ? 'application-error' : 'muted';
+  status.textContent = friendApplicationsBusy ? t('Updating…', '更新中…') : translateError(friendApplicationsError);
+  const list = $('#friend-applications-list'); list.replaceChildren();
+  for (const record of friendApplications) {
+    const row = element('li', 'friend-application'); row.dataset.applicationId = record.id;
+    const identity = element('div', 'friend-application-identity');
+    const link = element('a', '', record.url); link.href = record.url; link.target = '_blank'; link.rel = 'noopener noreferrer';
+    identity.append(element('h3', '', record.name), link);
+    const details = element('dl', 'friend-application-details');
+    const contact = element('div'); contact.append(element('dt', '', t('Contact', '联系方式')), element('dd', '', record.contact));
+    const submitted = element('div');
+    const time = element('time', '', new Date(record.createdAt).toLocaleString(getLocale() === 'zh' ? 'zh-CN' : 'en-GB')); time.dateTime = record.createdAt;
+    const date = element('dd'); date.append(time); submitted.append(element('dt', '', t('Submitted', '提交时间')), date);
+    details.append(contact, submitted);
+    const remove = element('button', 'text-danger', t('Mark handled & remove', '处理后移除')); remove.type = 'button'; remove.disabled = friendApplicationsBusy;
+    remove.addEventListener('click', () => removeFriendApplication(record));
+    row.append(identity, details, remove); list.append(row);
+  }
+  if (!friendApplications.length && !friendApplicationsBusy && !friendApplicationsError) list.append(element('li', 'no-results', t('No applications.', '暂无申请。')));
+}
+async function refreshFriendApplications() {
+  if (friendApplicationsBusy) return;
+  friendApplicationsBusy = true; friendApplicationsError = ''; renderFriendApplications();
+  try { friendApplications = await api('/api/friend-applications'); }
+  catch (error) { if (!error.handled) friendApplicationsError = error.message; }
+  finally { friendApplicationsBusy = false; renderFriendApplications(); }
+}
+async function removeFriendApplication(record) {
+  if (friendApplicationsBusy || !confirm(t(`Remove the application from “${record.name}”? This cannot be undone.`, `移除「${record.name}」的申请？此操作无法撤销。`))) return;
+  friendApplicationsBusy = true; friendApplicationsError = ''; renderFriendApplications();
+  try {
+    await api(`/api/friend-applications/${encodeURIComponent(record.id)}`, 'DELETE', {});
+    friendApplications = friendApplications.filter(item => item.id !== record.id);
+    message(t('Application removed.', '申请已移除。'));
+  } catch (error) { if (!error.handled) friendApplicationsError = error.message; }
+  finally { friendApplicationsBusy = false; renderFriendApplications(); }
+}
 function updateSectionLabels() {
   const label = sectionLabel(state.kind);
   $('#page-title').textContent = label;
@@ -517,6 +563,8 @@ async function switchKind(kind) {
   state.kind = kind; state.current = null; markDirty(false); clearError(); $('#search').value = '';
   for (const node of document.querySelectorAll('[data-kind]')) { const active = node.dataset.kind === kind; node.classList.toggle('active', active); if (active) node.setAttribute('aria-current', 'page'); else node.removeAttribute('aria-current'); }
   updateSectionLabels();
+  $('#friend-applications-button').hidden = kind !== 'friends';
+  if (kind === 'friends') refreshFriendApplications();
   $('#create-button').hidden = kind === 'settings' || kind === 'backup'; $('#create-button').dataset.upload = String(kind === 'media');
   $('.content-grid').hidden = kind === 'media' || kind === 'backup'; $('.content-grid').classList.toggle('settings-mode', kind === 'settings'); $('.record-panel').hidden = kind === 'settings'; $('#media-panel').hidden = kind !== 'media'; $('#backup-panel').hidden = kind !== 'backup';
   form.hidden = true; $('#empty-editor').hidden = true;
@@ -544,6 +592,11 @@ form.addEventListener('invalid', event => {
 form.addEventListener('submit', save);
 form.addEventListener('input', () => { markDirty(true); updatePreviewLink(); });
 form.addEventListener('change', () => { markDirty(true); updatePreviewLink(); });
+$('#friend-applications-button').addEventListener('click', () => {
+  $('#friend-applications-dialog').showModal(); refreshFriendApplications();
+});
+$('#close-friend-applications').addEventListener('click', () => $('#friend-applications-dialog').close());
+$('#refresh-friend-applications').addEventListener('click', refreshFriendApplications);
 $('#create-button').addEventListener('click', newRecord); $('#search').addEventListener('input', renderList);
 $('#refresh-records').addEventListener('click', refreshList);
 document.querySelectorAll('[data-kind]').forEach(button => button.addEventListener('click', () => switchKind(button.dataset.kind)));
@@ -596,6 +649,7 @@ window.addEventListener('admin:language-change', () => {
   const previewing = Boolean(form.elements.namedItem('body')?.hidden);
   const snapshot = state.current && !form.hidden ? { ...state.current, ...formValue() } : null;
   if (state.kind === 'backup') backup.render();
+  renderFriendApplications();
   if (snapshot) {
     edit(snapshot);
     const restored = [...form.querySelectorAll('input[name], select[name], textarea[name]')];

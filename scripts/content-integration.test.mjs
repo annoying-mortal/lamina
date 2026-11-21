@@ -100,8 +100,11 @@ test('文件与 CMS 共用内容，监听发布更新静态页面且失败保留
     assert.match(home, /认识 集成测试站/); assert.match(home, /从后台编辑的个人介绍/); assert.match(home, /从后台编辑的联系文案/);
     assert.match(home, /data-launched-at="2026-10-20T08:30:00\+08:00"/); assert.match(home, /mailto:hello@example.test/);
     const archiveSource = home.match(/<script\b[^>]*id="archive-data"[^>]*>([\s\S]*?)<\/script>/)?.[1];
-    assert.ok(archiveSource, 'Home embeds a shared Blog/Library archive');
+    assert.ok(archiveSource, 'Home embeds the archive');
     const archive = JSON.parse(archiveSource);
+    const friend = archive.posts.find(record => record.kind === 'friend' && record.title === '已展示的朋友');
+    assert.equal(friend?.href, 'https://friend.example.test/');
+    assert.ok(!home.includes('不应展示的朋友'));
     assert.ok(archive.posts.some(record => record.title === '本地封面' && record.cover === image.url));
     assert.ok(archive.posts.some(record => record.title === '图床封面' && record.cover === 'https://images.example.test/cover.png?size=2'));
     assert.ok(!archive.posts.some(record => record.title === '不应公开的草稿'));

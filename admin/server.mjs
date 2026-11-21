@@ -14,6 +14,7 @@ import { createMediaStore } from './media.mjs';
 import { createAuth } from './auth.mjs';
 import { createContentWatch } from './content-watch.mjs';
 import { createBackupStore, readBackupBody } from './backup.mjs';
+import { createFriendApplications, validateApplicationOrigin } from './friend-applications.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const assetFiles = new Map([
@@ -199,15 +200,16 @@ async function atomicWrite(path, text) {
   try { await writeFile(temp, text, { encoding: 'utf8', flag: 'wx', mode: 0o600 }); await rename(temp, path); }
   finally { await unlink(temp).catch(error => { if (error.code !== 'ENOENT') throw error; }); }
 }
-async function bodyJson(req) {
+async function bodyJson(req, { limit = 1024 * 1024, sizeError = '请求内容过大，最多 1 MiB。' } = {}) {
   assert(req.headers['content-type']?.split(';')[0] === 'application/json', '请使用 JSON 请求内容。', 415);
+  assert(!(Number(req.headers['content-length']) > limit), sizeError, 413);
   const buffers = []; let length = 0;
   await new Promise((resolve, reject) => {
     let settled = false;
     req.on('data', chunk => {
       if (settled) return;
       length += chunk.length;
-      if (length > 1024 * 1024) { settled = true; reject(Object.assign(new Error('请求内容过大，最多 1 MiB。'), { status: 413 })); return; }
+      if (length > limit) { settled = true; reject(Object.assign(new Error(sizeError), { status: 413 })); return; }
       buffers.push(chunk);
     });
     req.on('end', () => { if (!settled) { settled = true; resolve(); } });
@@ -220,10 +222,11 @@ async function bodyJson(req) {
 /** A local CMS. dataDir may point to a temporary fixture for tests. */
 export function createServer(options = {}) {
   const projectRoot = resolve(options.projectRoot || join(here, '..'));
+  const authDir = options.authDir || process.env.ADMIN_AUTH_DIR || join(projectRoot, '.admin');
   const authOptions = isObject(options.auth) ? options.auth : {};
   const auth = options.auth === false ? null : createAuth({
     ...authOptions,
-    authDir: options.authDir || process.env.ADMIN_AUTH_DIR || join(projectRoot, '.admin'),
+    authDir,
     secureCookies: authOptions.secureCookies ?? process.env.ADMIN_SECURE_COOKIES === '1',
     loopbackPublished: authOptions.loopbackPublished ?? process.env.ADMIN_LOOPBACK_PUBLISHED === '1',
     allowRemoteSetup: authOptions.allowRemoteSetup ?? process.env.ADMIN_ALLOW_REMOTE_SETUP === '1',
@@ -236,6 +239,7 @@ export function createServer(options = {}) {
   const uploadsDir = resolve(options.mediaDir || process.env.SITE_UPLOADS_DIR || join(projectRoot, 'public/static'));
   const media = createMediaStore({ projectRoot, mediaDir: uploadsDir, mediaIndexPath: join(dataDir, 'media.json') });
   const siteUrl = options.siteUrl || process.env.ADMIN_SITE_URL || process.env.SITE_URL || 'http://127.0.0.1:4321';
+  const friendApplications = createFriendApplications({ directory: authDir, write: atomicWrite });
   const autoPublish = options.autoPublish ?? process.env.ADMIN_AUTO_PUBLISH === '1';
   const token = randomBytes(32).toString('hex');
   const configuredHosts = options.allowedHosts || (process.env.ADMIN_ALLOWED_HOSTS || '').split(',').filter(Boolean);
@@ -332,7 +336,7 @@ export function createServer(options = {}) {
   publish.watch = contentWatch.status;
   const backups = createBackupStore({
     projectRoot, dataDir, uploadsDir, siteUrl, readSettings,
-    backupDir: options.backupDir || join(options.authDir || process.env.ADMIN_AUTH_DIR || join(projectRoot, '.admin'), 'backups'),
+    backupDir: options.backupDir || join(authDir, 'backups'),
     validators: {
       settings: value => validSettings({ ...value, ...homeSettings(value), ...librarySettings(value) }),
       library: validLibrary, friend: validFriend, post: validPost,
@@ -369,6 +373,12 @@ export function createServer(options = {}) {
     res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self' https://cdn.jsdelivr.net; font-src 'self' https://cdn.jsdelivr.net; img-src 'self' http: https: blob:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");
     const json = (status, value) => { res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' }); res.end(JSON.stringify(value)); };
     try {
+      if (req.method === 'POST' && req.url === '/api/friend-applications') {
+        validateApplicationOrigin(req, siteUrl);
+        friendApplications.consumeAttempt();
+        const input = await bodyJson(req, { limit: 8 * 1024, sizeError: '申请内容过大，最多 8 KiB。' });
+        json(201, await friendApplications.submit(input)); return;
+      }
       validateAccess(req);
       const pathname = new URL(req.url, 'http://local.invalid').pathname;
       if (req.method === 'GET' && pathname === '/healthz') { json(200, { status: 'ok' }); return; }
@@ -414,6 +424,16 @@ export function createServer(options = {}) {
       const session = auth ? auth.requireSession(req, res) : { csrf: token };
       if (auth && !['GET', 'HEAD'].includes(req.method)) auth.requireCsrf(req, session);
       const runAuthorized = action => auth ? auth.withSession(req, res, action) : action();
+      if (pathname === '/api/friend-applications') {
+        assert(req.method === 'GET', '此地址仅支持读取申请。', 405);
+        json(200, await friendApplications.list()); return;
+      }
+      if (pathname.startsWith('/api/friend-applications/')) {
+        assert(req.method === 'DELETE', '此地址仅支持删除申请。', 405);
+        const id = pathname.slice('/api/friend-applications/'.length);
+        assert(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(id), '申请 ID 无效。');
+        json(200, await friendApplications.remove(id, runAuthorized)); return;
+      }
       if (pathname === '/api/account') {
         assert(auth, '测试模式下不提供账号设置。', 409);
         if (req.method === 'GET') { json(200, auth.account(req, res)); return; }

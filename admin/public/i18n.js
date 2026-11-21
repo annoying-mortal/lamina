@@ -111,7 +111,7 @@ const errors = {
   'Markdown 正文不能为空，最长 300,000 字。': 'Markdown content is required, up to 300,000 characters.',
   '收藏内容格式不正确。': 'Invalid library item.',
   '关联文章应为 /blog/article-slug/ 格式。': 'Related post must use /blog/article-slug/.',
-  '文件不能超过 10 MiB。': 'Files must be no larger than 10 MiB.',
+  '文件不能超过 256 MiB。': 'Files must be no larger than 256 MiB.',
   '文件上传已中断。': 'File upload interrupted.',
   '文件上传失败。': 'File upload failed.',
   '文件目录索引损坏，请恢复备份后重试。': 'File index is invalid. Restore a backup.',

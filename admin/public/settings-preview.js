@@ -7,7 +7,7 @@ const names = {
 };
 const views = Object.keys(names);
 
-export function mountSettingsPreview({ form, getValues, siteUrl, library = [] }) {
+export function mountSettingsPreview({ form, getValues, siteUrl, library = [], hasFriends }) {
   const fields = form.querySelector('#fields');
   const shell = element('div', 'settings-editor-body');
   const panel = element('details', 'settings-preview');
@@ -156,9 +156,10 @@ export function mountSettingsPreview({ form, getValues, siteUrl, library = [] })
       const brand = logo('preview-archive-brand', true);
       brand.append(element('small', '', text(settings.archiveSubtitle)), element('strong', '', text(settings.archiveTitle)));
       const selection = element('div', 'preview-archive-selection');
-      selection.append(element('small', '', 'BLOG / LIBRARY'));
+      selection.append(element('small', '', t('Categories', '分类')));
       for (const category of settings.categories || []) selection.append(element('span', '', category.label));
       for (const category of settings.libraryTypes || []) if (category.id !== 'all') selection.append(element('span', '', category.label));
+      if (hasFriends) selection.append(element('span', '', 'Friends'));
       body.append(brand, selection);
     } else if (view === 'contact') {
       body.append(element('small', '', text(settings.contactEyebrow)), element('h2', '', text(settings.contactTitle)), element('p', '', text(settings.contactBody)));

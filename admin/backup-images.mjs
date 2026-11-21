@@ -8,17 +8,17 @@ import https from 'node:https';
 import { resolve, join, dirname, relative, sep, basename, extname } from 'node:path';
 import { parseDocument, isMap, isSeq, isScalar } from 'yaml';
 import { detectRasterImage } from './image-format.mjs';
-import { fileMimeType } from './media.mjs';
+import { fileMimeType, FILE_LIMIT } from './media.mjs';
 
 export const IMAGE_LIMIT = 20 * 1024 * 1024;
-const TOTAL_LIMIT = 256 * 1024 * 1024;
+const TOTAL_LIMIT = 512 * 1024 * 1024;
 const imageKey = /^(?:logo|favicon|orbitImage|cover|avatar|image|thumbnail|poster|banner)$/i;
 const fail = message => { throw Object.assign(new Error(message), { status: 422 }); };
 
 /** Only images are restored into the public uploads directory. SVG is deliberately passive. */
-export function validateBackupImage(bytes) {
-  const data = Buffer.from(bytes);
-  if (!data.length || data.length > IMAGE_LIMIT) fail('Image exceeds the 20 MiB limit.');
+export function validateBackupImage(bytes, limit = IMAGE_LIMIT) {
+  const data = Buffer.isBuffer(bytes) ? bytes : Buffer.from(bytes);
+  if (!data.length || data.length > limit) fail(`Image exceeds the ${limit / 1024 / 1024} MiB limit.`);
   const raster = detectRasterImage(data);
   if (raster) return raster;
   if (data.length >= 22 && data.readUInt16LE(0) === 0 && data.readUInt16LE(2) === 1 && data.readUInt16LE(4) > 0 && data.length >= 6 + data.readUInt16LE(4) * 16) {
@@ -100,7 +100,7 @@ function safeLocalPath(value) {
   if (!path || /[\\\x00-\x1f\x7f]/.test(path) || path.split('/').some(part => part === '..' || (part.startsWith('.') && part !== '.') || part.startsWith('~')) || /%(?:2e|2f|5c|00)/i.test(path)) fail('Unsafe local image path.');
   return path;
 }
-async function readLocal(root, path) {
+async function readLocal(root, path, limit = IMAGE_LIMIT) {
   root = resolve(root); const file = resolve(root, path);
   if (!file.startsWith(root + sep)) fail('Image is outside the content directory.');
   // Reject symlinks at every level, not just the final image.
@@ -109,7 +109,7 @@ async function readLocal(root, path) {
   const rootReal = await realpath(root); const fileReal = await realpath(file);
   if (!fileReal.startsWith(rootReal + sep)) fail('Image is outside the content directory.');
   const handle = await open(file, constants.O_RDONLY | constants.O_NOFOLLOW);
-  try { const stat = await handle.stat(); if (!stat.isFile() || stat.size > IMAGE_LIMIT) fail('Image is not a regular file or exceeds 20 MiB.'); return await handle.readFile(); }
+  try { const stat = await handle.stat(); if (!stat.isFile() || stat.size > limit) fail(`File is not a regular file or exceeds ${limit / 1024 / 1024} MiB.`); return await handle.readFile(); }
   finally { await handle.close(); }
 }
 
@@ -284,8 +284,8 @@ export async function prepareBackupImages({ files, projectRoot, dataDir, uploads
         const path = safeLocalPath(source);
         if (/^\/(?:static|uploads)\//.test(path)) {
           const local = path.replace(/^\/(?:static|uploads)\//, '');
-          try { data = await readLocal(uploadsDir, local); }
-          catch (error) { if (!path.startsWith('/uploads/') || !['ENOENT', 'ENOTDIR'].includes(error.code)) throw error; data = await readLocal(join(projectRoot, 'public/uploads'), local); }
+          try { data = await readLocal(uploadsDir, local, FILE_LIMIT); }
+          catch (error) { if (!path.startsWith('/uploads/') || !['ENOENT', 'ENOTDIR'].includes(error.code)) throw error; data = await readLocal(join(projectRoot, 'public/uploads'), local, FILE_LIMIT); }
         }
         else if (path.startsWith('/')) data = await readLocal(join(projectRoot, 'public'), path.slice(1));
         else {
@@ -295,7 +295,7 @@ export async function prepareBackupImages({ files, projectRoot, dataDir, uploads
         }
       }
       let format, folder = 'images';
-      try { format = validateBackupImage(data); }
+      try { format = validateBackupImage(data, uploaded ? FILE_LIMIT : IMAGE_LIMIT); }
       catch (error) {
         if (!uploaded) throw error;
         const extension = extname(source.split(/[?#]/)[0]).slice(1).toLowerCase();
@@ -305,7 +305,7 @@ export async function prepareBackupImages({ files, projectRoot, dataDir, uploads
       const { ext, mime } = format;
       const id = `backup-${createHash('sha256').update(data).digest('hex')}.${ext}`;
       if (!metadata.has(id)) {
-        total += data.length; if (total > TOTAL_LIMIT) fail('Referenced files exceed the 256 MiB backup limit.');
+        total += data.length; if (total > TOTAL_LIMIT) fail('Referenced files exceed the 512 MiB backup limit.');
         output.set(`${folder}/${id}`, Buffer.from(data));
         metadata.set(id, { id, name: (basename(source.split(/[?#]/)[0]) || id).slice(0, 200), url: `/static/${id}`, mime, size: data.length, createdAt: new Date().toISOString() });
       }

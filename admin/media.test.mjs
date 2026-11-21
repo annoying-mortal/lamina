@@ -42,13 +42,44 @@ test('上传持久化图片及原名，后台预览读取同一字节，不公�
   assert.equal((await fetch(base + '/uploads/.media.json')).status, 404);
 }));
 
-test('上传拒绝伪装图片、损坏签名、路径文件名与超限文件', () => fixture(async ({ upload }) => {
+test('上传拒绝伪装图片、损坏签名与路径文件名', () => fixture(async ({ upload }) => {
   assert.equal((await upload(png, { 'Content-Type': 'image/jpeg' })).status, 415);
   assert.equal((await upload(Buffer.from('<script>alert(1)</script>'))).status, 415);
   assert.equal((await upload(png.subarray(0, 24))).status, 415);
   assert.equal((await upload(png, { 'X-File-Name': '..%2Fsecret.png' })).status, 400);
-  assert.equal((await upload(Buffer.alloc(10 * 1024 * 1024 + 1))).status, 413);
 }));
+
+test('文件上传接受超过原 10 MiB 限制的文件', () => fixture(async ({ upload, mediaDir }) => {
+  const data = Buffer.alloc(10 * 1024 * 1024 + 1, 42);
+  const response = await upload(data, { 'Content-Type': 'application/octet-stream', 'X-File-Name': 'large.bin' });
+  assert.equal(response.status, 201);
+  const record = await response.json();
+  assert.equal(record.size, data.length);
+  assert.deepEqual(await readFile(join(mediaDir, record.id)), data);
+}));
+
+test('文件上传对声明长度和分块请求均执行 256 MiB 上限', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'field-media-limit-'));
+  const store = createMediaStore({ projectRoot: root });
+  const request = new PassThrough();
+  request.method = 'POST';
+  request.headers = { 'content-type': 'application/octet-stream', 'x-file-name': 'large.bin' };
+  const exceedsLimit = error => error.status === 413 && error.message === '文件不能超过 256 MiB。';
+  try {
+    await assert.rejects(store.handle({ method: 'POST', headers: { ...request.headers, 'content-length': String(256 * 1024 * 1024 + 1) } }, {}, '/api/media'), exceedsLimit);
+    let rejected = false;
+    const pending = assert.rejects(store.handle(request, {}, '/api/media').catch(error => { rejected = true; throw error; }), exceedsLimit);
+    const chunk = Buffer.alloc(1024 * 1024);
+    for (let i = 0; i < 256; i++) request.write(chunk);
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(rejected, false, '恰好 256 MiB 时应继续接受请求');
+    request.end(Buffer.from([0]));
+    await pending;
+  } finally {
+    request.destroy();
+    await rm(root, { recursive: true, force: true });
+  }
+});
 
 test('并行上传不丢索引且重名文件各有独立地址', () => fixture(async ({ upload, base }) => {
   const results = await Promise.all(Array.from({ length: 4 }, () => upload()));

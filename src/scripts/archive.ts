@@ -1,10 +1,9 @@
 import {
-  configureArchive, records, archiveColumns, categoryRecords, columnFiles,
+  archiveRecordPresentation, configureArchive, records, archiveColumns, categoryRecords, columnFiles,
   fileLocation, type ArchiveData,
 } from '../archive/data';
 import { wrap, type ArchiveCell, type ArchiveNavigation } from '../archive/archive-loop';
 import type { ArchiveScene } from '../archive/scene';
-import { fullMotion, reducedMotion } from '../archive/motion-preferences';
 
 const STORAGE_KEY = 'field-notes:archive';
 let teardown: (() => void) | undefined;
@@ -40,6 +39,8 @@ function initArchive() {
   const categoriesHost = section.querySelector<HTMLElement>('#archive-categories')!;
   const cover = section.querySelector<HTMLImageElement>('#archive-preview-cover')!;
   const ratingRow = section.querySelector<HTMLElement>('#archive-preview-rating-row')!;
+  const dateRow = section.querySelector<HTMLElement>('#archive-preview-date-row')!;
+  const readingRow = section.querySelector<HTMLElement>('#archive-preview-reading-row')!;
   const original = section.querySelector<HTMLElement>('#archive-preview-original')!;
   const ticks = section.querySelector('#archive-ticks')!;
   const previewContent = section.querySelector<HTMLElement>('#archive-preview-content')!;
@@ -94,54 +95,64 @@ function initArchive() {
   const refresh = (animate = false) => {
     const post = records[selected];
     const isLibrary = post.kind === 'library';
+    const isFriend = post.kind === 'friend';
+    const presentation = archiveRecordPresentation(post);
     const { lane } = fileLocation(selected);
     const category = categoryRecords[lane];
     const files = columnFiles(lane);
     const number = String(files.indexOf(selected) + 1).padStart(2, '0');
     const total = String(files.length).padStart(2, '0');
     const code = String(selected + 1).padStart(3, '0');
-    const fileCode = `${isLibrary ? 'L' : 'B'}-${code}`;
+    const fileCode = `${presentation.prefix}-${code}`;
     text('archive-category', category.label, animate);
     text('archive-category-name', category.label, animate);
     text('archive-file-code', fileCode, animate);
     text('archive-title', post.title, animate);
     text('archive-summary', post.summary);
-    text('archive-date', isLibrary
-      ? [post.creator || 'Unknown creator', post.date].filter(Boolean).join(' · ')
-      : `${post.date} · ${post.readTime} MIN READ`);
-    text('archive-kind', isLibrary ? 'LIBRARY / COLLECTION' : 'BLOG / ARTICLE');
+    text('archive-date', presentation.selectionMeta);
+    text('archive-kind', presentation.kind);
     text('archive-count', `${number} / ${total}`);
     text('archive-number', number);
     text('archive-total', total);
     text('archive-category-count', `${String(lane + 1).padStart(2, '0')} / ${String(archiveColumns.length).padStart(2, '0')}`);
     text('archive-object-code', `NO.${code}`);
     text('archive-preview-code', `FILE ${fileCode}`);
-    text('archive-preview-kind', isLibrary ? 'COLLECTION PREVIEW' : 'ARTICLE PREVIEW');
+    text('archive-preview-kind', presentation.previewKind);
     text('archive-preview-title', post.title);
     text('archive-preview-category', category.label);
-    text('archive-preview-category-label', isLibrary ? 'TYPE' : 'CATEGORY');
-    text('archive-preview-category-value', post.category);
-    text('archive-preview-label', isLibrary ? (post.demo ? 'Demo' : 'PERSONAL COLLECTION') : 'BLOG / ARTICLE');
-    text('archive-preview-date-label', isLibrary ? 'ADDED' : 'PUBLISHED');
+    text('archive-preview-category-label', presentation.categoryLabel);
+    text('archive-preview-category-value', presentation.categoryValue);
+    text('archive-preview-label', presentation.previewLabel);
+    text('archive-preview-date-label', presentation.dateLabel);
     text('archive-preview-date', post.date || '—');
     text('archive-preview-tags', post.tags.join(' · ') || '—');
-    text('archive-preview-reading-label', isLibrary ? 'CREATOR' : 'READING');
-    text('archive-preview-readtime', isLibrary ? (post.creator || '—') : `${post.readTime} min`);
+    text('archive-preview-reading-label', presentation.readingLabel);
+    text('archive-preview-readtime', presentation.readingValue);
     text('archive-preview-rating', post.rating ? `${post.rating} / 10${post.demo ? ' · Demo rating' : ''}` : 'Unrated');
     ratingRow.hidden = !isLibrary;
+    dateRow.hidden = isFriend;
+    readingRow.hidden = isFriend;
     text('archive-preview-original', post.original || '');
     original.hidden = !isLibrary || !post.original || post.original === post.title;
-    cover.hidden = !isLibrary || !post.cover;
-    cover.alt = `${post.title}${post.demo ? ' demo cover' : ' cover'}`;
-    if (isLibrary && post.cover) {
+    cover.hidden = !post.cover;
+    cover.alt = `${post.title}${isFriend ? ' avatar' : post.demo ? ' demo cover' : ' cover'}`;
+    cover.height = isFriend ? 84 : 112;
+    if (post.cover) {
       if (cover.getAttribute('src') !== post.cover) cover.src = post.cover;
       else if (cover.complete && cover.naturalWidth === 0) cover.hidden = true;
     } else cover.removeAttribute('src');
-    text('archive-summary-label', isLibrary ? 'NOTE' : 'SUMMARY');
-    text('archive-read-label', isLibrary ? 'VIEW COLLECTION' : 'READ ARTICLE');
+    text('archive-summary-label', presentation.summaryLabel);
+    text('archive-read-label', presentation.readLabel);
     text('archive-preview-count', `${code} / ${String(records.length).padStart(3, '0')}`);
     read.href = post.href;
-    read.setAttribute('aria-label', `${isLibrary ? 'View entry' : 'Read article'}: ${post.title}`);
+    if (isFriend) {
+      read.target = '_blank';
+      read.rel = 'noopener noreferrer';
+    } else {
+      read.removeAttribute('target');
+      read.removeAttribute('rel');
+    }
+    read.setAttribute('aria-label', `${presentation.readAction}: ${post.title}`);
     open.setAttribute('aria-label', `Preview: ${post.title}`);
     const count = Math.min(files.length, 12);
     const active = Math.min(count - 1, Math.floor(files.indexOf(selected) * count / files.length));
@@ -194,9 +205,7 @@ function initArchive() {
     // A normal article navigation can return to the same Home archive and file.
     if (location.hash !== '#archives') history.replaceState(history.state, '', `${location.pathname}${location.search}#archives`);
   };
-  const detailStatus = () => records[selected].kind === 'library'
-    ? 'Entry preview'
-    : 'Post preview';
+  const detailStatus = () => ({ blog: 'Post preview', library: 'Entry preview', friend: 'Website preview' })[records[selected].kind];
   const setMode = (next: typeof mode, focus = false) => {
     mode = next;
     section.dataset.mode = mode;
@@ -278,7 +287,7 @@ function initArchive() {
       scene.renderer.domElement.setAttribute('aria-label', '3D archive. Left and right change categories; up and down select entries. Press Enter to preview. Scroll to continue.');
       scene.renderer.domElement.style.touchAction = 'pan-y pinch-zoom';
       scene.renderer.domElement.style.display = 'block';
-      scene.setMotion(reduced.matches ? reducedMotion() : fullMotion());
+      scene.setReducedMotion(reduced.matches);
       scene.setTheme(document.documentElement.dataset.theme === 'dark', true);
       await scene.load();
       if (destroyed) return;
@@ -293,7 +302,7 @@ function initArchive() {
       resume();
     } catch (error) {
       if (destroyed) return;
-      console.warn('Archive rendering unavailable; Blog and Library navigation remains available.', error);
+      console.warn('Archive rendering unavailable; Blog, Library and Friends navigation remains available.', error);
       scene?.dispose(); scene = undefined;
       section.dataset.scene = 'unavailable';
       section.style.setProperty('--detail-visibility', '1');
@@ -328,7 +337,7 @@ function initArchive() {
     const theme = (event as CustomEvent<{ theme: 'light' | 'dark' }>).detail.theme;
     scene?.setTheme(theme === 'dark', reduced.matches);
   }, { signal: events.signal });
-  reduced.addEventListener('change', () => scene?.setMotion(reduced.matches ? reducedMotion() : fullMotion()), { signal: events.signal });
+  reduced.addEventListener('change', () => scene?.setReducedMotion(reduced.matches), { signal: events.signal });
   refresh();
   teardown = () => {
     destroyed = true;

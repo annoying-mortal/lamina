@@ -65,15 +65,22 @@ try {
   const interestSlots = tags(home, 'article').filter(tag => Object.hasOwn(tag, 'data-interest-slot'));
   check(interestSlots.length === 9 && interestSlots.every((tag, index) => Number(tag['data-interest-slot']) === index + 1), 'About me 应包含按顺序排列的九个作品槽位');
   const archiveSource = home.match(/<script\b[^>]*id="archive-data"[^>]*>([\s\S]*?)<\/script>/)?.[1];
-  check(Boolean(archiveSource), 'Home 缺少 Blog 与 Library 共用的档案数据');
+  check(Boolean(archiveSource), 'Home 缺少档案数据');
   if (archiveSource) {
     const archive = JSON.parse(archiveSource);
     const librarySource = JSON.parse(await readFile(join(project, 'src/content/library.json'), 'utf8'));
+    const friends = JSON.parse(await readFile(join(project, 'src/content/friends.json'), 'utf8'))
+      .filter(friend => friend.visible).sort((a, b) => a.order - b.order);
+    const friendRecords = archive.posts.filter(record => record.kind === 'friend');
+    check(friendRecords.length === friends.length && friendRecords.every((record, index) =>
+      record.title === friends[index].name && record.href === friends[index].url && /^https?:\/\//i.test(record.href)),
+      'Home 友链档案的名称、顺序或外链与公开友链不一致');
     check(archive.posts.filter(record => record.kind === 'blog').length === publishedSource.length, 'Home 的 Blog 档案与公开文章数量不一致');
     check(archive.posts.filter(record => record.kind === 'library').length === librarySource.length, 'Home 的 Library 档案与收藏数量不一致');
     check(new Set(archive.posts.map(record => record.id)).size === archive.posts.length, 'Home 档案 ID 冲突');
     for (const record of archive.posts) {
       check(archive.categories.some(category => category.id === record.categoryId), `档案 ${record.title} 缺少对应分类`);
+      if (record.kind === 'friend') continue;
       const target = new URL(record.href, 'http://verify.local');
       check(await exists(diskPath(target.pathname)), `档案 ${record.title} 的访问入口不存在`);
       if (record.kind === 'library') check(tags(core.get('/library/') ?? '', 'dialog').some(tag => tag.id === decodeURIComponent(target.hash.slice(1))), `收藏 ${record.title} 的详情链接没有匹配弹窗`);

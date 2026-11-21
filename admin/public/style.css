@@ -11,8 +11,8 @@
   [hidden] { display: none !important; }
 }
 @layer base {
-  :root { color-scheme: light; --bg: #eae5e1; --surface: #edebe4; --fg: #1a1a1b; --muted: #767679; --line: #dfdfe0; --soft: #e7e3d9; --error: #a43e37; --mono: var(--font-sans); font: 14px/1.75 var(--font-sans); color: var(--fg); background: var(--bg); }
-  :root[data-theme='dark'] { color-scheme: dark; --bg: #11181b; --surface: #202a2f; --fg: #eaeaea; --muted: #96969a; --line: #29292c; --soft: #2a363b; --error: #db938b; }
+  :root { color-scheme: light; --bg: #eae5e1; --fg: #1a1a1b; --muted: #767679; --line: #dfdfe0; --soft: #e7e3d9; --error: #a43e37; font: 14px/1.75 var(--font-sans); color: var(--fg); background: var(--bg); }
+  :root[data-theme='dark'] { color-scheme: dark; --bg: #11181b; --fg: #eaeaea; --muted: #96969a; --line: #29292c; --soft: #2a363b; --error: #db938b; }
   body { background: var(--bg); color: var(--fg); -webkit-font-smoothing: antialiased; transition: background-color .25s, color .25s; }
   :focus-visible { outline: 2px solid var(--fg); outline-offset: 5px; }
   ::selection { background: #c7d4c4; color: #131813; }
@@ -223,3 +223,17 @@ main:has(.settings-mode) > .topbar h1 { position: absolute; width: 1px; height: 
 .backup-status,.backup-error { padding: 14px 0 22px; font-size: 12px; overflow-wrap: anywhere; }.backup-status { color: var(--muted); }.backup-error { color: var(--error); }.backup-dialog { max-width: 560px; }
 .nav-button:disabled,.account-button:disabled,.logout-button:disabled { opacity: .45; }
 @media(max-width:760px) { .backup-section { grid-template-columns: minmax(0,1fr); gap: 20px; padding: 25px 0; }.backup-heading { display: flex; align-items: baseline; gap: 16px; }.backup-heading .eyebrow { margin: 0; }.backup-intro { margin-bottom: 25px; }.backup-counts { gap: 12px; }.backup-counts dd { font-size: 23px; }.backup-actions { gap: 12px 20px; } }
+
+.friend-applications-dialog { max-width: 900px; }
+.friend-applications-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin: 18px 0 8px; font-size: 12px; }
+.friend-applications-list { list-style: none; padding: 0; margin: 0; }
+.friend-application { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 20px 32px; padding: 25px 0; border-top: 1px solid var(--line); }
+.friend-application-identity { min-width: 0; }
+.friend-application h3 { font-size: 17px; font-weight: 500; margin-bottom: 8px; overflow-wrap: anywhere; }
+.friend-application-identity a { font-size: 12px; color: var(--muted); overflow-wrap: anywhere; text-decoration: underline; text-underline-offset: 3px; }
+.friend-application-details { display: grid; gap: 15px; margin: 0; min-width: 0; }
+.friend-application-details dt { color: var(--muted); font-size: 11px; }
+.friend-application-details dd { font-size: 13px; margin: 4px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.friend-application > button { grid-column: 1 / -1; justify-self: end; }
+.application-error { color: var(--error); }
+@media(max-width:600px) { .friend-application { grid-template-columns: minmax(0,1fr); gap: 20px; }.friend-application > button { justify-self: start; } }

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, readFile, writeFile, readdir, rm, symlink } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, writeFile, readdir, rm, symlink, open } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
@@ -8,6 +8,8 @@ import { setTimeout } from 'node:timers/promises';
 import { zipSync } from 'fflate';
 import { createServer } from './server.mjs';
 import { unpackBackup, BACKUP_LIMITS } from './backup.mjs';
+import { validateBackupImage, IMAGE_LIMIT } from './backup-images.mjs';
+import { FILE_LIMIT } from './media.mjs';
 
 const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=', 'base64');
 const rawPost = '---\r\ntitle: Original post\r\ndate: 2026-10-20\r\ncustom:\r\n  nested: [one, two]\r\ndraft: true\r\n---\r\n\r\n# Exact Markdown\r\n\r\nA **custom** source.\r\n';
@@ -210,3 +212,37 @@ test('referenced uploaded documents survive export and restore; legacy image ZIP
   for (const [path, bytes] of files) if (path.startsWith('content/')) files.set(path, Buffer.from(bytes.toString().replaceAll('/static/', '/uploads/')));
   const oldPreview = await request('/api/backup/inspect', 'POST', repack(files)); assert.equal(oldPreview.status, 200, oldPreview.body.error);
 }));
+
+
+test('local uploaded images above 20 MiB export and restore while remote validation stays capped', () => fixture(async ({ dataDir, uploads, request }) => {
+  const image = Buffer.concat([Buffer.from('<svg xmlns="http://www.w3.org/2000/svg">'), Buffer.alloc(IMAGE_LIMIT, 32), Buffer.from('</svg>')]);
+  assert.throws(() => validateBackupImage(image), /20 MiB/);
+  assert.equal(validateBackupImage(image, FILE_LIMIT).ext, 'svg');
+  await writeFile(join(uploads, 'large.svg'), image);
+  await writeFile(join(dataDir, 'blog/nested/中文 note.md'), rawPost + '\n![Large image](/static/large.svg)\n');
+  const exported = await request('/api/backup/export'); assert.equal(exported.status, 200, exported.body.error);
+  const files = unpackBackup(exported.body), id = `backup-${sha(image)}.svg`;
+  assert.equal(files.get(`images/${id}`).length, image.length);
+  assert.deepEqual(JSON.parse(files.get('manifest.json')).warnings, []);
+  // Exercise restoring over an existing file that also exceeds the old cap.
+  await writeFile(join(uploads, id), image);
+  const handle = await open(join(uploads, id), 'r+');
+  try { await handle.write(Buffer.from('\t'), 0, 1, 100); } finally { await handle.close(); }
+  const preview = await request('/api/backup/inspect', 'POST', exported.body); assert.equal(preview.status, 200, preview.body.error);
+  const restored = await request('/api/backup/restore', 'POST', { token: preview.body.token }); assert.equal(restored.status, 200, restored.body.error);
+  assert.equal(sha(await readFile(join(uploads, id))), sha(image));
+}));
+
+test('ZIP entry size gates allow 256 MiB and reject larger files before decompression', () => {
+  assert.equal(BACKUP_LIMITS.file, FILE_LIMIT);
+  assert.equal(FILE_LIMIT, 256 * 1024 * 1024);
+  for (const folder of ['images', 'files']) {
+    const path = `${folder}/backup-${'a'.repeat(64)}.${folder === 'images' ? 'png' : 'bin'}`;
+    const zip = pack(new Map([[path, Buffer.from('small fixture')]]));
+    const central = zip.indexOf(Buffer.from([0x50, 0x4b, 0x01, 0x02]));
+    zip.writeUInt32LE(FILE_LIMIT, central + 24);
+    assert.throws(() => unpackBackup(zip), /ZIP entry sizes disagree/, 'the exact limit passes size validation');
+    zip.writeUInt32LE(FILE_LIMIT + 1, central + 24);
+    assert.throws(() => unpackBackup(zip), /File exceeds backup limits/);
+  }
+});

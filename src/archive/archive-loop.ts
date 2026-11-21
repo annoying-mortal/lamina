@@ -25,7 +25,7 @@ function nearestOccurrence(
 }
 
 export function fileAtCell({ lane, row }: ArchiveCell) {
-  const files = columnFiles(wrap(lane, archiveColumns.length));
+  const files = columnFiles(lane);
   return files[wrap(row - 12, files.length)];
 }
 

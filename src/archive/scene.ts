@@ -17,7 +17,7 @@ import { archiveQuality } from "./render-quality";
 import { resizeQuality } from "./quality-renderer";
 import { CardAppearance } from "./appearance";
 import { configureInternalOptics } from "./internal-optics";
-import { archiveColumns, archiveBranding, rowRebasePeriod, fileAtSlot, fileLocation } from "./data";
+import { archiveColumns, archiveBranding, rowRebasePeriod, fileLocation } from "./data";
 import {
   cellKey,
   sameCell,
@@ -34,7 +34,6 @@ import {
 import { labelMarkSvg } from "./brand";
 import { archiveFraming } from "./viewport-layout";
 import { ArchiveDrag, ArchivePlaneMomentum, type DragAxis, type DragProjection, type DragPosition } from "./archive-drag";
-import { fullMotion, type MotionPreferences } from "./motion-preferences";
 import {
   baselineSelectionWave,
   settlingWave,
@@ -152,7 +151,7 @@ export class ArchiveScene {
   private labelCanvas = document.createElement("canvas");
   private labelTexture?: THREE.CanvasTexture;
   private labelMark = new Image();
-  private motion: MotionPreferences = fullMotion();
+  private reducedMotion = false;
   private readonly quality = archiveQuality;
   onSelect?: (index: number, cell?: ArchiveCell) => void;
   constructor(private container: HTMLElement) {
@@ -245,7 +244,7 @@ export class ArchiveScene {
         document.fonts.load(`700 81px ${this.labelFontFamily()}`, archiveBranding.title + ' NO.0123456789 INFO'),
       ]).then(() => {
         if (this.disposed) return;
-        this.drawLabel(fileAtSlot(this.selectedSlot));
+        this.drawLabel(this.selectedSlot);
         this.renderState.invalidate();
       });
     }
@@ -433,17 +432,17 @@ export class ArchiveScene {
       if (this.rotation !== 0) this.returnY = this.model.position.y;
     } else this.returnY = null;
   }
-  setMotion(value: MotionPreferences) {
-    if ((!value.pointerParallax || !value.dragMomentum) && (this.motion.pointerParallax || this.motion.dragMomentum)) this.cancelPointer();
-    if (!value.dragMomentum) {
+  setReducedMotion(reduced: boolean) {
+    if (reduced) {
+      if (!this.reducedMotion) this.cancelPointer();
       this.archiveMomentum = null;
       this.columnCamera.velocity = 0;
       this.rail.velocity = 0;
+      this.pointer.set(0, 0);
+      this.pulses = [];
+      this.idleGain = 0;
     }
-    if (!value.pointerParallax) this.pointer.set(0, 0);
-    if (!value.selectionWave) this.pulses = [];
-    if (!value.idleWave) this.idleGain = 0;
-    this.motion = { ...value };
+    this.reducedMotion = reduced;
     this.appearance.setClarity(this.model, this.targetDetail);
     for (const old of this.outgoing) this.appearance.setClarity(old.group, 0);
   }
@@ -491,11 +490,9 @@ export class ArchiveScene {
     if (!this.navigatingDrag) this.cancelPointer();
     this.setHover(null);
     this.lastInteraction = this.clock;
-    const next = fileLocation(index).slot;
-    const canonical = fileLocation(index);
     const cell = this.looping
       ? selectionCell(index, this.selectedCell, navigation)
-      : { lane: canonical.lane, row: canonical.row };
+      : fileLocation(index);
     const changed = !sameCell(cell, this.selectedCell);
     if (this.looping && changed && this.loaded && this.lift.value > 0.0001) {
       const group = this.model.clone(true);
@@ -528,7 +525,7 @@ export class ArchiveScene {
       this.lift.value = 0;
       this.lift.velocity = 0;
     }
-    this.selectedSlot = next;
+    this.selectedSlot = index;
     this.selectedCell = cell;
     if (changed) {
       this.rotation = 0;
@@ -857,7 +854,7 @@ export class ArchiveScene {
       if (!cancelled && browse && this.canBrowse()) {
         moveArchive(e);
         if (this.archiveDrag.active) {
-          if (this.motion.dragMomentum) {
+          if (!this.reducedMotion) {
             this.archiveMomentum = {
               time: performance.now() / 1000,
               motion: new ArchivePlaneMomentum(
@@ -873,20 +870,15 @@ export class ArchiveScene {
       }
       reset();
     }, { signal: this.inputEvents.signal });
-    canvas.addEventListener("pointercancel", (e) => {
+    const cancelActivePointer = (e: PointerEvent) => {
       pointers.delete(e.pointerId);
       if (e.pointerId === activePointer) {
         cancelled = true;
         reset();
       }
-    }, { signal: this.inputEvents.signal });
-    canvas.addEventListener("lostpointercapture", (e) => {
-      pointers.delete(e.pointerId);
-      if (e.pointerId === activePointer) {
-        cancelled = true;
-        reset();
-      }
-    }, { signal: this.inputEvents.signal });
+    };
+    canvas.addEventListener("pointercancel", cancelActivePointer, { signal: this.inputEvents.signal });
+    canvas.addEventListener("lostpointercapture", cancelActivePointer, { signal: this.inputEvents.signal });
     canvas.addEventListener("pointerleave", () => {
       this.pendingHover = null;
       this.pointer.set(0, 0);
@@ -912,12 +904,11 @@ export class ArchiveScene {
     this.flushHover();
     this.theme.beginFrame();
     themeEnvironment(this.scene, this.renderer, this.themeAmount);
-    const blend = 1 - Math.exp(-dt * (this.motion.selectionTransition ? 2.8 : 35));
-    const detailBlend = 1 - Math.exp(-dt * (this.motion.detailTransition ? 2.8 : 35));
+    const blend = 1 - Math.exp(-dt * (this.reducedMotion ? 35 : 2.8));
     this.reveal = THREE.MathUtils.lerp(this.reveal, this.targetReveal, blend);
     this.rotation = this.targetDetail
-      ? THREE.MathUtils.lerp(this.rotation, this.targetRotation, detailBlend)
-      : returnStep(this.rotation, dt, !this.motion.detailTransition);
+      ? THREE.MathUtils.lerp(this.rotation, this.targetRotation, blend)
+      : returnStep(this.rotation, dt, this.reducedMotion);
     if (!this.canBrowse()) {
       this.setHover(null);
       if (this.holdingArchive || this.archiveMomentum) this.cancelPointer();
@@ -934,7 +925,7 @@ export class ArchiveScene {
     if (hoverKey && !this.hoverLifts.has(hoverKey)) this.hoverLifts.set(hoverKey, 0);
     for (const [key, value] of this.hoverLifts) {
       const target = key === hoverKey ? 0.28 : 0;
-      const next = !this.motion.selectionTransition ? target : THREE.MathUtils.lerp(value, target, 1 - Math.exp(-dt * 14));
+      const next = this.reducedMotion ? target : THREE.MathUtils.lerp(value, target, 1 - Math.exp(-dt * 14));
       if (target === 0 && next < 0.0001) this.hoverLifts.delete(key);
       else this.hoverLifts.set(key, next);
     }
@@ -942,12 +933,12 @@ export class ArchiveScene {
     const chosen = this.cellPosition(this.selectedCell);
     const selectedRow = this.selectedCell.row;
     const selectedLane = this.selectedCell.lane;
-    damp(this.shoulder, selectedRow, this.motion.selectionTransition ? 5 : 35, dt);
-    damp(this.laneFocus, selectedLane, this.motion.selectionTransition ? 4 : 35, dt);
+    damp(this.shoulder, selectedRow, this.reducedMotion ? 35 : 5, dt);
+    damp(this.laneFocus, selectedLane, this.reducedMotion ? 35 : 4, dt);
     // A held or freely coasting plane owns both tracks; selection cannot pull it.
     if (!this.holdingArchive && !momentum) {
-      damp(this.columnCamera, chosen.x, this.motion.selectionTransition ? 3.7 : 35, dt);
-      damp(this.rail, -2.17 - chosen.z, this.motion.selectionTransition ? 3.7 : 35, dt);
+      damp(this.columnCamera, chosen.x, this.reducedMotion ? 35 : 3.7, dt);
+      damp(this.rail, -2.17 - chosen.z, this.reducedMotion ? 35 : 3.7, dt);
     }
     if (momentum) {
       this.columnCamera.value = this.trackPosition("lane", momentum.motion.lane.value);
@@ -967,7 +958,7 @@ export class ArchiveScene {
     this.pulses = this.pulses.filter((p) => time - p.time < 3.2);
     const aligningCopy = this.outgoing.some((o) => o.returnY !== null);
     const idle =
-      this.motion.idleWave &&
+      !this.reducedMotion &&
       this.targetReveal > 0 &&
       !this.targetDetail &&
       this.detail < 0.01 &&
@@ -993,7 +984,7 @@ export class ArchiveScene {
         ) *
           this.idleGain;
       let pulseHeight = 0;
-      if (this.motion.selectionWave) {
+      if (!this.reducedMotion) {
         let ripple = 0;
         for (const p of this.pulses) {
           const distance = Math.hypot(row - p.row, (lane - p.lane) * 2.2);
@@ -1035,7 +1026,7 @@ export class ArchiveScene {
               )
             ? 0
             : 0.4 * this.targetReveal,
-        this.motion.detailTransition ? 4.2 : 35,
+        this.reducedMotion ? 35 : 4.2,
         dt,
       );
     }
@@ -1044,7 +1035,7 @@ export class ArchiveScene {
       : this.returnY !== null
         ? this.detail
         : ease((this.lift.value - 0.4) / (INSPECTION_LIFT - 0.4));
-    this.detail = THREE.MathUtils.lerp(this.detail, cameraTarget, detailBlend);
+    this.detail = THREE.MathUtils.lerp(this.detail, cameraTarget, blend);
     const detail = this.detail;
     this.appearance.apply(this.model, ease(this.lift.value / 0.4));
     this.appearance.setClarity(this.model, this.targetDetail);
@@ -1053,12 +1044,12 @@ export class ArchiveScene {
       const o = this.outgoing[i];
       const p = this.cellPosition(o.cell);
       const baseY = p.y + field(o.cell.row, o.cell.lane);
-      o.group.rotation.y = returnStep(o.group.rotation.y, dt, !this.motion.detailTransition);
+      o.group.rotation.y = returnStep(o.group.rotation.y, dt, this.reducedMotion);
       if (o.returnY !== null) {
         o.lift.value = o.returnY - baseY;
         o.lift.velocity = 0;
         if (o.group.rotation.y === 0) o.returnY = null;
-      } else damp(o.lift, 0, this.motion.detailTransition ? 4.5 : 35, dt);
+      } else damp(o.lift, 0, this.reducedMotion ? 35 : 4.5, dt);
       o.group.position.set(
         p.x - trackX,
         baseY + o.lift.value + hoverLift(o.cell),
@@ -1137,14 +1128,11 @@ export class ArchiveScene {
     const cameraPosition = cameraAim
       .clone()
       .addScaledVector(viewDirection, distance);
-    if (this.motion.pointerParallax) {
+    if (!this.reducedMotion) {
       cameraPosition.x += this.pointer.x * 0.12;
       cameraPosition.y -= this.pointer.y * 0.12;
     }
-    const cameraTransition = this.targetDetail || this.detail > 0.01
-      ? this.motion.detailTransition
-      : this.motion.selectionTransition;
-    const cameraBlend = cameraTransition ? 1 - Math.exp(-dt * 5) : 1;
+    const cameraBlend = this.reducedMotion ? 1 : 1 - Math.exp(-dt * 5);
     this.camera.position.lerp(cameraPosition, cameraBlend);
     this.cameraAim.lerp(cameraAim, cameraBlend);
     this.camera.lookAt(this.cameraAim);

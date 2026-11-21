@@ -26,42 +26,89 @@ export interface ArchiveLibraryItem {
   tags: string[];
   demo: boolean;
 }
-export interface ArchiveRecord extends ArchivePost {
-  kind: 'blog' | 'library';
+export interface ArchiveFriend {
+  id: string;
+  name: string;
+  url: string;
+  avatar: string;
+  description: string;
+  label: string;
+  kind: string;
+  domain: string;
+  demo: boolean;
+}
+export interface ArchiveRecord extends Omit<ArchivePost, 'slug'> {
+  kind: 'blog' | 'library' | 'friend';
   href: string;
   cover?: string;
   creator?: string;
   rating?: string;
   original?: string;
   demo?: boolean;
-  typeLabel?: string;
+  domain?: string;
 }
-export interface ArchiveCategory { id: string; label: string; en: string }
+export interface ArchiveCategory { id: string; label: string }
 export interface ArchiveData { posts: ArchiveRecord[]; categories: ArchiveCategory[]; branding?: { title: string; subtitle: string } }
 
-/** Blog categories and Library types share one scene, with independent identities. */
-export function createArchiveCollection(posts: ArchivePost[], categories: readonly ArchiveCategory[], library: ArchiveLibraryItem[] = [], libraryTypes: readonly ArchiveCategory[] = DEFAULT_LIBRARY_TYPES): ArchiveData {
+/** Blog categories, Library types and Friends share one scene with independent identities. */
+export function createArchiveCollection(posts: ArchivePost[], categories: readonly ArchiveCategory[], library: ArchiveLibraryItem[] = [], libraryTypes: readonly ArchiveCategory[] = DEFAULT_LIBRARY_TYPES, friends: readonly ArchiveFriend[] = []): ArchiveData {
   const libraryCategories = libraryTypes.filter(category => category.id !== 'all');
+  const entries: ArchiveRecord[] = [
+    ...posts.map(({ id, slug, title, summary, category, categoryId, date, tags, readTime }) => ({
+      id: `blog:${id}`, categoryId: `blog:${categoryId}`, title, summary, category, date, tags, readTime,
+      kind: 'blog' as const, href: `/blog/${slug}/`,
+    })),
+    ...library.map(item => ({
+      id: `library:${item.id}`, title: item.title,
+      summary: item.note || item.detail || 'Enter library content',
+      category: libraryCategories.find(category => category.id === normalizeLibraryTypeId(item.type))?.label || item.typeLabel, categoryId: `library:${normalizeLibraryTypeId(item.type)}`, date: item.date,
+      tags: item.tags ?? [], readTime: '', kind: 'library' as const,
+      href: `/library/#work-${encodeURIComponent(item.id)}`, cover: item.cover,
+      creator: item.creator, rating: item.rating, original: item.original, demo: item.demo,
+    })),
+    ...friends.map(friend => ({
+      id: `friend:${friend.id}`, title: friend.name,
+      summary: friend.description, category: 'Friends', categoryId: 'friends', date: '',
+      tags: [friend.kind, friend.label].filter(Boolean), readTime: '', kind: 'friend' as const,
+      href: friend.url, cover: friend.avatar, domain: friend.domain, demo: friend.demo,
+    })),
+  ];
+  const populated = new Set(entries.map(entry => entry.categoryId));
   return {
-    posts: [
-      ...posts.map(post => ({
-        ...post, id: `blog:${post.id}`, categoryId: `blog:${post.categoryId}`,
-        kind: 'blog' as const, href: `/blog/${post.slug}/`,
-      })),
-      ...library.map(item => ({
-        id: `library:${item.id}`, slug: item.id, title: item.title,
-        summary: item.note || item.detail || 'Enter library content',
-        category: libraryCategories.find(category => category.id === normalizeLibraryTypeId(item.type))?.label || item.typeLabel, categoryId: `library:${normalizeLibraryTypeId(item.type)}`, date: item.date,
-        tags: item.tags ?? [], readTime: '', kind: 'library' as const,
-        href: `/library/#work-${encodeURIComponent(item.id)}`, cover: item.cover,
-        creator: item.creator, rating: item.rating, original: item.original, demo: item.demo,
-        typeLabel: item.typeLabel,
-      })),
-    ],
+    posts: entries,
     categories: [
-      ...categories.map(category => ({ ...category, id: `blog:${category.id}`, label: `Blog · ${category.label}`, en: `BLOG / ${category.en}` })),
-      ...libraryCategories.map(category => ({ ...category, id: `library:${category.id}`, label: `Library · ${category.label}`, en: `LIBRARY / ${category.en}` })),
-    ],
+      ...categories.map(category => ({ id: `blog:${category.id}`, label: `Blog · ${category.label}` })),
+      ...libraryCategories.map(category => ({ id: `library:${category.id}`, label: `Library · ${category.label}` })),
+      { id: 'friends', label: 'Friends' },
+    ].filter(category => populated.has(category.id)),
+  };
+}
+
+/** Keep the initial HTML and subsequent selections consistent for every entry type. */
+export function archiveRecordPresentation(record: ArchiveRecord) {
+  if (record.kind === 'friend') return {
+    prefix: 'F', kind: 'FRIENDS / WEBSITE',
+    selectionMeta: record.domain || record.href,
+    previewKind: 'WEBSITE PREVIEW', previewLabel: record.demo ? 'Demo' : 'EXTERNAL LINK',
+    categoryLabel: 'WEBSITE', categoryValue: record.domain || record.href,
+    dateLabel: '', readingLabel: '', readingValue: '',
+    summaryLabel: 'ABOUT', readLabel: 'VISIT WEBSITE', readAction: 'Visit website in a new tab',
+  };
+  if (record.kind === 'library') return {
+    prefix: 'L', kind: 'LIBRARY / COLLECTION',
+    selectionMeta: [record.creator || 'Unknown creator', record.date].filter(Boolean).join(' · '),
+    previewKind: 'COLLECTION PREVIEW', previewLabel: record.demo ? 'Demo' : 'PERSONAL COLLECTION',
+    categoryLabel: 'TYPE', categoryValue: record.category, dateLabel: 'ADDED',
+    readingLabel: 'CREATOR', readingValue: record.creator || '—',
+    summaryLabel: 'NOTE', readLabel: 'VIEW COLLECTION', readAction: 'View entry',
+  };
+  return {
+    prefix: 'B', kind: 'BLOG / ARTICLE',
+    selectionMeta: `${record.date} · ${record.readTime} MIN READ`,
+    previewKind: 'ARTICLE PREVIEW', previewLabel: 'BLOG / ARTICLE',
+    categoryLabel: 'CATEGORY', categoryValue: record.category, dateLabel: 'PUBLISHED',
+    readingLabel: 'READING', readingValue: `${record.readTime} min`,
+    summaryLabel: 'SUMMARY', readLabel: 'READ ARTICLE', readAction: 'Read article',
   };
 }
 
@@ -77,7 +124,7 @@ const gcd = (a: number, b: number): number => b ? gcd(b, a % b) : a;
 export function configureArchive(data: ArchiveData) {
   records = data.posts;
   archiveBranding = data.branding ?? { title: 'Enter archive title', subtitle: 'Enter archive subtitle' };
-  categoryRecords = data.categories.filter(category => records.some(post => post.categoryId === category.id));
+  categoryRecords = data.categories;
   archiveColumns = categoryRecords.map(category => category.id);
   filesByLane = archiveColumns.map(id => records.flatMap((post, index) => post.categoryId === id ? [index] : []));
   rowRebasePeriod = filesByLane.reduce((period, files) => {
@@ -94,8 +141,5 @@ export function fileLocation(index: number) {
   const record = records[index] ?? records[0];
   const lane = Math.max(0, archiveColumns.indexOf(record.categoryId));
   const row = 12 + Math.max(0, columnFiles(lane).indexOf(index));
-  // The stable article index replaces the old lane * 32 encoding, which broke
-  // whenever a category contained more than twenty articles.
-  return { lane, row, slot: index };
+  return { lane, row };
 }
-export function fileAtSlot(slot: number) { return records[slot] ? slot : 0; }

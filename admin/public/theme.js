@@ -21,7 +21,6 @@
       const label = theme === 'dark' ? (chinese ? '切换到浅色模式' : 'Switch to light mode') : (chinese ? '切换到深色模式' : 'Switch to dark mode');
       button.setAttribute('aria-label', label); button.setAttribute('title', label);
       button.setAttribute('aria-pressed', String(theme === 'dark'));
-      button.querySelector('[data-theme-label]')?.remove();
     });
     window.dispatchEvent(new CustomEvent('blog:theme', { detail: { theme } }));
     return theme;

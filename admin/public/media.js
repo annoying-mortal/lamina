@@ -80,7 +80,7 @@ export function createMediaTools({ api, getSession, message, alertError, onUnaut
     try {
       for (const file of files) {
         if (picker.open && !imageTypes.has(file.type)) throw new Error(t('Choose an image for this field.', '此处请选择图片文件。'));
-        if (file.size > 10 * 1024 * 1024) throw new Error(t(`${file.name} exceeds 10 MiB.`, `「${file.name}」超过 10 MiB。`));
+        if (file.size > 256 * 1024 * 1024) throw new Error(t(`${file.name} exceeds 256 MiB.`, `「${file.name}」超过 256 MiB。`));
         const response = await fetch('/api/media', { method: 'POST', headers: { 'Content-Type': file.type || 'application/octet-stream', 'X-File-Name': encodeURIComponent(file.name), 'X-CSRF-Token': getSession().csrf }, body: file });
         const result = await response.json();
         if (response.status === 401) { onUnauthorized?.(); const error = new Error(t('Session expired. Sign in to upload.', '会话已结束，请登录后上传。')); error.handled = true; throw error; }

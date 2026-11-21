@@ -6,9 +6,9 @@ import { inflateRawSync } from 'node:zlib';
 import { zipSync } from 'fflate';
 import { parsePostSource, assertUniquePosts, isPostFile } from '../lib/posts.mjs';
 import { prepareBackupImages, validateBackupImage } from './backup-images.mjs';
-import { fileMimeType } from './media.mjs';
+import { fileMimeType, FILE_LIMIT } from './media.mjs';
 
-export const BACKUP_LIMITS = Object.freeze({ compressed: 256 * 1024 * 1024, expanded: 512 * 1024 * 1024, entries: 10000, image: 20 * 1024 * 1024, json: 8 * 1024 * 1024, markdown: 2 * 1024 * 1024 });
+export const BACKUP_LIMITS = Object.freeze({ compressed: 256 * 1024 * 1024, expanded: 512 * 1024 * 1024, entries: 10000, file: FILE_LIMIT, json: 8 * 1024 * 1024, markdown: 2 * 1024 * 1024 });
 const FORMAT = 'personal-blog-backup';
 const TTL = 15 * 60 * 1000;
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
@@ -21,7 +21,7 @@ const parseJson = (bytes, name) => { try { return JSON.parse(decode(bytes)); } c
 const imageName = /^images\/(backup-([a-f0-9]{64})\.(png|jpg|gif|webp|svg|ico|avif))$/;
 const uploadName = /^files\/(backup-([a-f0-9]{64})\.([a-z0-9]{1,16}))$/;
 const allowed = path => path === 'manifest.json' || /^content\/(site|library|friends|media)\.json$/.test(path) || (path.startsWith('content/blog/') && isPostFile(path.slice(13))) || imageName.test(path) || uploadName.test(path);
-const fileLimit = path => /^(?:images|files)\//.test(path) ? BACKUP_LIMITS.image : path.endsWith('.md') ? BACKUP_LIMITS.markdown : BACKUP_LIMITS.json;
+const fileLimit = path => /^(?:images|files)\//.test(path) ? BACKUP_LIMITS.file : path.endsWith('.md') ? BACKUP_LIMITS.markdown : BACKUP_LIMITS.json;
 function safePath(path) {
   check(path.length > 0 && path.length <= 1000 && !/[\\\u0000-\u001f\u007f:]/.test(path) && !path.startsWith('/') && !path.split('/').some(part => !part || part.startsWith('.') || part.startsWith('~')), 'Unsafe path in ZIP backup.');
   return path;
@@ -110,7 +110,7 @@ async function safeTarget(root, path, createParents = false) {
   catch (error) { if (error.code !== 'ENOENT') throw error; }
   return path;
 }
-async function readRegular(root, path, maxSize = BACKUP_LIMITS.image) {
+async function readRegular(root, path, maxSize = BACKUP_LIMITS.file) {
   await safeTarget(root, path);
   let handle;
   try { handle = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW); const info = await handle.stat(); check(info.isFile(), 'Backup source is not a regular file.'); check(info.size <= maxSize, 'Backup source exceeds the file size limit.', 413); const chunks = []; let size = 0; for await (const chunk of handle.createReadStream({ autoClose: false })) { size += chunk.length; check(size <= maxSize, 'Backup source exceeds the file size limit.', 413); chunks.push(chunk); } return Buffer.concat(chunks); }
@@ -187,7 +187,7 @@ export function createBackupStore({ projectRoot, dataDir, uploadsDir, backupDir 
     const images = new Map();
     for (const [path, bytes] of files) {
       const match = imageName.exec(path) || uploadName.exec(path); if (!match) continue;
-      const detected = path.startsWith('images/') ? validateBackupImage(bytes) : { ext: match[3], mime: fileMimeType(match[1]) };
+      const detected = path.startsWith('images/') ? validateBackupImage(bytes, BACKUP_LIMITS.file) : { ext: match[3], mime: fileMimeType(match[1]) };
       check(hash(bytes) === match[2] && detected.ext === match[3], `Image filename or content checksum is invalid: ${path}`);
       images.set(match[1], { mime: detected.mime, size: bytes.length });
     }
@@ -267,7 +267,7 @@ export function createBackupStore({ projectRoot, dataDir, uploadsDir, backupDir 
         for (const [path, bytes] of desired) {
           const root = path.startsWith(resolve(uploadsDir) + sep) ? uploadsDir : dataDir;
           await safeTarget(root, path, true);
-          const previous = await readRegular(root, path, root === uploadsDir ? BACKUP_LIMITS.image : path.endsWith('.md') ? BACKUP_LIMITS.markdown : BACKUP_LIMITS.json);
+          const previous = await readRegular(root, path, root === uploadsDir ? BACKUP_LIMITS.file : path.endsWith('.md') ? BACKUP_LIMITS.markdown : BACKUP_LIMITS.json);
           if ((previous === null && bytes === null) || (previous && bytes && previous.equals(bytes))) continue;
           const temp = bytes === null ? null : join(dirname(path), `.${randomBytes(16).toString('hex')}.restore.tmp`);
           if (temp) { await writeFile(temp, bytes, { flag: 'wx', mode: path.startsWith(resolve(uploadsDir) + sep) ? 0o644 : 0o600 }); staged.push(temp); }
@@ -288,7 +288,7 @@ export function createBackupStore({ projectRoot, dataDir, uploadsDir, backupDir 
             for (const change of changes) {
               await safeTarget(change.root, change.path);
               await beforeWrite?.(change.path, applied.length);
-              const current = await readRegular(change.root, change.path, change.root === uploadsDir ? BACKUP_LIMITS.image : change.path.endsWith('.md') ? BACKUP_LIMITS.markdown : BACKUP_LIMITS.json);
+              const current = await readRegular(change.root, change.path, change.root === uploadsDir ? BACKUP_LIMITS.file : change.path.endsWith('.md') ? BACKUP_LIMITS.markdown : BACKUP_LIMITS.json);
               check(current === null ? change.previous === null : change.previous !== null && current.equals(change.previous), 'A file changed during restore; original content will be recovered.', 409);
               if (change.temp) await rename(change.temp, change.path); else await unlink(change.path);
               applied.push(change); acknowledge(change.path, change.bytes);

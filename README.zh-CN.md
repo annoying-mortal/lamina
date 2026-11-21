@@ -6,9 +6,9 @@
 
 ## 功能
 
-- **首页与档案** — 个人介绍、About me 九格、联系方式，以及支持键盘、鼠标和触摸操作的三维档案。
+- **首页与档案** — 个人介绍、About me 九格、联系方式，以及收录文章、收藏与公开友链的三维档案，支持键盘、鼠标和触摸操作。
 - **Blog** — 分类、标签、草稿、搜索、文章目录、RSS、带复制按钮的代码高亮、脚注和 KaTeX 数学公式。
-- **Library 与 Friends** — 收藏条目支持封面、评分、笔记和相关文章；友链支持头像、标签、排序和显示控制。
+- **Library 与 Friends** — 收藏条目支持封面、评分、笔记和相关文章；友链分两列展示头像、名称和可选简介。访客可以提交友链申请，由站长在后台查看并手动添加。
 - **CMS** — 提供 Settings、Blog、Library、Friends、Files 和 Backup 六个栏目，支持中英文界面和站点设置实时预览。
 - **外观** — 受 RhineLab 启发的日间与夜间主题、可配置的站点标识，以及相互独立的站点、档案和文章字体。
 - **自行部署** — 静态前台与单管理员 Node.js 服务，支持 Docker 部署和 ZIP 内容迁移，无需外部数据库。
@@ -75,7 +75,7 @@ Write your article here.
 
 显式设置唯一的 ID 和 slug，可在移动文件时保持地址不变。`pubDate` 和 `description` 分别可作为 `date` 和 `summary` 的别名。
 
-可通过 **Files（文件）** 上传图片、SVG、文档、压缩包及其他文件，**每个文件最大 10 MiB**。文件保存在 `public/static/`，引用地址为 `/static/…`。图片字段可以选择已上传图片，或使用外部 HTTP(S) 图片地址。原有 `/uploads/…` 链接继续有效。
+可通过 **Files（文件）** 上传图片、SVG、文档、压缩包及其他文件，**每个文件最大 256 MiB**。文件保存在 `public/static/`，引用地址为 `/static/…`。图片字段可以选择已上传图片，或使用外部 HTTP(S) 图片地址。原有 `/uploads/…` 链接继续有效。
 
 [Markdown Guide](src/content/blog/markdown-guide.md) 展示了支持的排版格式。CMS 提供轻量预览，最终文字与公式排版以文章页面为准。字段规则、文件编辑和发布方式详见[写作指南](docs/writing.md)（中文）。
 
@@ -104,7 +104,7 @@ docker compose exec admin cat /app/.admin/setup-token
 | `blog-content` | 文章、设置、Library、Friends 和文件索引 |
 | `blog-uploads` | 上传文件，同时提供 `/static/` 和旧 `/uploads/` 地址 |
 | `blog-published` | 构建版本及当前生效的 `current` 链接 |
-| `blog-admin` | 管理员凭据和恢复快照 |
+| `blog-admin` | 管理员凭据、待处理的友链申请和恢复快照 |
 
 Docker 从 [`admin/defaults/`](admin/defaults/README.md) 初始化文章和设置。此模式下，运行中的网站使用数据卷，不读取宿主机的 `src/content/`。
 
@@ -132,7 +132,7 @@ PORT=8080
 ADMIN_PORT=4322
 ```
 
-修改 `SITE_URL` 后重新构建。生成 canonical 和 RSS 地址时，**Settings → Public URL** 的优先级更高；如果填写此项，请使用相同的地址。将 HTTPS 反向代理指向网站的本机回环端口。
+修改 `SITE_URL` 后重新构建。生成 canonical 和 RSS 地址时，**Settings → Public URL** 的优先级更高；如果填写此项，请使用相同的地址。将 HTTPS 反向代理指向网站的本机回环端口。友链申请使用 `SITE_URL` 校验来源，请填写访客使用的站点地址，并让反向代理保留原始 `Host`。
 
 CMS 可以保持私有，通过 SSH 隧道从自己的电脑访问：
 

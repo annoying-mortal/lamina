@@ -4,6 +4,7 @@ import ArchiveSection from '../components/ArchiveSection.astro';
 import HomeOrbit from '../components/HomeOrbit.astro';
 import { site, imageSource } from '../data/site';
 import { library } from '../data/library';
+import { friends } from '../data/friends';
 import { getPostCategories, getPosts } from '../lib/content';
 import '../styles/home.css';
 const posts = await getPosts();
@@ -73,7 +74,7 @@ const hasLaunchTime = Number.isFinite(launchTime);
     <div class="home-section-bottom"><span>{site.name} / PERSONAL PROFILE</span><a href="#archives">Archive <span aria-hidden="true">↓</span></a></div>
   </section>
 
-  <ArchiveSection posts={posts} categories={categories} site={site} library={library} />
+  <ArchiveSection posts={posts} categories={categories} site={site} library={library} friends={friends} />
 
   <section class="home-page home-interests" id="aboutme" data-home-chapter aria-labelledby="aboutme-title">
     <div class="home-section-top"><span class="eyebrow">PERSONAL COLLECTION</span><span class="chapter-number">04 / 05</span></div>

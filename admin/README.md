@@ -71,13 +71,13 @@ About 下的 Highlights 用于简短展示个人成就、教学实践、项目�
 
 默认主题可选跟随系统、日间或夜间；访客已有的手动选择优先。导航项可修改文字、调整顺序和显隐，隐藏不等于删除页面。RSS 开关只影响订阅入口，`/rss.xml` 仍保留。示例说明由独立勾选框控制。
 
-友链的顺序值越小越靠前，取消“在友链页面显示”可暂时隐藏。头像可用图片，留空则使用文字标识；站点域名从网址自动提取。
+公开的友链会出现在 Friends 名录和首页三维档案中，两处都按顺序值从小到大排列。取消“公开显示”会在两处隐藏该友链。头像可用图片，留空则使用文字标识。访客可在 Friends 页底提交姓名、网址和联系方式。后台的友链申请列表仅供站长查看，可手动添加公开友链，处理后移除申请。
 
 ### 上传与使用文件
 
 新上传统一使用 `/static/`；旧 `/uploads/` URL 保持可用。Docker 沿用 `blog-uploads` 卷，仅将挂载目标改为 `public/static`。本地旧 `public/uploads` 文件也继续读取。
 
-在“文件”点击“上传文件”，支持图片、SVG、文档、压缩包和其他文件，**每个最大 10 MiB**。图片选择器只显示可作为图片使用的文件；普通文件可以复制 URL 或 Markdown 链接。
+在“文件”点击“上传文件”，支持图片、SVG、文档、压缩包和其他文件，**每个最大 256 MiB**。图片选择器只显示可作为图片使用的文件；普通文件可以复制 URL 或 Markdown 链接。
 
 所有图片输入都支持两种来源：
 
@@ -123,7 +123,7 @@ files/backup-<sha256>.<文件扩展名>
 
 `summary.images` 为兼容旧备份保留字段名，表示打包文件总数。旧版 `images/` 和 `/uploads/` 备份仍可恢复。
 
-`manifest.json` 含 `format`、`version`、`createdAt`、`summary`、`warnings` 及 `files: [{ path, size, sha256 }]`。检查会验证路径、ZIP 结构、每个文件的大小与 SHA-256、内容格式及记录关系。仅接受本格式 ZIP；不支持加密、多卷或 ZIP64。限制为压缩文件 256 MiB、解压总量 512 MiB、10,000 个条目、每个打包文件 20 MiB、每份 JSON 8 MiB、每篇 Markdown 2 MiB。普通文件上传仍保持每个 10 MiB 的限制。
+`manifest.json` 含 `format`、`version`、`createdAt`、`summary`、`warnings` 及 `files: [{ path, size, sha256 }]`。检查会验证路径、ZIP 结构、每个文件的大小与 SHA-256、内容格式及记录关系。仅接受本格式 ZIP；不支持加密、多卷或 ZIP64。限制为 ZIP 压缩大小 256 MiB、解压总量 512 MiB、10,000 个条目、每个本地上传文件（含图片）256 MiB、每张远程下载图片 20 MiB、每份 JSON 8 MiB、每篇 Markdown 2 MiB。
 
 ## 内容位置与持久化
 
@@ -136,7 +136,7 @@ files/backup-<sha256>.<文件扩展名>
 | `src/content/media.json` | 上传文件索引 |
 | `public/static/` | 上传文件 |
 
-默认 `compose.yaml` 使用四个命名卷：`blog-content` 保存上述内容及索引，`blog-uploads` 保存文件，`blog-published` 保存发布版本，`blog-admin` 保存非公开管理员凭据。后台写入上传卷，Nginx 只读挂载并直接提供文件。首次部署从 `admin/defaults/` 填充示例与模板，镜像不包含宿主 `src/content/` 中的个人内容。旧内容卷升级时保留已有文件，只补缺失的站点设置，以及空的 Library／Friends 文件。初始化后删除的示例不会因重启或重建镜像而恢复；内容、图片与密码均保留。
+默认 `compose.yaml` 使用四个命名卷：`blog-content` 保存上述内容及索引，`blog-uploads` 保存文件，`blog-published` 保存发布版本，`blog-admin` 保存管理员凭据、恢复快照和待处理的友链申请。后台写入上传卷，Nginx 只读挂载并直接提供文件。首次部署从 `admin/defaults/` 填充示例与模板，镜像不包含宿主 `src/content/` 中的个人内容。旧内容卷升级时保留已有文件，只补缺失的站点设置，以及空的 Library／Friends 文件。初始化后删除的示例不会因重启或重建镜像而恢复；内容、图片与密码均保留。
 
 需要直接在宿主机文件夹写文章的新项目可使用：
 
@@ -189,6 +189,7 @@ ADMIN_ALLOW_REMOTE_SETUP: "1"
 - `PUT /api/account`：登录、同源 Origin 和会话 CSRF 验证后接收 `{ username, currentPassword, newPassword? }`。新密码省略或为空时保持原密码；成功返回 `{ authenticated: true, username, csrf }`，更新当前会话 cookie 并注销其他会话。
 - `POST /api/auth/logout`：需有效会话及其 CSRF，清除并撤销会话。
 - `GET /api/session`：CSRF token、动态分类、前台地址与发布配置。
+- `POST /api/friend-applications`：接收公开表单的 `name`、`url` 和 `contact`。管理员可通过 `GET /api/friend-applications` 查看申请，或通过 `DELETE /api/friend-applications/:id` 移除已处理的申请。
 - `GET`／`POST /api/blog`、`/api/library`、`/api/friends`：列表与创建。
 - `GET`／`PUT`／`DELETE /api/blog/:id`、`/api/library/:id`、`/api/friends/:id`：单条记录；修改和删除需携带当前 `revision`。
 - `GET`／`PUT /api/settings`：设置对象及 `revision`；保存需携带当前版本。
@@ -200,7 +201,7 @@ ADMIN_ALLOW_REMOTE_SETUP: "1"
 - `GET /api/publish/status`：发布状态；`watch` 包含文件监听状态与错误。
 - `POST /api/publish`：自动发布模式下重新发布。
 
-除健康检查、鉴权状态和登录静态资源外，API 需登录 cookie。修改请求还需同源 `Origin` 与 `X-CSRF-Token`。除文件和备份上传发送原始字节外，其余修改请求使用 `Content-Type: application/json`。不支持跨域调用。HTTP 401 表示未登录、会话失效或登录失败，403 表示来源／CSRF 校验失败，429 表示登录尝试过于频繁，409 表示记录冲突、重复 ID／slug、已完成初始化、仍被引用的分类、备份预览过期／内容变化或当前模式不允许发布。
+管理 API 需登录 cookie。管理端的修改请求还需同源 `Origin` 与 `X-CSRF-Token`。除文件和备份上传发送原始字节外，其余修改请求使用 `Content-Type: application/json`。不支持跨域调用。HTTP 401 表示未登录、会话失效或登录失败，403 表示来源／CSRF 校验失败，429 表示登录尝试过于频繁，409 表示记录冲突、重复 ID／slug、已完成初始化、仍被引用的分类、备份预览过期／内容变化或当前模式不允许发布。
 
 ```sh
 npm run admin:test
