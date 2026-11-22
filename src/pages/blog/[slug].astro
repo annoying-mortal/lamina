@@ -69,7 +69,10 @@ const toc = headings.filter(heading => (heading.depth === 2 || heading.depth ===
       let active = -1;
       const headingOffset = (parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop) || 0) + 135;
       sections.forEach((section, index) => { if (section && section.getBoundingClientRect().top <= headingOffset) active = index; });
-      links.forEach((link, index) => { link.classList.toggle('is-active', index === active); if (index === active) link.setAttribute('aria-current', 'location'); else link.removeAttribute('aria-current'); });
+      links.forEach((link, index) => {
+        if (index === active) link.setAttribute('aria-current', 'location');
+        else link.removeAttribute('aria-current');
+      });
     }
     function onScroll() { if (!frame) frame = requestAnimationFrame(updateProgress); }
     window.addEventListener('scroll', onScroll, { passive: true });

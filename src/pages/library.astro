@@ -1,6 +1,7 @@
 ---
 import Layout from '../layouts/Layout.astro';
-import { library, libraryTypes } from '../data/library';
+import AlbumTrackList from '../components/AlbumTrackList.astro';
+import { library, librarySearchText, libraryTrackHash, libraryTypes } from '../data/library';
 import { site } from '../data/site';
 import '../styles/library.css';
 
@@ -10,33 +11,32 @@ const displayDate = (date: string) => date.replaceAll('-', '.');
 const page = site.pages.library;
 ---
 
-<Layout title={page.title} description={page.description} active="library">
+<Layout title={page.title} description="作品志" active="library">
   <div class="page-shell library-page" data-preview-count={previewCount}>
     <header class="library-heading">
-      <p class="eyebrow">{page.eyebrow}</p>
       <div class="library-heading-row"><h1>{page.title}<span>.</span></h1><p class="library-total"><strong>{String(library.length).padStart(2, '0')}</strong><span>IN THE COLLECTION</span></p></div>
-      <p class="library-intro">{page.description.split(/\r?\n/).map((line, index) => <>{index > 0 && <br class="library-mobile-break" />}{line}</>)}</p>
+      <p class="library-intro" lang="zh-CN">作品志</p>
     </header>
 
     <div class="library-browser" id="collection">
       <div class="library-toolbar">
         <div class="library-type-tabs" role="group" aria-label="Library types">
-          {libraryTypes.map(type => <button type="button" class:list={['library-type-tab', { 'is-active': type.id === 'all' }]} data-library-filter={type.id} aria-pressed={type.id === 'all'}><span>{type.label}</span><small>{String(type.id === 'all' ? library.length : library.filter(item => item.type === type.id).length).padStart(2, '0')}</small></button>)}
+          {libraryTypes.map(type => <button type="button" class="library-type-tab" data-library-filter={type.id} aria-pressed={type.id === 'all'}><span>{type.label}</span><small>{String(type.id === 'all' ? library.length : library.filter(item => item.type === type.id).length).padStart(2, '0')}</small></button>)}
         </div>
-        <label class="library-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4.5 4.5"/></svg><input id="library-search" type="search" placeholder="Search library" aria-label="Search library" autocomplete="off" /></label>
+        <label class="library-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4.5 4.5"/></svg><input id="library-search" type="search" placeholder="Search collections or tracks" aria-label="Search collections or track titles" autocomplete="off" /></label>
       </div>
       <div class="library-tag-row" role="group" aria-label="Tags">
         <span class="library-tag-caption">TAG /</span>
-        <button class="library-tag is-active" type="button" data-library-tag="" aria-pressed="true">All</button>
+        <button class="library-tag" type="button" data-library-tag="" aria-pressed="true">All</button>
         {tags.map(tag => <button class="library-tag" type="button" data-library-tag={tag} aria-pressed="false">{tag}</button>)}
       </div>
       <div class="library-result-heading"><h2 id="library-section-title">Library</h2><button type="button" class="library-clear" id="library-clear" hidden>Reset filters</button><p id="library-count" role="status" aria-live="polite">{Math.min(previewCount, library.length)} / {library.length}</p></div>
       <section class="collection-wall" id="library-results" aria-label="Library">
-        {library.map((item, index) => <article class="collection-card" data-library-type={item.type} data-library-tags={JSON.stringify(item.tags ?? [])} data-library-search={[item.title, item.original, item.creator, item.note, ...(item.tags ?? [])].join(' ').toLocaleLowerCase()} hidden={index >= previewCount}>
-          <button type="button" class="collection-open" data-dialog={`work-${item.id}`} data-work-hash={`#work-${encodeURIComponent(item.id)}`} aria-haspopup="dialog" aria-controls={`work-${item.id}`} aria-label={`View ${item.title}`}>
+        {library.map((item, index) => <article class="collection-card" data-library-type={item.type} data-library-tags={JSON.stringify(item.tags ?? [])} data-library-search={librarySearchText(item)} hidden={index >= previewCount}>
+          <button type="button" class="collection-open" aria-haspopup="dialog" aria-controls={`work-${item.id}`} aria-label={`View ${item.title}`}>
             <div class:list={['collection-cover', `collection-cover-${item.type}`]}>
               <div class="collection-cover-fallback" aria-hidden="true"><span>{item.categoryLabel}</span><strong>{item.title.slice(0, 1)}</strong><p>{item.title}</p><small>PERSONAL COLLECTION</small></div>
-              {item.cover && <img data-cover-image src={item.cover} alt={item.demo ? `${item.title} demo cover` : `${item.title} cover`} width="480" height="640" loading={index < previewCount ? 'eager' : 'lazy'} decoding="async" />}
+              {item.cover && <img data-fallback-image src={item.cover} alt={item.demo ? `${item.title} demo cover` : `${item.title} cover`} width="480" height="640" loading={index < previewCount ? 'eager' : 'lazy'} decoding="async" />}
               <span class="collection-cover-action" aria-hidden="true">View <span>↗</span></span>
               {item.demo && <span class="collection-demo-badge">DEMO</span>}
             </div>
@@ -44,6 +44,7 @@ const page = site.pages.library;
             <h3>{item.title}</h3><p class="collection-creator">{item.creator || 'Enter creator'}</p><p class="collection-note">{item.note || 'Enter library content'}</p>
             <div class="collection-bottom"><span>{(item.tags ?? []).slice(0, 2).map(tag => `#${tag}`).join(' ')}</span>{item.date && <time datetime={item.date}>{displayDate(item.date)}</time>}</div>
           </button>
+          {item.tracks?.map(track => <a class="library-track-result" href={libraryTrackHash(item.id, track.id)} hidden>{track.title}</a>)}
         </article>)}
       </section>
       <div class="library-empty" id="library-empty" hidden={library.length > 0}>
@@ -56,10 +57,11 @@ const page = site.pages.library;
     {library.map(item => <dialog id={`work-${item.id}`} class="collection-dialog" aria-labelledby={`title-${item.id}`}>
       <button type="button" class="collection-dialog-close" data-close-dialog aria-label="Close details"><span aria-hidden="true">×</span></button>
       <div class="collection-dialog-grid">
-        <div class:list={['collection-dialog-cover', 'collection-cover', `collection-cover-${item.type}`]}><div class="collection-cover-fallback" aria-hidden="true"><span>{item.categoryLabel}</span><strong>{item.title.slice(0, 1)}</strong><p>{item.title}</p><small>PERSONAL COLLECTION</small></div>{item.cover && <img data-cover-image src={item.cover} alt="" width="480" height="640" loading="lazy" />}</div>
+        <div class:list={['collection-dialog-cover', 'collection-cover', `collection-cover-${item.type}`]}><div class="collection-cover-fallback" aria-hidden="true"><span>{item.categoryLabel}</span><strong>{item.title.slice(0, 1)}</strong><p>{item.title}</p><small>PERSONAL COLLECTION</small></div>{item.cover && <img data-fallback-image src={item.cover} alt="" width="480" height="640" loading="lazy" />}</div>
         <div class="collection-dialog-body"><p class="eyebrow">{item.categoryLabel} / COLLECTION</p><h2 id={`title-${item.id}`}>{item.title}</h2>{item.original && <p class="collection-original">{item.original}</p>}<p class="collection-dialog-creator">{item.creator}</p>
           {item.rating && <div class="collection-dialog-rating">{item.rating}<small>/ 10</small>{item.demo && <span>Demo rating</span>}</div>}
           {item.note && <blockquote>{item.note}</blockquote>}{item.detail && <p class="collection-detail">{item.detail}</p>}
+          <AlbumTrackList album={item} />
           <div class="collection-dialog-tags">{(item.tags ?? []).map(tag => <span>#{tag}</span>)}</div>
           {item.date && <p class="collection-dialog-date">Published {displayDate(item.date)}{item.demo && <span> · Demo date</span>}</p>}
           {item.article && <a class="collection-article" href={item.article}>Related post <span aria-hidden="true">↗</span></a>}
@@ -72,6 +74,7 @@ const page = site.pages.library;
 
 <script>
   import { navigate } from 'astro:transitions/client';
+  import { normalizeSearchText } from '../lib/search-text';
 
   let disposeLibrary: (() => void) | undefined;
   let initializedRoot: HTMLElement | undefined;
@@ -85,10 +88,15 @@ const page = site.pages.library;
     const controller = new AbortController();
     const { signal } = controller;
     const cards = [...root.querySelectorAll<HTMLElement>('[data-library-type]')];
+    const trackLinks = Array.from(root.querySelectorAll<HTMLAnchorElement>('.library-track-result'), link => ({
+      link, title: normalizeSearchText(link.textContent ?? ''), card: link.closest<HTMLElement>('.collection-card')!,
+    }));
     const filters = [...root.querySelectorAll<HTMLButtonElement>('[data-library-filter]')];
     const tagButtons = [...root.querySelectorAll<HTMLButtonElement>('[data-library-tag]')];
-    const openers = [...root.querySelectorAll<HTMLButtonElement>('[data-dialog]')];
-    const dialogs = new Map([...root.querySelectorAll<HTMLDialogElement>('.collection-dialog')].map(dialog => [dialog.id, dialog]));
+    const works = new Map(Array.from(root.querySelectorAll<HTMLButtonElement>('.collection-open'), opener => {
+      const id = opener.getAttribute('aria-controls')!;
+      return [id, { opener, dialog: document.getElementById(id) as HTMLDialogElement }] as const;
+    }));
     const search = root.querySelector<HTMLInputElement>('#library-search')!;
     const expand = root.querySelector<HTMLButtonElement>('#library-expand')!;
     const previewCount = Number(root.dataset.previewCount) || 4;
@@ -99,16 +107,22 @@ const page = site.pages.library;
     let activeOpener: HTMLButtonElement | undefined;
 
     const render = () => {
-      const query = search.value.trim().toLocaleLowerCase();
-      const matches = cards.filter(card => (activeType === 'all' || card.dataset.libraryType === activeType) && (!activeTag || (JSON.parse(card.dataset.libraryTags || '[]') as string[]).includes(activeTag)) && (!query || card.dataset.librarySearch?.includes(query)));
+      const query = normalizeSearchText(search.value);
+      const filtered = activeType !== 'all' || !!activeTag || !!query;
+      const matchingAlbums = new Set<HTMLElement>();
+      for (const { link, title, card } of trackLinks) {
+        link.hidden = !query || !title.includes(query);
+        if (!link.hidden) matchingAlbums.add(card);
+      }
+      const matches = cards.filter(card => (activeType === 'all' || card.dataset.libraryType === activeType) && (!activeTag || (JSON.parse(card.dataset.libraryTags || '[]') as string[]).includes(activeTag)) && (!query || card.dataset.librarySearch?.includes(query) || matchingAlbums.has(card)));
       const shown = expanded ? matches : matches.slice(0, previewCount);
       const shownSet = new Set(shown);
       cards.forEach(card => { card.hidden = !shownSet.has(card); });
-      filters.forEach(button => { const active = button.dataset.libraryFilter === activeType; button.classList.toggle('is-active', active); button.setAttribute('aria-pressed', String(active)); });
-      tagButtons.forEach(button => { const active = button.dataset.libraryTag === activeTag; button.classList.toggle('is-active', active); button.setAttribute('aria-pressed', String(active)); });
+      filters.forEach(button => button.setAttribute('aria-pressed', String(button.dataset.libraryFilter === activeType)));
+      tagButtons.forEach(button => button.setAttribute('aria-pressed', String(button.dataset.libraryTag === activeTag)));
       root.querySelector('#library-count')!.textContent = `${shown.length} / ${matches.length}${matches.length !== cards.length ? ` · ${cards.length} total` : ''}`;
-      root.querySelector('#library-section-title')!.textContent = activeType !== 'all' || activeTag || query ? 'Results' : expanded ? 'All entries' : 'Library';
-      root.querySelector<HTMLButtonElement>('#library-clear')!.hidden = activeType === 'all' && !activeTag && !query;
+      root.querySelector('#library-section-title')!.textContent = filtered ? 'Results' : expanded ? 'All entries' : 'Library';
+      root.querySelector<HTMLButtonElement>('#library-clear')!.hidden = !filtered;
       root.querySelector<HTMLElement>('#library-empty')!.hidden = matches.length !== 0;
       root.querySelector<HTMLElement>('#library-expand-row')!.hidden = matches.length <= previewCount;
       expand.setAttribute('aria-expanded', String(expanded));
@@ -127,12 +141,6 @@ const page = site.pages.library;
     const reset = () => { activeType = 'all'; activeTag = ''; search.value = ''; expanded = true; render(); search.focus({ preventScroll: true }); };
     root.querySelector('#library-reset')!.addEventListener('click', reset, { signal });
     root.querySelector('#library-clear')!.addEventListener('click', reset, { signal });
-
-    root.querySelectorAll<HTMLImageElement>('[data-cover-image]').forEach(img => {
-      const onError = () => { img.hidden = true; };
-      img.addEventListener('error', onError, { once: true, signal });
-      if (img.complete && img.naturalWidth === 0) onError();
-    });
 
     const setHash = async (hash: string, replace = false) => {
       if (location.hash === hash) return !signal.aborted;
@@ -162,35 +170,39 @@ const page = site.pages.library;
     };
 
     const syncFromHash = () => {
-      let id = '';
-      try { id = decodeURIComponent(location.hash.slice(1)); } catch { /* Ignore malformed external anchors. */ }
-      const dialog = dialogs.get(id);
-      const opener = openers.find(button => button.dataset.dialog === id);
-      if (!dialog || !opener) {
+      const [workHash, trackHash] = location.hash.slice(1).split('/track/');
+      let id = '', trackId = '';
+      try {
+        id = decodeURIComponent(workHash);
+        if (trackHash) trackId = decodeURIComponent(trackHash);
+      } catch { /* Ignore malformed external anchors. */ }
+      const work = works.get(id);
+      if (!work) {
         closeDialog(false);
         return;
       }
-      if (activeDialog === dialog && dialog.open) return;
-      closeDialog(false, false);
-      // A shared link can point beyond the preview, or outside the current filters.
-      if (opener.closest<HTMLElement>('.collection-card')?.hidden) {
-        activeType = 'all';
-        activeTag = '';
-        search.value = '';
+      const { opener, dialog } = work;
+      if (activeDialog !== dialog || !dialog.open) {
+        closeDialog(false, false);
+        // A shared link can point beyond the preview, or outside the current filters.
+        if (opener.closest<HTMLElement>('.collection-card')?.hidden) {
+          activeType = 'all';
+          activeTag = '';
+          search.value = '';
+        }
+        expanded = true;
+        render();
+        activeDialog = dialog;
+        activeOpener = opener;
+        dialog.showModal();
+        document.body.classList.add('collection-dialog-open');
       }
-      expanded = true;
-      render();
-      activeDialog = dialog;
-      activeOpener = opener;
-      dialog.showModal();
-      document.body.classList.add('collection-dialog-open');
+      if (trackId) dialog.querySelector<HTMLButtonElement>(`[data-play-track="${CSS.escape(trackId)}"]`)?.focus();
     };
 
-    openers.forEach(button => {
-      const dialog = dialogs.get(button.dataset.dialog!);
-      if (!dialog) return;
-      button.addEventListener('click', async () => {
-        if (await setHash(button.dataset.workHash!)) syncFromHash();
+    works.forEach(({ opener, dialog }) => {
+      opener.addEventListener('click', async () => {
+        if (await setHash(`#${encodeURIComponent(dialog.id)}`)) syncFromHash();
       }, { signal });
       dialog.querySelector('[data-close-dialog]')!.addEventListener('click', () => closeDialog(), { signal });
       dialog.addEventListener('cancel', event => { event.preventDefault(); closeDialog(); }, { signal });

@@ -1,5 +1,6 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { constants } from 'node:fs';
+import { atomicWrite } from './atomic-write.mjs';
 import { mkdir, lstat, open, readdir, rename, unlink, writeFile } from 'node:fs/promises';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { inflateRawSync } from 'node:zlib';
@@ -117,12 +118,6 @@ async function readRegular(root, path, maxSize = BACKUP_LIMITS.file) {
   catch (error) { if (error.code === 'ENOENT') return null; throw error; }
   finally { await handle?.close(); }
 }
-async function atomic(path, bytes, mode = 0o600) {
-  await mkdir(dirname(path), { recursive: true, mode: 0o700 });
-  const temp = join(dirname(path), `.${randomBytes(16).toString('hex')}.tmp`);
-  try { await writeFile(temp, bytes, { flag: 'wx', mode }); await rename(temp, path); }
-  finally { await unlink(temp).catch(error => { if (error.code !== 'ENOENT') throw error; }); }
-}
 
 export function createBackupStore({ projectRoot, dataDir, uploadsDir, backupDir = join(projectRoot, '.admin/backups'), siteUrl, readSettings, validators, acknowledge = () => {}, beforeWrite, now = Date.now }) {
   const pending = new Map();
@@ -173,10 +168,20 @@ export function createBackupStore({ projectRoot, dataDir, uploadsDir, backupDir 
     const settings = parseJson(files.get('content/site.json'), 'site.json');
     const normalizedSettings = validators.settings(settings);
     const library = parseJson(files.get('content/library.json'), 'library.json'), friends = parseJson(files.get('content/friends.json'), 'friends.json');
-    for (const [name, list, validator] of [['Library', library, item => validators.library(item, normalizedSettings.libraryTypes)], ['Friends', friends, validators.friend]]) {
+    let compactedTracks = false;
+    for (const [name, list, validator] of [['Library', library, item => validators.library(item, normalizedSettings.libraryTypes, { skipRepeatedAudio: true })], ['Friends', friends, validators.friend]]) {
       check(Array.isArray(list) && list.length <= 10000, `${name} must be an array of at most 10,000 records.`);
-      const ids = new Set(); for (const item of list) { const validated = validator(item); check(!ids.has(validated.id), `Duplicate ${name} ID.`); ids.add(validated.id); }
+      const ids = new Set();
+      for (const item of list) {
+        const validated = validator(item);
+        check(!ids.has(validated.id), `Duplicate ${name} ID.`); ids.add(validated.id);
+        if (name === 'Library' && validated.tracks && validated.tracks.length < item.tracks.length) {
+          item.tracks = validated.tracks;
+          compactedTracks = true;
+        }
+      }
     }
+    if (compactedTracks) files.set('content/library.json', jsonBytes(library));
     const posts = [];
     for (const [path, bytes] of files) {
       if (!path.startsWith('content/blog/')) continue;
@@ -279,7 +284,7 @@ export function createBackupStore({ projectRoot, dataDir, uploadsDir, backupDir 
         for (const change of changes) if (change.root === uploadsDir && change.previous !== null) recovery[`uploads/${relative(uploadsDir, change.path)}`] = change.previous;
         recovery['manifest.json'] = jsonBytes({ format: 'personal-blog-recovery', version: 1, createdAt: new Date(now()).toISOString(), absent: changes.filter(change => change.previous === null).map(change => change.root === uploadsDir ? `uploads/${relative(uploadsDir, change.path)}` : `content/${relative(dataDir, change.path)}`), files: Object.entries(recovery).map(([path, bytes]) => ({ path, size: bytes.length, sha256: hash(bytes) })) });
         await mkdir(backups, { recursive: true, mode: 0o700 });
-        await safeTarget(backups, join(backups, rollbackId)); await atomic(join(backups, rollbackId), Buffer.from(zipSync(recovery, { level: 6 })));
+        await safeTarget(backups, join(backups, rollbackId)); await atomicWrite(join(backups, rollbackId), Buffer.from(zipSync(recovery, { level: 6 })), { directoryMode: 0o700 });
         return await authorize(async () => {
           check(await fingerprint() === prepared.fingerprint, 'Content changed while preparing restore. Upload the backup again.', 409);
           await begin();
@@ -297,7 +302,7 @@ export function createBackupStore({ projectRoot, dataDir, uploadsDir, backupDir 
           } catch (error) {
             const failures = [];
             for (const change of applied.reverse()) {
-              try { if (change.previous === null) await unlink(change.path); else await atomic(change.path, change.previous, change.root === uploadsDir ? 0o644 : 0o600); acknowledge(change.path, change.previous); }
+              try { if (change.previous === null) await unlink(change.path); else await atomicWrite(change.path, change.previous, { mode: change.root === uploadsDir ? 0o644 : 0o600, directoryMode: 0o700 }); acknowledge(change.path, change.previous); }
               catch (rollbackError) { failures.push(rollbackError); }
             }
             if (failures.length) throw Object.assign(new Error(`Restore and rollback failed. Recovery snapshot: ${rollbackId}`), { status: 500, cause: error });

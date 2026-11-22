@@ -1,0 +1,13 @@
+---
+import type { LibraryItem } from '../data/library';
+
+interface Props { album: Pick<LibraryItem, 'id' | 'tracks'>; hidden?: boolean }
+const { album, hidden = false } = Astro.props;
+---
+{album.tracks?.length ? (
+  <ol class="album-playlist" data-album-list={album.id} aria-label="Album tracks" hidden={hidden}>
+    {album.tracks.map(track => <li>
+      <button type="button" data-play-album={album.id} data-play-track={track.id} aria-pressed="false">{track.title}</button>
+    </li>)}
+  </ol>
+) : null}

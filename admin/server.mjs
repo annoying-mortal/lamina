@@ -1,5 +1,6 @@
 import http from 'node:http';
-import { readFile, readdir, mkdir, writeFile, rename, unlink } from 'node:fs/promises';
+import { readFile, readdir, mkdir, writeFile, unlink } from 'node:fs/promises';
+import { atomicWrite } from './atomic-write.mjs';
 import { resolve, join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { randomBytes, createHash, timingSafeEqual } from 'node:crypto';
@@ -11,24 +12,16 @@ import { parsePostSource, assertUniquePosts, isPostFile } from '../lib/posts.mjs
 import { homeSettings, ABOUT_HIGHLIGHT_LIMIT, ABOUT_ME_WORK_COUNT } from '../lib/home-settings.mjs';
 import { librarySettings, normalizeLibraryTypeId } from '../lib/library-settings.mjs';
 import { createMediaStore } from './media.mjs';
+import { albumTracks } from '../lib/album-tracks.mjs';
 import { createAuth } from './auth.mjs';
 import { createContentWatch } from './content-watch.mjs';
 import { createBackupStore, readBackupBody } from './backup.mjs';
 import { createFriendApplications, validateApplicationOrigin } from './friend-applications.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const assetFiles = new Map([
-  ['/app.js', ['app.js', 'text/javascript; charset=utf-8']],
-  ['/account.js', ['account.js', 'text/javascript; charset=utf-8']],
-  ['/backup.js', ['backup.js', 'text/javascript; charset=utf-8']],
-  ['/ui.js', ['ui.js', 'text/javascript; charset=utf-8']],
-  ['/media.js', ['media.js', 'text/javascript; charset=utf-8']],
-  ['/style.css', ['style.css', 'text/css; charset=utf-8']],
-  ['/login.js', ['login.js', 'text/javascript; charset=utf-8']],
-  ['/login.css', ['login.css', 'text/css; charset=utf-8']],
-  ['/theme.js', ['theme.js', 'text/javascript; charset=utf-8']],
-  ['/i18n.js', ['i18n.js', 'text/javascript; charset=utf-8']],
-  ['/settings-preview.js', ['settings-preview.js', 'text/javascript; charset=utf-8']],
+const assetPaths = new Set([
+  '/app.js', '/album-editor.js', '/account.js', '/backup.js', '/ui.js', '/media.js',
+  '/login.js', '/theme.js', '/i18n.js', '/settings-preview.js', '/style.css', '/login.css',
 ]);
 const displayFontPaths = new Set([
   '/fonts/geom/geom.woff2',
@@ -83,6 +76,7 @@ function httpUrl(value, name, allowEmpty = false) {
   assert(!text || /^https?:\/\//i.test(text), `${name}应为完整的 HTTP 或 HTTPS 地址。`);
   return imageUrl(text, name, allowEmpty);
 }
+const pageIds = ['blog', 'library', 'friends'];
 function validSettings(value) {
   assert(isObject(value), '站点设置格式不正确。');
   const navigationIds = ['home', 'blog', 'library', 'friends'];
@@ -112,10 +106,10 @@ function validSettings(value) {
   assert(libraryTypes.some(item => item.id !== 'all'), 'Keep at least one Library category besides All.');
   assert(isObject(value.pages), '页面设置格式不正确。');
   const pages = {};
-  for (const id of ['blog', 'library', 'friends']) {
+  for (const id of pageIds) {
     const page = value.pages[id];
     assert(isObject(page), `缺少 ${id} 页面设置。`);
-    pages[id] = { title: string(page.title, '页面标题', 160), eyebrow: string(page.eyebrow ?? '', '页面眉题', 200, false), description: string(page.description ?? '', '页面介绍', 2000, false) };
+    pages[id] = { title: string(page.title, '页面标题', 160) };
   }
   const email = string(value.email ?? '', '电子邮箱', 254, false);
   assert(email === '' || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email), '电子邮箱格式不正确。');
@@ -178,8 +172,8 @@ function validPost(value, categories, draftDefault = false) {
     demo: boolean(value.demo), draft: boolean(value.draft, draftDefault, '草稿标记'), body: value.body.replace(/\r\n/g, '\n'),
   };
 }
-function validLibrary(value, libraryTypes) {
-  assert(isObject(value), '收藏内容格式不正确。');
+function validLibrary(value, libraryTypes, trackOptions) {
+  assert(isObject(value), '作品志条目格式不正确。');
   const type = libraryTypes.find(item => item.id !== 'all' && item.id === normalizeLibraryTypeId(value.type));
   assert(type, 'Select a configured Library category. All is an aggregate tab and cannot be assigned to an item.');
   const cover = imageUrl(value.cover, '封面地址');
@@ -187,18 +181,15 @@ function validLibrary(value, libraryTypes) {
   assert(article === null || (typeof article === 'string' && /^\/blog\/[a-z0-9]+(?:-[a-z0-9]+)*\/$/.test(article)), '关联文章应为 /blog/article-slug/ 格式。');
   const rating = string(value.rating ?? '', '评分', 4, false);
   assert(rating === '' || (/^(?:\d(?:\.\d)?|10(?:\.0)?)$/.test(rating)), '评分应为 0–10，可留空。');
+  let tracks;
+  try { tracks = albumTracks(value.tracks, type.id, trackOptions); } catch (error) { fail(400, error.message); }
   return {
+    ...(tracks.length ? { tracks } : {}),
     id: identifier(value.id), title: string(value.title, '作品名称', 200), original: string(value.original ?? '', '原名', 200, false),
     type: type.id, typeLabel: string(value.typeLabel || type.label, '类型名称', 60), creator: string(value.creator ?? '', '创作者', 200, false),
     date: date(value.date), rating, cover, note: string(value.note ?? '', '短评', 1000, false),
     detail: string(value.detail ?? '', '详细记录', 20000, false), article, tags: tags(value.tags), demo: boolean(value.demo),
   };
-}
-async function atomicWrite(path, text) {
-  await mkdir(dirname(path), { recursive: true });
-  const temp = join(dirname(path), `.${randomBytes(12).toString('hex')}.tmp`);
-  try { await writeFile(temp, text, { encoding: 'utf8', flag: 'wx', mode: 0o600 }); await rename(temp, path); }
-  finally { await unlink(temp).catch(error => { if (error.code !== 'ENOENT') throw error; }); }
 }
 async function bodyJson(req, { limit = 1024 * 1024, sizeError = '请求内容过大，最多 1 MiB。' } = {}) {
   assert(req.headers['content-type']?.split(';')[0] === 'application/json', '请使用 JSON 请求内容。', 415);
@@ -301,6 +292,9 @@ export function createServer(options = {}) {
     let value;
     try { value = JSON.parse(raw); } catch { fail(422, 'site.json 格式不正确，请先修复文件。'); }
     assert(isObject(value) && Array.isArray(value.categories), 'site.json 必须包含站点设置和分类数组。', 422);
+    for (const id of pageIds) {
+      if (isObject(value.pages?.[id])) value.pages[id] = { title: value.pages[id].title };
+    }
     return { ...value, ...homeSettings(value), ...librarySettings(value) };
   }
   const publicItem = item => ({ ...item, revision: revision(item) });
@@ -404,9 +398,10 @@ export function createServer(options = {}) {
         const content = await readFile(join(here, 'public', file));
         res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' }); res.end(content); return;
       }
-      if (req.method === 'GET' && assetFiles.has(pathname)) {
-        const [file, contentType] = assetFiles.get(pathname);
-        res.writeHead(200, { 'Content-Type': contentType }); res.end(await readFile(join(here, 'public', file))); return;
+      if (req.method === 'GET' && assetPaths.has(pathname)) {
+        const content = await readFile(join(here, 'public', pathname.slice(1)));
+        const type = pathname.endsWith('.css') ? 'text/css' : 'text/javascript';
+        res.writeHead(200, { 'Content-Type': type + '; charset=utf-8' }); res.end(content); return;
       }
       const font = /^\/fonts\/misans-webfont-4\.3\.1\/(light|regular|demibold|bold)\/(\d{1,3})\.woff2$/.exec(pathname);
       // Login and CMS previews share these fonts; expose runtime assets only.
@@ -556,11 +551,12 @@ export function createServer(options = {}) {
         }
         const items = await (kind === 'friends' ? readFriends() : readLibrary());
         const path = kind === 'friends' ? friendsPath : libraryPath;
-        const label = kind === 'friends' ? '友链' : '收藏';
+        const label = kind === 'friends' ? '友链' : '作品志';
         const index = items.findIndex(item => item.id === id);
         if (id) { assert(index >= 0, `${label}不存在，可能已被删除。`, 404); assert(input.revision === revision(items[index]), `${label}已被其它窗口修改，请重新载入后再保存。`, 409); }
         if (req.method === 'DELETE') { items.splice(index, 1); await writeContent(path, JSON.stringify(items, null, 2) + '\n'); return { deleted: id }; }
         const item = kind === 'friends' ? validFriend(input) : validLibrary(input, (await readSettings()).libraryTypes);
+        if (kind === 'library') await media.checkAlbumAudio(item.tracks);
         if (id) assert(item.id === id, `已有${label}的 ID 不能修改。`);
         assert(!items.some(entry => entry.id === item.id && entry.id !== id), `这个${label} ID 已存在。`, 409);
         if (id) items[index] = item; else items.unshift(item);

@@ -129,6 +129,6 @@ const hasLaunchTime = Number.isFinite(launchTime);
     </div>
     <footer class="home-section-bottom contact-footer"><span>© {new Date().getFullYear()} {site.name} <i>/</i> {site.footerLabel}</span><a href="#welcome">Back to top <span aria-hidden="true">↑</span></a></footer>
   </section>
-  <nav class="scene-nav" aria-label="Home sections">{chapters.map((chapter, index) => <a href={`#${chapter.id}`} class:list={{ 'is-active': index === 0 }} aria-label={`Section ${index + 1}: ${chapter.label}`} title={chapter.label}><span>{String(index + 1).padStart(2, '0')}</span><i></i></a>)}</nav>
+  <nav class="scene-nav" aria-label="Home sections">{chapters.map((chapter, index) => <a href={`#${chapter.id}`} aria-current={index === 0 ? 'location' : undefined} aria-label={`Section ${index + 1}: ${chapter.label}`} title={chapter.label}><span>{String(index + 1).padStart(2, '0')}</span><i></i></a>)}</nav>
   <script>import '../scripts/home';</script>
 </Layout>

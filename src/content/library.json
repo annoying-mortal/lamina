@@ -35,7 +35,14 @@
     "demo": true,
     "id": "example-to-the-moon",
     "title": "To the Moon",
-    "type": "albums"
+    "type": "albums",
+    "tracks": [
+      {
+        "id": "doremi",
+        "title": "Do Re Mi",
+        "src": "/static/doremi.mp3"
+      }
+    ]
   },
   {
     "original": "",

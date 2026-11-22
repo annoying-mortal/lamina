@@ -1,3 +1,5 @@
+import type { LibraryItem } from '../data/library';
+import type { Friend } from '../data/friends';
 import { DEFAULT_LIBRARY_TYPES, normalizeLibraryTypeId } from '../../lib/library-settings.mjs';
 
 export interface ArchivePost {
@@ -11,32 +13,10 @@ export interface ArchivePost {
   tags: string[];
   readTime: number | string;
 }
-export interface ArchiveLibraryItem {
-  id: string;
-  title: string;
-  original: string;
-  type: string;
-  typeLabel: string;
-  creator: string;
-  date: string;
-  rating: string;
-  cover: string;
-  note: string;
-  detail: string;
-  tags: string[];
-  demo: boolean;
-}
-export interface ArchiveFriend {
-  id: string;
-  name: string;
-  url: string;
-  avatar: string;
-  description: string;
-  label: string;
-  kind: string;
-  domain: string;
-  demo: boolean;
-}
+type ArchiveLibraryItem = Pick<LibraryItem,
+  'id' | 'title' | 'original' | 'type' | 'typeLabel' | 'creator' | 'date' | 'rating' | 'cover' | 'note' | 'detail' | 'tags' | 'demo'
+>;
+export type ArchiveFriend = Pick<Friend, 'id' | 'name' | 'url' | 'avatar' | 'description' | 'label' | 'kind' | 'demo'> & { domain: string };
 export interface ArchiveRecord extends Omit<ArchivePost, 'slug'> {
   kind: 'blog' | 'library' | 'friend';
   href: string;

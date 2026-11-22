@@ -1,0 +1,35 @@
+---
+import '../styles/archive-search.css';
+import type { ArchiveData } from '../archive/data';
+interface Props { siteName: string; categories: ArchiveData['categories'] }
+const { siteName, categories } = Astro.props;
+---
+<archive-search-panel>
+  <a class="archive-search-toggle" href="/blog/#post-search" aria-haspopup="dialog" aria-controls="archive-search" aria-label="Search Blog and Library" title="Search Blog and Library"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="10" cy="10" r="6"/><path d="m14.5 14.5 5 5"/></svg></a>
+  <dialog id="archive-search" aria-labelledby="archive-search-title">
+    <div class="directory-bar"><span><span class="directory-site">{siteName}</span><i>/</i> ARCHIVE DIRECTORY</span><button type="button" data-close aria-label="Close search">CLOSE <b aria-hidden="true">×</b></button></div>
+    <h2 id="archive-search-title">ARCHIVE INDEX <small lang="zh-CN">文章与作品志检索</small></h2>
+    <form role="search">
+      <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="14" cy="9" r="6.5"/><path d="m9 14-6 6"/></svg>
+      <input id="archive-search-query" type="search" name="q" aria-label="Search posts, collections and track titles" placeholder="Search posts, collections, tracks…" autocomplete="off" autofocus />
+      <kbd aria-hidden="true">ESC</kbd>
+    </form>
+    <div class="directory-filters" role="group" aria-label="Filter by category">
+      <button type="button" data-filter="" aria-pressed="true">All entries</button>
+      {categories.map(category => <button type="button" data-filter={category.id} title={category.label} aria-pressed="false">{category.tabLabel}</button>)}
+    </div>
+    <div class="directory-columns directory-grid" aria-hidden="true"><span>FILE / 档案</span><span>CATEGORY / 分类</span><span>READ</span></div>
+    <div class="directory-list" aria-label="Matching entries" role="region">
+      <div data-rows></div>
+      <p class="directory-message" data-message>Loading index…</p>
+    </div>
+    <footer><span data-count role="status"></span><span class="directory-hint">↓ SELECT · ENTER READ</span><span><i aria-hidden="true"></i> PUBLIC ARCHIVE</span></footer>
+    <template>
+      <a class="directory-row directory-grid">
+        <span class="directory-file"><small data-number></small><span><strong data-title></strong><small data-summary></small></span></span>
+        <span data-category></span><span aria-hidden="true">↗</span>
+      </a>
+    </template>
+  </dialog>
+</archive-search-panel>
+<script>import '../scripts/archive-search';</script>

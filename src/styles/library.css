@@ -2,7 +2,6 @@
 .library-page { width: min(1160px, calc(100% - 96px)); }
 .library-page [hidden] { display: none !important; }
 .library-heading { padding-bottom: 56px; }
-.library-heading > .eyebrow { margin-bottom: 23px; }
 .library-heading-row { display: flex; align-items: center; justify-content: space-between; gap: 24px; }
 .library-heading h1 { font-size: clamp(56px, 7vw, 84px); font-weight: 500; line-height: 1.05; letter-spacing: -4.5px; }
 .library-heading h1 > span { color: var(--muted); }
@@ -10,15 +9,14 @@
 .library-total strong { color: var(--fg); font: 32px/1.1 var(--font-mono); letter-spacing: -2px; }
 .library-total > span { font: 8px var(--font-mono); letter-spacing: 1.5px; }
 .library-intro { margin-top: 28px; color: var(--muted); font-size: 13px; line-height: 1.9; letter-spacing: .4px; }
-.library-mobile-break { display: none; }
 .library-browser { scroll-margin-top: 115px; }
 .library-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 30px; border-bottom: 1px solid var(--line); }
 .library-type-tabs { display: flex; flex-wrap: wrap; gap: 0 32px; }
 .library-type-tab { position: relative; padding: 14px 0 20px; color: var(--muted); font-size: 12px; white-space: nowrap; }
 .library-type-tab small { font: 9px var(--font-mono); margin-left: 8px; opacity: .6; vertical-align: super; }
 .library-type-tab::after { content: ''; position: absolute; height: 2px; background: currentColor; bottom: -1px; left: 0; right: 0; transform: scaleX(0); transition: transform .2s; }
-.library-type-tab.is-active, .library-type-tab:hover { color: var(--fg); }
-.library-type-tab.is-active::after { transform: scaleX(1); }
+.library-type-tab[aria-pressed="true"], .library-type-tab:hover { color: var(--fg); }
+.library-type-tab[aria-pressed="true"]::after { transform: scaleX(1); }
 .library-search { display: flex; gap: 10px; align-items: center; color: var(--muted); padding-bottom: 6px; }
 .library-search svg { width: 15px; height: 15px; }
 .library-search input { width: 175px; border: 0; background: transparent; color: var(--fg); padding: 9px 0; font-size: 10px; outline-offset: 4px; }
@@ -26,7 +24,7 @@
 .library-tag-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 14px; margin: 20px 0; }
 .library-tag-caption { color: var(--muted); font: 8px var(--font-mono); letter-spacing: 1px; margin-right: 5px; }
 .library-tag { font-size: 10px; color: var(--muted); border: 1px solid transparent; padding: 3px 7px; border-radius: 3px; }
-.library-tag.is-active { border-color: var(--line); color: var(--fg); background: var(--surface); }
+.library-tag[aria-pressed="true"] { border-color: var(--line); color: var(--fg); background: var(--surface); }
 .library-tag:hover { color: var(--fg); }
 .library-demo-note { display: flex; align-items: baseline; gap: 8px; color: var(--muted); font-size: 9px; line-height: 1.8; }
 .library-demo-note > span { border: 1px solid var(--line); padding: 0 4px; font-size: 8px; flex-shrink: 0; }
@@ -36,6 +34,9 @@
 .library-result-heading p { color: var(--muted); font: 9px var(--font-mono); }
 .collection-wall { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 42px 28px; align-items: start; }
 .collection-card { min-width: 0; }
+.library-track-result { display: block; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 13px; overflow-wrap: anywhere; }
+.library-track-result::before { content: '♪ '; color: var(--muted); }
+.collection-dialog .album-playlist button:focus { outline: 1px solid currentColor; outline-offset: 3px; }
 .collection-open { display: block; width: 100%; text-align: left; padding: 0; }
 .collection-cover { position: relative; aspect-ratio: 3 / 4; background: var(--soft); overflow: hidden; }
 .collection-cover > img { position: relative; z-index: 1; width: 100%; height: 100%; object-fit: cover; transition: transform .45s cubic-bezier(.2,.65,.3,1); }
@@ -95,12 +96,10 @@ body.collection-dialog-open { overflow: hidden; }
 @media (max-width: 760px) {
   .library-page { width: calc(100% - 44px); }
   .library-heading { padding-bottom: 32px; }
-  .library-heading > .eyebrow { font-size: 8px; }
   .library-heading h1 { font-size: 57px; letter-spacing: -3px; }
   .library-total strong { font-size: 26px; }
   .library-total > span { font-size: 6px; letter-spacing: .7px; }
   .library-intro { font-size: 12px; line-height: 1.9; margin-top: 21px; }
-  .library-mobile-break { display: block; }
   .library-toolbar { flex-direction: column; align-items: stretch; gap: 5px; }
   .library-search { order: -1; padding: 4px 12px; background: var(--soft); margin-bottom: 6px; }
   .library-search input { width: 100%; font-size: 11px; }

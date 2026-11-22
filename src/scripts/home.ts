@@ -11,11 +11,6 @@ function initHome() {
   const content = hero.querySelector<HTMLElement>('.hero-content')!;
   const orbit = document.querySelector<HTMLElement>('[data-home-orbit]')!;
   const orbitPosition = orbit.querySelector<HTMLElement>('.home-orbit-position')!;
-  const orbitImage = orbit.querySelector<HTMLImageElement>('[data-orbit-image]');
-  if (orbitImage) {
-    orbitImage.addEventListener('error', () => { orbitImage.hidden = true; }, { once: true, signal: events.signal });
-    if (orbitImage.complete && !orbitImage.naturalWidth) orbitImage.hidden = true;
-  }
   const hourMarker = orbit.querySelector<SVGPathElement>('[data-orbit-hour-marker]')!;
   const minuteMarker = orbit.querySelector<SVGPathElement>('[data-orbit-minute-marker]')!;
   const orbitAnchor = hero.querySelector<HTMLElement>('.hero-art-anchor')!;
@@ -75,13 +70,11 @@ function initHome() {
     const progress = Math.min(1, Math.max(0, (window.scrollY - heroTop) / heroHeight));
     const activeChapter = sectionTops.reduce((active, top, index) => top <= window.scrollY + viewportHeight * .5 ? index : active, 0);
     const isArchive = sections[activeChapter] === archive;
-    const hideHeader = window.scrollY > 45;
-    header.classList.toggle('header-hidden', hideHeader);
-    header.inert = hideHeader;
-    header.setAttribute('aria-hidden', String(hideHeader));
+    header.classList.toggle('header-hidden', isArchive);
+    header.inert = isArchive;
+    header.setAttribute('aria-hidden', String(isArchive));
     document.documentElement.classList.toggle('in-archive', isArchive);
     links.forEach((link, index) => {
-      link.classList.toggle('is-active', index === activeChapter);
       if (index === activeChapter) link.setAttribute('aria-current', 'location');
       else link.removeAttribute('aria-current');
     });
@@ -111,7 +104,7 @@ function initHome() {
   document.addEventListener('keydown', event => {
     if (!['PageDown', 'PageUp'].includes(event.key) || event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return;
     const target = event.target as HTMLElement | null;
-    if (target?.closest('input,textarea,select,[contenteditable="true"],dialog,[role="dialog"],#archive-preview-content') || document.querySelector('dialog[open],.primary-nav.nav-open')) return;
+    if (target?.closest('input,textarea,select,[contenteditable="true"],dialog,[role="dialog"],#archive-preview-content') || document.querySelector('dialog[open],#music-player:popover-open,.primary-nav.nav-open')) return;
     const index = links.findIndex(link => link.getAttribute('aria-current') === 'location');
     const nextIndex = index + (event.key === 'PageDown' ? 1 : -1);
     if (index < 0 || nextIndex < 0 || nextIndex >= sections.length) return;

@@ -3,7 +3,7 @@ import { t } from './i18n.js';
 
 const names = {
   home: ['Home', '首页'], about: ['About', '介绍'], archive: ['Archive', '档案'], aboutMe: ['About me', '九部作品'],
-  contact: ['Contact', '联系'], blog: ['Blog', '文章'], library: ['Library', '收藏'], friends: ['Friends', '友链'],
+  contact: ['Contact', '联系'], blog: ['Blog', '博客'], library: ['Library', '作品志'], friends: ['Friends', '友链'],
 };
 const views = Object.keys(names);
 
@@ -174,7 +174,7 @@ export function mountSettingsPreview({ form, getValues, siteUrl, library = [], h
       }
     } else {
       const page = settings.pages?.[view] || {};
-      body.append(element('small', '', text(page.eyebrow)), element('h2', '', text(page.title, names[view][0])), element('p', '', text(page.description)));
+      body.append(element('h2', '', text(page.title, names[view][0])), element('p', '', names[view][1]));
       if (view === 'blog') {
         const filters = element('div', 'preview-filters');
         filters.append(element('span', '', 'All'));

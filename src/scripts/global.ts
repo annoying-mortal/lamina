@@ -9,7 +9,7 @@ function readTheme(): Theme {
 function applyTheme(theme: Theme) {
   document.documentElement.dataset.theme = theme;
   document.querySelector('meta[name="theme-color"]')!.setAttribute('content', theme === 'dark' ? '#11181b' : '#eae5e1');
-  document.querySelectorAll<HTMLButtonElement>('#theme-toggle, [data-theme-toggle]').forEach(button => {
+  document.querySelectorAll<HTMLButtonElement>('[data-theme-toggle]').forEach(button => {
     const label = theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme';
     button.setAttribute('aria-label', label);
     button.setAttribute('title', label);
@@ -18,7 +18,7 @@ function applyTheme(theme: Theme) {
 }
 document.addEventListener('click', (event) => {
   const target = event.target as Element;
-  if (target.closest('#theme-toggle, [data-theme-toggle]')) {
+  if (target.closest('[data-theme-toggle]')) {
     const theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
     try { localStorage.setItem('field-theme', theme); } catch {}
     applyTheme(theme);

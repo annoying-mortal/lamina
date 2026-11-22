@@ -36,6 +36,6 @@ const ticks = Array.from({ length: 60 }, (_, index) => ({
         <circle class="orbit-arc orbit-accent" cx="210" cy="210" r="145" pathLength="360" stroke-dasharray="32 148 32 148" />
       </g>
     </svg>
-    {orbitImage && <img class="orbit-image" data-orbit-image src={orbitImage} alt="" decoding="async" referrerpolicy="no-referrer" />}
+    {orbitImage && <img class="orbit-image" data-fallback-image src={orbitImage} alt="" decoding="async" referrerpolicy="no-referrer" />}
   </div>
 </div>

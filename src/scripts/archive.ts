@@ -44,6 +44,11 @@ function initArchive() {
   const original = section.querySelector<HTMLElement>('#archive-preview-original')!;
   const ticks = section.querySelector('#archive-ticks')!;
   const previewContent = section.querySelector<HTMLElement>('#archive-preview-content')!;
+  const previewBody = previewContent.querySelector<HTMLElement>('.archive-preview-body')!;
+  const trackSection = section.querySelector<HTMLElement>('#archive-preview-tracks')!;
+  const trackLists = new Map<string, HTMLOListElement>([...trackSection.querySelectorAll<HTMLOListElement>('[data-album-list]')]
+    .map(list => [`library:${list.dataset.albumList}`, list] as const));
+  let currentTracks: HTMLOListElement | undefined;
   cover.addEventListener('error', () => { cover.hidden = true; }, { signal: events.signal });
   let scene: ArchiveScene | undefined;
   let destroyed = false;
@@ -101,7 +106,8 @@ function initArchive() {
     const { lane } = fileLocation(selected);
     const category = categoryRecords[lane];
     const files = columnFiles(lane);
-    const number = String(files.indexOf(selected) + 1).padStart(2, '0');
+    const fileIndex = files.indexOf(selected);
+    const number = String(fileIndex + 1).padStart(2, '0');
     const total = String(files.length).padStart(2, '0');
     const code = String(selected + 1).padStart(3, '0');
     const fileCode = `${presentation.prefix}-${code}`;
@@ -109,6 +115,11 @@ function initArchive() {
     text('archive-category-name', category.label, animate);
     text('archive-file-code', fileCode, animate);
     text('archive-title', post.title, animate);
+    if (currentTracks) currentTracks.hidden = true;
+    currentTracks = trackLists.get(post.id);
+    if (currentTracks) currentTracks.hidden = false;
+    trackSection.hidden = !currentTracks;
+    text('archive-extract-label', currentTracks ? 'View tracks' : 'Preview');
     text('archive-summary', post.summary);
     text('archive-date', presentation.selectionMeta);
     text('archive-kind', presentation.kind);
@@ -156,7 +167,7 @@ function initArchive() {
     read.setAttribute('aria-label', `${presentation.readAction}: ${post.title}`);
     open.setAttribute('aria-label', `Preview: ${post.title}`);
     const count = Math.min(files.length, 12);
-    const active = Math.min(count - 1, Math.floor(files.indexOf(selected) * count / files.length));
+    const active = Math.min(count - 1, Math.floor(fileIndex * count / files.length));
     ticks.replaceChildren(...Array.from({ length: count }, (_, index) => {
       const tick = document.createElement('i');
       if (index === active) tick.className = 'is-active';
@@ -164,9 +175,7 @@ function initArchive() {
     }));
     categoryButtons.forEach((button, id) => {
       const active = id === post.categoryId;
-      button.classList.toggle('is-active', active);
       button.setAttribute('aria-pressed', String(active));
-      button.dataset.active = String(active);
       if (active) {
         // Preserve the document's current scroll; only reveal the selected lane inside its strip.
         if (button.offsetLeft < categoriesHost.scrollLeft) categoriesHost.scrollLeft = button.offsetLeft;
@@ -175,7 +184,6 @@ function initArchive() {
         else if (button.offsetTop + button.offsetHeight > categoriesHost.scrollTop + categoriesHost.clientHeight) categoriesHost.scrollTop = button.offsetTop + button.offsetHeight - categoriesHost.clientHeight;
       }
     });
-    section.dataset.selected = post.id;
     section.dataset.kind = post.kind;
     save();
   };
@@ -220,7 +228,8 @@ function initArchive() {
       rememberHome();
       section.style.setProperty('--detail-visibility', section.dataset.scene !== 'ready' || reduced.matches ? '1' : '0');
       status.textContent = detailStatus();
-      previewContent.focus({ preventScroll: true });
+      if (records[selected].kind === 'library') previewBody.scrollTop = 0;
+      (records[selected].kind === 'library' ? previewBody : previewContent).focus({ preventScroll: true });
     } else {
       status.textContent = 'Ready';
       if (focus) open.focus({ preventScroll: true });
@@ -240,11 +249,17 @@ function initArchive() {
       try { sessionStorage.setItem('blog:from', 'home'); } catch {}
     }
   }, { signal: events.signal });
-  const buttonActions: Record<string, () => void> = {
-    'archive-prev': () => navigate('row', -1), 'archive-next': () => navigate('row', 1),
-    'category-prev': () => navigate('lane', -1), 'category-next': () => navigate('lane', 1),
-  };
-  Object.entries(buttonActions).forEach(([id, action]) => section.querySelector(`#${id}`)!.addEventListener('click', action, { signal: events.signal }));
+  const keyActions = new Map<string, () => void>([
+    ['Enter', enter], ['Escape', () => { if (mode === 'detail') leave(); }],
+  ]);
+  for (const [id, key, axis, direction] of [
+    ['archive-prev', 'ArrowUp', 'row', -1], ['archive-next', 'ArrowDown', 'row', 1],
+    ['category-prev', 'ArrowLeft', 'lane', -1], ['category-next', 'ArrowRight', 'lane', 1],
+  ] as const) {
+    const move = () => navigate(axis, direction);
+    keyActions.set(key, move);
+    section.querySelector(`#${id}`)!.addEventListener('click', move, { signal: events.signal });
+  }
   document.addEventListener('keydown', event => {
     const target = event.target as HTMLElement | null;
     const bounds = section.getBoundingClientRect();
@@ -252,16 +267,12 @@ function initArchive() {
     if (!visible || event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey || event.shiftKey ||
       !centered || (target?.closest('a,button') && !section.contains(target)) ||
       target?.closest('input,textarea,select,[contenteditable="true"],[role="dialog"],dialog[open]') ||
-      document.querySelector('dialog[open], [aria-modal="true"], .primary-nav.nav-open')) return;
+      document.querySelector('dialog[open], [aria-modal="true"], .primary-nav.nav-open, #music-player:popover-open')) return;
     // Arrow keys scroll long previews; page scrolling always remains available.
     if (mode === 'detail' && event.key.startsWith('Arrow')) return;
-    const action: Record<string, () => void> = {
-      ArrowLeft: () => navigate('lane', -1), ArrowRight: () => navigate('lane', 1),
-      ArrowUp: () => navigate('row', -1), ArrowDown: () => navigate('row', 1),
-      Enter: enter, Escape: () => { if (mode === 'detail') leave(); },
-    };
     if (event.key === 'Enter' && target?.closest('a,button')) return;
-    if (action[event.key]) { event.preventDefault(); action[event.key](); }
+    const action = keyActions.get(event.key);
+    if (action) { event.preventDefault(); action(); }
   }, { signal: events.signal });
 
   const render = (time: number) => {
@@ -316,7 +327,6 @@ function initArchive() {
   const visibleObserver = new IntersectionObserver(entries => {
     const entry = entries[0];
     visible = entry.isIntersecting && entry.intersectionRatio >= .4;
-    section.dataset.active = String(visible);
     scene?.setInputEnabled(visible && mode === 'archive');
     resume();
   }, { threshold: [0, .4, .6, 1] });

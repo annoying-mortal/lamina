@@ -64,9 +64,13 @@ test('文件与 CMS 共用内容，监听发布更新静态页面且失败保留
     for (const visible of [true, false]) await json('/api/friends', 'POST', { id: visible ? 'shown-friend' : 'hidden-friend', name: visible ? '已展示的朋友' : '不应展示的朋友', url: 'https://friend.example.test/', avatar: image.url, initials: '', description: '联动验证', label: 'FRIEND', kind: '朋友', order: 1, visible, demo: false });
     const post = { id: 'QA-PUBLIC', slug: 'qa-public-image', title: '带插图的新文章', summary: '本地图与外链图测试', categoryId: 'new-category', date: '2026-10-20', tags: ['图文'], readTime: 1, draft: false, demo: false, body: `## 插图\n\n![本地插图](${image.url})\n\n![图床插图](https://images.example.test/picture.jpg?width=600)\n` };
     await json('/api/blog', 'POST', post);
-    await json('/api/blog', 'POST', { ...post, id: 'QA-DRAFT', slug: 'qa-private-draft', title: '不应公开的草稿', draft: true });
-    const item = { id: 'qa-local-cover', title: '本地封面', original: '', type: 'book', typeLabel: '书籍', creator: '', date: '2026-10-20', rating: '', cover: image.url, note: '', detail: '', article: '/blog/qa-public-image/', tags: [], demo: false };
+    await json('/api/blog', 'POST', { ...post, id: 'QA-DRAFT', slug: 'qa-private-draft', title: '不应公开的草稿', body: 'Private search sentinel', draft: true });
+    const item = { id: 'qa-local-cover', title: '本地封面', original: 'Original QA Work', type: 'book', typeLabel: '书籍', creator: '测试作者', date: '2026-10-20', rating: '', cover: image.url, note: '读后感', detail: '仅在详情里出现的段落', article: '/blog/qa-public-image/', tags: ['随笔'], demo: false };
     await json('/api/library', 'POST', item);
+    const music = await fetch(base + '/api/media', { method: 'POST', headers: { ...headers, 'Content-Type': 'audio/mpeg', 'X-File-Name': 'song.mp3' }, body: Buffer.from('track fixture') });
+    assert.equal(music.status, 201);
+    const tracks = [{ id: 'qa-track', title: 'Music </script> title', src: (await music.json()).url }];
+    await json('/api/library', 'POST', { ...item, id: 'music-fixture', type: 'albums', tracks });
     await json('/api/library', 'POST', { ...item, id: 'qa-remote-cover', title: '图床封面', cover: 'https://images.example.test/cover.png?size=2' });
     const currentSettings = await json('/api/settings');
     await json('/api/settings', 'PUT', {
@@ -83,7 +87,29 @@ test('文件与 CMS 共用内容，监听发布更新静态页面且失败保留
     const library = await readFile(join(root, 'dist/library/index.html'), 'utf8');
     const article = await readFile(join(root, 'dist/blog/qa-public-image/index.html'), 'utf8');
     const rss = await readFile(join(root, 'dist/rss.xml'), 'utf8');
-    assert.ok(blog.includes(`name="description" content="${settings.description}"`));
+    assert.deepEqual(JSON.parse(home.match(/<script\b[^>]*id="music-catalog"[^>]*>([\s\S]*?)<\/script>/)[1])[0].tracks, tracks);
+    assert.match(library, /data-play-album="music-fixture" data-play-track="qa-track"/);
+    const archiveTracks = home.match(/<section id="archive-preview-tracks"[^>]*>([\s\S]*?)<\/section>/)?.[1] ?? '';
+    assert.match(archiveTracks, /data-play-album="music-fixture" data-play-track="qa-track"[^>]*>Music &lt;\/script&gt; title/);
+    assert.match(blog, /data-search="[^"]*带插图的新文章[^"]*图床插图/);
+    assert.doesNotMatch(blog, /private search sentinel/i);
+    assert.match(home, /<dialog\b[^>]*id="archive-search"/);
+    const directory = JSON.parse(await readFile(join(root, 'dist/archive-search.json'), 'utf8'));
+    const indexedTrack = directory.find(record => record.kind === 'track' && record.title === tracks[0].title);
+    assert.equal(indexedTrack.href, '/library/#work-music-fixture/track/qa-track');
+    assert.equal(indexedTrack.text, tracks[0].title.toLowerCase());
+    assert.equal(indexedTrack.categoryId, 'library:albums');
+    assert.match(library, /href="#work-music-fixture\/track\/qa-track" hidden>Music &lt;\/script&gt; title<\/a>/);
+    const indexedPost = directory.find(record => record.href === `/blog/${post.slug}/`);
+    assert.equal(indexedPost.categoryId, `blog:${post.categoryId}`);
+    assert.match(indexedPost.text, /带插图的新文章.*图床插图/);
+    const indexedWork = directory.find(record => record.href === '/library/#work-qa-local-cover');
+    assert.equal(indexedWork.kind, 'library');
+    assert.equal(indexedWork.categoryId, 'library:books');
+    for (const term of [item.title, 'original qa work', item.creator, item.note, item.detail, '随笔']) assert.ok(indexedWork.text.includes(term), term);
+    assert.match(home, /data-filter="library:books"/);
+    assert.match(library, /data-library-search="[^"]*仅在详情里出现的段落/);
+    assert.doesNotMatch(JSON.stringify(directory), /private search sentinel|qa-private-draft/i);
     assert.match(home, /集成测试站/); assert.match(home, /你好 集成测试站/); assert.match(home, /文章目录/);
     const chapterOffsets = ['welcome', 'about', 'archives', 'aboutme', 'contact'].map(id => home.indexOf(`id="${id}"`));
     assert.ok(chapterOffsets.every((offset, index) => offset >= 0 && (index === 0 || offset > chapterOffsets[index - 1])), 'Home chapters retain the requested reading order');
@@ -112,6 +138,14 @@ test('文件与 CMS 共用内容，监听发布更新静态页面且失败保留
     assert.match(home, /\/library\/#work-qa-local-cover/); assert.match(library, /id="work-qa-local-cover"/);
     assert.match(home, /data-default-theme="dark"/); assert.ok(!home.includes('type="application/rss+xml"'));
     assert.ok(home.includes('https://blog.example.test/')); assert.ok(!home.includes('qa-private-draft'));
+    for (const [html, headingClass, subtitle] of [
+      [blog, 'content-heading', '博客'], [library, 'library-heading', '作品志'], [friends, 'content-heading', '友链'],
+    ]) {
+      const heading = html.match(new RegExp(`<header class="${headingClass}">([\\s\\S]*?)</header>`))[1];
+      assert.doesNotMatch(heading, /eyebrow/);
+      assert.ok(heading.includes(`lang="zh-CN">${subtitle}</p>`));
+      assert.ok(html.includes(`name="description" content="${subtitle}"`));
+    }
     assert.match(home, /新分类/); assert.match(friends, /已展示的朋友/); assert.ok(!friends.includes('不应展示的朋友'));
     assert.ok(friends.includes('https://blog.example.test/')); assert.ok(friends.includes(image.url));
     assert.ok(article.includes(image.url)); assert.match(article, /images\.example\.test\/picture\.jpg/);

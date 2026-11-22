@@ -1,6 +1,7 @@
 ---
 import Layout from '../../layouts/Layout.astro';
 import { getPostCategories, getPosts } from '../../lib/content';
+import { postSearchText } from '../../lib/post-search';
 import { site } from '../../data/site';
 import '../../styles/content.css';
 const posts = await getPosts();
@@ -8,25 +9,24 @@ const categories = getPostCategories(posts);
 const page = site.pages.blog;
 ---
 
-<Layout title={page.title} description={page.description} active="blog">
+<Layout title={page.title} description="博客" active="blog">
   <div class="page-shell content-page blog-index">
     <header class="content-heading">
-      <p class="eyebrow">{page.eyebrow}</p>
       <div class="heading-row"><h1>{page.title}<span class="heading-period">.</span></h1><span class="collection-count">{String(posts.length).padStart(2, '0')} ENTRIES</span></div>
-      <p class="heading-description">{page.description.split(/\r?\n/).map((line, index) => <>{index > 0 && <br />}{line}</>)}</p>
+      <p class="heading-description" lang="zh-CN">博客</p>
     </header>
 
     <div class="content-toolbar">
       <div class="filter-tabs" aria-label="Categories">
-        <button class="filter-tab is-active" data-filter="all" aria-pressed="true">All <span>{posts.length}</span></button>
+        <button class="filter-tab" data-filter="all" aria-pressed="true">All <span>{posts.length}</span></button>
         {categories.map(category => <button class="filter-tab" data-filter={category.id} aria-pressed="false">{category.label}<span>{posts.filter(post => post.categoryId === category.id).length}</span></button>)}
       </div>
-      <label class="content-search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg><input type="search" id="post-search" placeholder="Search posts or tags" aria-label="Search posts or tags" autocomplete="off" /></label>
+      <label class="content-search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg><input type="search" id="post-search" placeholder="Search title or content" aria-label="Search posts by title, content or tag" autocomplete="off" /></label>
     </div>
 
 
     <section class="post-list" aria-label="Blog">
-      {posts.map((post, index) => <article class="post-row" data-category={post.categoryId} data-search={[post.title, post.summary, ...post.tags].join(' ').toLowerCase()}>
+      {posts.map((post, index) => <article class="post-row" data-category={post.categoryId} data-search={postSearchText(post)}>
         <span class="post-index" aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
         <div class="post-row-content">
           <div class="post-meta"><time datetime={post.date}>{post.date.replaceAll('-', '.')}</time><span class="meta-divider">/</span><span>{post.category}</span><span class="meta-divider">/</span><span>{post.readTime} MIN READ</span>{post.demo && <span class="demo-badge">Demo</span>}</div>
@@ -42,6 +42,8 @@ const page = site.pages.blog;
 </Layout>
 
 <script>
+  import { normalizeSearchText } from '../../lib/search-text';
+
   function initializeBlog() {
     const root = document.querySelector<HTMLElement>('.blog-index');
     if (!root || root.dataset.initialized) return;
@@ -59,17 +61,13 @@ const page = site.pages.blog;
     const perPage = 6;
 
     function update(updateURL = true) {
-      const query = input.value.trim().toLowerCase();
+      const query = normalizeSearchText(input.value);
       const matches = rows.filter(row => (category === 'all' || row.dataset.category === category) && (row.dataset.search || '').includes(query));
       const pages = Math.max(1, Math.ceil(matches.length / perPage));
       page = Math.min(page, pages);
       rows.forEach(row => { row.hidden = true; });
       matches.slice((page - 1) * perPage, page * perPage).forEach(row => { row.hidden = false; });
-      filters.forEach(button => {
-        const active = button.dataset.filter === category;
-        button.classList.toggle('is-active', active);
-        button.setAttribute('aria-pressed', String(active));
-      });
+      filters.forEach(button => button.setAttribute('aria-pressed', String(button.dataset.filter === category)));
       root!.querySelector<HTMLElement>('#post-empty')!.hidden = matches.length > 0;
       root!.querySelector('#post-results')!.textContent = `${matches.length} posts${query ? ` · “${input.value.trim()}”` : ''}`;
       root!.querySelector('#page-position')!.textContent = matches.length ? `${page} / ${pages}` : '0 / 0';

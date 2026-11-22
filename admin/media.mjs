@@ -1,6 +1,8 @@
-import { readFile, readdir, mkdir, writeFile, rename, unlink, lstat, realpath } from 'node:fs/promises';
-import { join, resolve, dirname, relative, sep, extname } from 'node:path';
-import { randomUUID } from 'node:crypto';
+import { constants } from 'node:fs';
+import { open, readFile, readdir, mkdir, unlink, lstat, realpath } from 'node:fs/promises';
+import { join, resolve, relative, sep, extname } from 'node:path';
+import { atomicWrite } from './atomic-write.mjs';
+import { createHash, randomUUID } from 'node:crypto';
 import { Buffer } from 'node:buffer';
 import { detectRasterImage } from './image-format.mjs';
 
@@ -12,6 +14,7 @@ const types = {
   '.mp3': 'audio/mpeg', '.wav': 'audio/wav', '.ogg': 'audio/ogg', '.flac': 'audio/flac', '.m4a': 'audio/mp4', '.mp4': 'video/mp4', '.webm': 'video/webm',
 };
 export const fileMimeType = filename => types[extname(filename).toLowerCase()] || 'application/octet-stream';
+const isAudioFile = name => fileMimeType(name).startsWith('audio/') || /\.(aac|aif|aiff|opus|m4b|wma|mid|midi|oga|alac)$/i.test(name);
 const rasterTypes = new Set(['image/png', 'image/jpeg', 'image/gif', 'image/webp']);
 function fail(status, message) { throw Object.assign(new Error(message), { status }); }
 async function bytes(req) {
@@ -29,11 +32,6 @@ async function bytes(req) {
     req.on('aborted', () => error(400, '文件上传已中断。'));
     req.on('error', () => error(400, '文件上传失败。'));
   });
-}
-async function atomic(path, value) {
-  const temp = join(dirname(path), `.${randomUUID()}.tmp`);
-  try { await writeFile(temp, value, { flag: 'wx', mode: 0o644 }); await rename(temp, path); }
-  finally { await unlink(temp).catch(error => { if (error.code !== 'ENOENT') throw error; }); }
 }
 
 /** Caller checks the request, then revalidates authorization when a queued upload writes. */
@@ -70,6 +68,36 @@ export function createMediaStore({ projectRoot, mediaDir = join(projectRoot, 'pu
     }
     return [...records.values()].sort((a, b) => b.createdAt.localeCompare(a.createdAt) || a.id.localeCompare(b.id));
   }
+  async function audioDigest(record) {
+    const directory = record.url.startsWith('/static/') ? uploads : legacyUploads;
+    const file = await open(join(directory, record.id), constants.O_RDONLY | constants.O_NOFOLLOW);
+    try {
+      const digest = createHash('sha256');
+      for await (const chunk of file.createReadStream({ autoClose: false })) digest.update(chunk);
+      return digest.digest('hex');
+    } finally { await file.close(); }
+  }
+  async function existingAudio(data) {
+    const candidates = (await list()).filter(file => file.size === data.length && isAudioFile(file.id));
+    if (!candidates.length) return;
+    const digest = createHash('sha256').update(data).digest('hex');
+    for (const file of candidates) if (await audioDigest(file) === digest) return file;
+  }
+  // Older media libraries may already contain byte-identical files under different IDs.
+  async function checkAlbumAudio(tracks = []) {
+    if (tracks.length < 2) return;
+    const selected = new Set(tracks.map(track => track.src.split('/').pop()));
+    const bySize = Map.groupBy((await list()).filter(file => selected.has(file.id)), file => file.size);
+    for (const files of bySize.values()) {
+      if (files.length < 2) continue;
+      const digests = new Set();
+      for (const file of files) {
+        const digest = await audioDigest(file);
+        if (digests.has(digest)) fail(400, '同一音频在一张专辑中只能添加一次。');
+        digests.add(digest);
+      }
+    }
+  }
   async function serve(res, pathname) {
     let decoded;
     try { decoded = decodeURIComponent(pathname); } catch { fail(400, '文件路径编码不正确。'); }
@@ -100,6 +128,7 @@ export function createMediaStore({ projectRoot, mediaDir = join(projectRoot, 'pu
     res.writeHead(200, headers); res.end(data);
   }
   return {
+    checkAlbumAudio,
     async handle(req, res, pathname, runAuthorized = action => action()) {
       if (req.method === 'GET' && (pathname.startsWith('/static/') || pathname.startsWith('/uploads/') || pathname.startsWith('/covers/') || fileMimeType(pathname).startsWith('image/'))) { await serve(res, pathname); return true; }
       if (pathname !== '/api/media') return false;
@@ -119,17 +148,19 @@ export function createMediaStore({ projectRoot, mediaDir = join(projectRoot, 'pu
       const ext = format ? `.${format.ext}` : /^\.[a-z0-9]{1,16}$/.test(extension) ? extension : '.bin';
       const mime = format?.mime || fileMimeType(`file${ext}`);
       const record = await serialize(() => runAuthorized(async () => {
-        await mkdir(uploads, { recursive: true });
-        await mkdir(dirname(indexPath), { recursive: true });
+        if (isAudioFile('file' + ext)) {
+          const existing = await existingAudio(data);
+          if (existing) return { ...existing, reused: true };
+        }
         const id = `${randomUUID()}${ext}`;
         const record = { id, name: name.trim(), url: `/static/${id}`, mime, size: data.length, createdAt: new Date().toISOString() };
         const records = await metadata();
-        await atomic(join(uploads, id), data);
-        try { await atomic(indexPath, JSON.stringify([record, ...records], null, 2) + '\n'); }
+        await atomicWrite(join(uploads, id), data, { mode: 0o644 });
+        try { await atomicWrite(indexPath, JSON.stringify([record, ...records], null, 2) + '\n', { mode: 0o644 }); }
         catch (error) { await unlink(join(uploads, id)); throw error; }
         return record;
       }));
-      json(res, 201, record); return true;
+      json(res, record.reused ? 200 : 201, record); return true;
     },
   };
 }

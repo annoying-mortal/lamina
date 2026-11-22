@@ -4,7 +4,6 @@
 .home-orbit-position{--orbit-size:420px;position:absolute;left:0;top:0;width:var(--orbit-size);height:var(--orbit-size);transform:translate3d(63vw,28vh,0);transform-origin:0 0;will-change:transform}
 .home-orbit-instrument{display:block;width:100%;height:100%;overflow:visible;stroke:currentColor;stroke-width:1;opacity:var(--orbit-opacity,.58)}
 .orbit-image{position:absolute;inset:20%;width:60%;height:60%;border-radius:50%;border:1px solid var(--line);object-fit:cover;object-position:center;opacity:var(--orbit-image-opacity,1)}
-.orbit-image[hidden]{display:none}
 .orbit-outline{opacity:.14}
 .orbit-guide{opacity:.3}
 .orbit-guide-inner{opacity:.18}

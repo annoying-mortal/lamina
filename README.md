@@ -8,6 +8,7 @@ Introduce yourself, publish Markdown articles, and collect books, music, and oth
 
 - **Home and archive** — personal introduction, a nine-tile About me grid, contact details, and a 3D archive for posts, Library entries, and public friend links, with keyboard, mouse, and touch controls.
 - **Blog** — categories, tags, drafts, search, table of contents, RSS, highlighted code with copy buttons, footnotes, and KaTeX mathematics.
+- **Archive search** — search published articles and Library entries together. Find works by title, original title, creator, category, tags, notes, or detail text and open the matching entry directly.
 - **Library and Friends** — collections with covers, ratings, notes, and related articles; a two-column friend directory with avatars and optional descriptions. Visitors can submit a link for manual review in the CMS.
 - **CMS** — Settings, Blog, Library, Friends, Files, and Backup, with English and Chinese interfaces and a live preview of site settings.
 - **Appearance** — RhineLab-inspired light and dark themes, configurable branding, and separate typography for the site, archive, and articles.
@@ -42,6 +43,10 @@ For the header logo, an SVG URL such as `/logo.svg` is recommended; leave **Sett
 Settings opens first and groups fields into **Basics**, **Home**, **Nine works**, and **Content**. Expand the section you want to edit; the live preview is optional.
 
 In **Settings → Nine works**, choose Library entries for the nine tiles and give each a **Tag**. Empty tiles show `+`. Contact details start as placeholders; fill them in to make the links available.
+
+Open an album under **Library → Albums** in the CMS. Upload one or more MP3, M4A, OGG, WAV, or FLAC files, or choose existing uploads. Name the tracks, use **Up** and **Down** to set their order, then save.
+
+The music button beside the theme switch opens the player on every public page. Browsing an album leaves playback alone. Click a track to play through the rest of its album in order. Music continues across site navigation. A reload during playback restores the track and position, with a **继续播放** (Resume) button if the browser blocks playback. A first visit or a reload after pausing picks a random nonempty album and a random track within it, and starts paused.
 
 The starter content includes a Markdown guide, sample Library entries, Friends links, and editable `Enter…` placeholders. Replace or delete these records and clear the Demo flag on your own content. See [starter content and image sources](docs/content-examples.md).
 

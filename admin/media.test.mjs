@@ -195,3 +195,32 @@ test('已有 uploads 文件继续列出和访问，不移动或覆盖原文件',
   assert.deepEqual(await readFile(join(legacy, 'legacy.png')), png);
   assert.equal((await fetch(base + '/static/%2e%2e%2Fsrc%2Fcontent%2Fmedia.json')).status, 404);
 }));
+
+test('identical audio reuses an upload even with a new name, a legacy path or concurrent requests', () => fixture(async ({ root, mediaDir, upload, base }) => {
+  const legacy = join(root, 'public/uploads');
+  await mkdir(legacy, { recursive: true });
+  await writeFile(join(legacy, 'old.mp3'), 'old');
+  const send = (name, bytes) => upload(Buffer.from(bytes), { 'Content-Type': 'audio/mpeg', 'X-File-Name': name });
+  const old = await send('renamed.mp3', 'old');
+  assert.equal(old.status, 200);
+  assert.equal((await old.json()).url, '/uploads/old.mp3');
+  const pair = await Promise.all([send('one.mp3', 'new'), send('two.mp3', 'new')]);
+  assert.deepEqual(pair.map(response => response.status).sort(), [200, 201]);
+  const [one, two] = await Promise.all(pair.map(response => response.json()));
+  assert.equal(one.id, two.id);
+  assert.equal((await send('one.mp3', 'alt')).status, 201);
+  assert.equal((await (await fetch(base + '/api/media')).json()).length, 3);
+
+  await writeFile(join(mediaDir, 'old-copy.mp3'), 'old');
+  const session = await (await fetch(base + '/api/session')).json();
+  const album = { id: 'test-album', title: 'Album', type: 'albums', date: '2026-10-20', tracks:
+    ['/uploads/old.mp3', '/static/old-copy.mp3'].map((src, idx) => ({ id: String(idx), title: 'Track', src })) };
+  const save = body => fetch(base + '/api/library', { method: 'POST', headers: {
+    Origin: base, 'X-CSRF-Token': session.csrf, 'Content-Type': 'application/json',
+  }, body: JSON.stringify(body) });
+  const conflict = await save({ ...album, tags: [] });
+  assert.equal(conflict.status, 400);
+  assert.match((await conflict.json()).error, /同一音频/);
+  assert.equal((await save({ ...album, tags: [], tracks: album.tracks.slice(0, 1) })).status, 201);
+  assert.equal((await save({ ...album, id: 'second-album', tags: [], tracks: album.tracks.slice(0, 1) })).status, 201);
+}));

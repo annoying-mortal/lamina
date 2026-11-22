@@ -7,9 +7,12 @@ const page = site.pages.friends;
 const ownSiteURL = site.url.trim();
 ---
 
-<Layout title={page.title} description={page.description} active="friends">
+<Layout title={page.title} description="友链" active="friends">
   <div class="page-shell content-page friends-page">
-    <header class="content-heading"><p class="eyebrow">{page.eyebrow}</p><div class="heading-row"><h1>{page.title}<span class="heading-period">.</span></h1><span class="collection-count">{String(friends.length).padStart(2, '0')} LINKS</span></div><p class="heading-description">{page.description.split(/\r?\n/).map((line, index) => <>{index > 0 && <br />}{line}</>)}</p></header>
+    <header class="content-heading">
+      <div class="heading-row"><h1>{page.title}<span class="heading-period">.</span></h1><span class="collection-count">{String(friends.length).padStart(2, '0')} LINKS</span></div>
+      <p class="heading-description" lang="zh-CN">友链</p>
+    </header>
     {friends.length ? (
       <ul class="friend-directory" aria-label={page.title} role="list">
         {friends.map(friend => (

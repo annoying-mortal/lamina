@@ -76,14 +76,14 @@ try {
       record.title === friends[index].name && record.href === friends[index].url && /^https?:\/\//i.test(record.href)),
       'Home 友链档案的名称、顺序或外链与公开友链不一致');
     check(archive.posts.filter(record => record.kind === 'blog').length === publishedSource.length, 'Home 的 Blog 档案与公开文章数量不一致');
-    check(archive.posts.filter(record => record.kind === 'library').length === librarySource.length, 'Home 的 Library 档案与收藏数量不一致');
+    check(archive.posts.filter(record => record.kind === 'library').length === librarySource.length, 'Home 的 Library 档案与作品志数量不一致');
     check(new Set(archive.posts.map(record => record.id)).size === archive.posts.length, 'Home 档案 ID 冲突');
     for (const record of archive.posts) {
       check(archive.categories.some(category => category.id === record.categoryId), `档案 ${record.title} 缺少对应分类`);
       if (record.kind === 'friend') continue;
       const target = new URL(record.href, 'http://verify.local');
       check(await exists(diskPath(target.pathname)), `档案 ${record.title} 的访问入口不存在`);
-      if (record.kind === 'library') check(tags(core.get('/library/') ?? '', 'dialog').some(tag => tag.id === decodeURIComponent(target.hash.slice(1))), `收藏 ${record.title} 的详情链接没有匹配弹窗`);
+      if (record.kind === 'library') check(tags(core.get('/library/') ?? '', 'dialog').some(tag => tag.id === decodeURIComponent(target.hash.slice(1))), `作品志 ${record.title} 的详情链接没有匹配弹窗`);
     }
   }
 
@@ -92,6 +92,8 @@ try {
     const html = await readFile(file, 'utf8');
     const route = '/' + file.slice(dist.length + 1).replace(/index\.html$/, '');
     const label = route || '/';
+    check(tags(html, 'button').some(tag => tag.id === 'theme-toggle'), `${label} 缺少明暗模式按钮`);
+    check(tags(html, 'button').some(tag => tag.popovertarget === 'music-player'), `${label} 缺少音乐播放器入口`);
     check(/<!doctype html>/i.test(html), `${label} 缺少 HTML doctype`);
     check(/<html\b[^>]*\blang=["']en["']/i.test(html), `${label} is missing the default English document language`);
     check((html.match(/<main\b/gi) ?? []).length === 1 && /<nav\b/i.test(html), `${label} 应有且只有一个 main，并包含语义 nav`);

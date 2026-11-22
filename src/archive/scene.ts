@@ -13,8 +13,6 @@ import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 import type { BokehPass } from "three/addons/postprocessing/BokehPass.js";
-import { archiveQuality } from "./render-quality";
-import { resizeQuality } from "./quality-renderer";
 import { CardAppearance } from "./appearance";
 import { configureInternalOptics } from "./internal-optics";
 import { archiveColumns, archiveBranding, rowRebasePeriod, fileLocation } from "./data";
@@ -152,7 +150,6 @@ export class ArchiveScene {
   private labelTexture?: THREE.CanvasTexture;
   private labelMark = new Image();
   private reducedMotion = false;
-  private readonly quality = archiveQuality;
   onSelect?: (index: number, cell?: ArchiveCell) => void;
   constructor(private container: HTMLElement) {
     this.renderer = new THREE.WebGLRenderer({
@@ -173,10 +170,6 @@ export class ArchiveScene {
     this.renderer.shadowMap.type = THREE.PCFShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.05;
-    this.renderer.domElement.setAttribute(
-      "aria-label",
-      "3D archive. Drag or use arrow keys to select. Press Enter to preview.",
-    );
     container.appendChild(this.renderer.domElement);
     this.renderer.domElement.addEventListener('webglcontextrestored', () => {
       this.renderState.invalidate();
@@ -598,20 +591,26 @@ export class ArchiveScene {
   }
   resize() {
     this.renderState.invalidate();
-    const w = this.container.clientWidth,
-      h = this.container.clientHeight;
-    const dimensions = resizeQuality(
-      this.renderer,
-      this.composer,
-      this.container,
-      this.quality,
+    const width = Math.max(1, this.container.clientWidth);
+    const height = Math.max(1, this.container.clientHeight);
+    const stageScale = this.container.getBoundingClientRect().width / width;
+    // Cap full-resolution targets at 8.3 MP and the device's texture limit.
+    const ratio = Math.min(
+      Math.min(devicePixelRatio, 1.5) * stageScale,
+      Math.sqrt(8_294_400 / (width * height)),
+      this.renderer.capabilities.maxTextureSize / Math.max(width, height),
     );
+    this.renderer.setPixelRatio(ratio);
+    this.renderer.setSize(width, height);
+    this.composer.setPixelRatio(ratio);
+    this.composer.setSize(width, height);
+    this.renderer.transmissionResolutionScale = 1;
     this.ao.setSize(
-      Math.max(1, Math.floor(dimensions.width * this.quality.aoResolution)),
-      Math.max(1, Math.floor(dimensions.height * this.quality.aoResolution)),
+      Math.max(1, Math.floor(width * ratio)),
+      Math.max(1, Math.floor(height * ratio)),
     );
-    this.ao.setSharing(this.ao.enabled && this.bokeh.enabled && this.quality.aoResolution === 1);
-    this.camera.aspect = w / h;
+    this.ao.setSharing(this.ao.enabled && this.bokeh.enabled);
+    this.camera.aspect = width / height;
     this.camera.updateProjectionMatrix();
   }
   private canBrowse() {
@@ -1225,10 +1224,7 @@ export class ArchiveScene {
       { value: number }
     >;
     bokehUniforms.focus.value = -focalPoint.z;
-    bokehUniforms.aperture.value =
-      (THREE.MathUtils.lerp(0.0003, 0.0008, detail) *
-        this.quality.depthOfField) /
-      100;
+    bokehUniforms.aperture.value = THREE.MathUtils.lerp(0.0003, 0.0008, detail);
     this.renderer.info.reset();
     // Keep all simulation and picking current. Reuse the composited canvas only
     // when its actual inputs are identical, including late textures and materials.

@@ -290,7 +290,7 @@ test('settings persist complete content, reordered navigation and revision confl
   assert.equal(result.body.defaultTheme, 'dark'); assert.equal(result.body.showRSS, false);
   assert.equal(result.body.logo, new URL(value.logo).href); assert.equal(result.body.url, new URL(value.url).href);
   const file = JSON.parse(await readFile(join(dataDir, 'site.json'), 'utf8'));
-  assert.equal(file.pages.friends.title, '朋友们'); assert.equal(Object.hasOwn(file, 'revision'), false);
+  assert.deepEqual(file.pages.friends, { title: '朋友们' }); assert.equal(Object.hasOwn(file, 'revision'), false);
   assert.equal((await request('/api/settings', 'PUT', value)).status, 409);
   const competing = await Promise.all(['A', 'B'].map(name => request('/api/settings', 'PUT', { ...result.body, name })));
   assert.deepEqual(competing.map(item => item.status).sort(), [200, 409]);

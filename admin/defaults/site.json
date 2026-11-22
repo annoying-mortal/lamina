@@ -49,19 +49,13 @@
   ],
   "pages": {
     "blog": {
-      "title": "Blog",
-      "eyebrow": "Enter blog label",
-      "description": "Enter blog description"
+      "title": "Blog"
     },
     "library": {
-      "title": "Library",
-      "eyebrow": "Enter library label",
-      "description": "Enter library description"
+      "title": "Library"
     },
     "friends": {
-      "title": "Friends",
-      "eyebrow": "Enter friends label",
-      "description": "Enter friends description"
+      "title": "Friends"
     }
   },
   "categories": [

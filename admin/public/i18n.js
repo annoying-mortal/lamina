@@ -1,10 +1,10 @@
 const storageKey = 'admin-locale';
 let locale = 'en';
 try { if (localStorage.getItem(storageKey) === 'zh') locale = 'zh'; } catch {}
-export const getLocale = () => locale;
+export const getDateLocale = () => locale === 'zh' ? 'zh-CN' : 'en-GB';
 export const t = (en, zh) => locale === 'zh' ? (zh ?? en) : en;
-export function translateDom(root = document) {
-  const nodes = [...(root.matches?.('[data-en], [data-en-placeholder], [data-en-label], [data-en-title], [data-en-alt]') ? [root] : []), ...root.querySelectorAll('[data-en], [data-en-placeholder], [data-en-label], [data-en-title], [data-en-alt]')];
+function translateDom() {
+  const nodes = document.querySelectorAll('[data-en], [data-en-placeholder], [data-en-label], [data-en-title], [data-en-alt]');
   for (const node of nodes) {
     if (node.dataset.en !== undefined) node.textContent = t(node.dataset.en, node.dataset.zh);
     for (const [suffix, attribute] of [['Placeholder', 'placeholder'], ['Label', 'aria-label'], ['Title', 'title'], ['Alt', 'alt']]) {
@@ -13,12 +13,10 @@ export function translateDom(root = document) {
   }
   document.documentElement.lang = locale === 'zh' ? 'zh-CN' : 'en';
   document.querySelectorAll('[data-admin-language]').forEach(button => {
-    const active = button.dataset.adminLanguage === locale;
-    button.setAttribute('aria-pressed', String(active));
-    button.classList.toggle('active', active);
+    button.setAttribute('aria-pressed', String(button.dataset.adminLanguage === locale));
   });
 }
-export function setLocale(value) {
+function setLocale(value) {
   const next = value === 'zh' ? 'zh' : 'en';
   if (next === locale) return;
   locale = next;
@@ -31,6 +29,7 @@ document.addEventListener('click', event => {
   if (button) setLocale(button.dataset.adminLanguage);
 });
 const errors = {
+  '同一音频在一张专辑中只能添加一次。': 'Each audio file can appear only once per album.',
   '请选择 .zip 备份文件。': 'Choose a .zip backup file.',
   '所选 ZIP 文件为空。': 'The selected ZIP is empty.',
   'ZIP 文件超过 256 MiB。': 'The ZIP exceeds 256 MiB.',
@@ -93,12 +92,12 @@ const errors = {
   '分类格式不正确。': 'Invalid category.',
   '分类 ID 只接受小写字母、数字及中间的连字符。': 'Category IDs use lowercase letters, numbers and hyphens.',
   '分类 ID 不能重复。': 'Category IDs must be unique.',
-  'Library 需保留 1–30 个分类。': 'Library must contain 1–30 categories.',
-  'Library 分类格式不正确。': 'Each Library category must be an object.',
-  'Library 分类 ID 只接受小写字母、数字及中间的连字符。': 'Library category IDs may contain lowercase letters, digits and internal hyphens.',
-  'Library 分类 ID 不能重复。': 'Library category IDs must be unique.',
-  '除 All 外，请至少保留一个 Library 分类。': 'Keep at least one Library category besides All.',
-  '请选择已配置的 Library 分类，All 仅用于显示全部内容，不能分配给条目。': 'Select a configured Library category. All is an aggregate tab and cannot be assigned to an item.',
+  '作品志需保留 1–30 个分类。': 'Library must contain 1–30 categories.',
+  '作品志分类格式不正确。': 'Each Library category must be an object.',
+  '作品志分类 ID 只接受小写字母、数字及中间的连字符。': 'Library category IDs may contain lowercase letters, digits and internal hyphens.',
+  '作品志分类 ID 不能重复。': 'Library category IDs must be unique.',
+  '除 All 外，请至少保留一个 作品志分类。': 'Keep at least one Library category besides All.',
+  '请选择已配置的 作品志分类，All 仅用于显示全部内容，不能分配给条目。': 'Select a configured Library category. All is an aggregate tab and cannot be assigned to an item.',
   '页面设置格式不正确。': 'Invalid page settings.',
   '电子邮箱格式不正确。': 'Enter a valid email address.',
   '默认主题应为 system、light 或 dark。': 'Theme must be system, light or dark.',
@@ -109,7 +108,7 @@ const errors = {
   '请选择有效分类。': 'Select a valid category.',
   '阅读时长应为 1–999 分钟。': 'Read time must be 1–999 minutes.',
   'Markdown 正文不能为空，最长 300,000 字。': 'Markdown content is required, up to 300,000 characters.',
-  '收藏内容格式不正确。': 'Invalid library item.',
+  '作品志条目格式不正确。': 'Invalid library item.',
   '关联文章应为 /blog/article-slug/ 格式。': 'Related post must use /blog/article-slug/.',
   '文件不能超过 256 MiB。': 'Files must be no larger than 256 MiB.',
   '文件上传已中断。': 'File upload interrupted.',
@@ -123,7 +122,7 @@ const errors = {
   '文件名称编码不正确。': 'Invalid filename encoding.',
   '文件名无效或过长。': 'Invalid filename or filename too long.',
 };
-const fields = { '标题':'Title', '文章网址':'Slug', '分类 ID':'Category ID', '标签':'Tags', '摘要':'Summary', '评分':'Rating', '站点名称':'Site name', '浏览器标题':'Page title', '站点描述':'Description', '站点地址':'Site URL', '首页标语':'Home heading', '首页介绍':'Introduction', '首页眉题':'Home eyebrow', '页脚文字':'Footer text', '页脚标签':'Footer label', 'GitHub 地址':'GitHub URL', '电子邮箱':'Email', '站点 Logo':'Logo', '浏览器图标':'Favicon', '档案副标题':'Archive subtitle', '档案标题':'Archive title', '首页版本文字':'Home bottom text', '导航名称':'Navigation label', '分类名称':'Category name', '分类英文名称':'English category name', '页面标题':'Page title', '页面眉题':'Page eyebrow', '页面介绍':'Page description', '网站名称':'Site name', '网站地址':'Website URL', '友链头像':'Avatar', '文字头像':'Initials', '网站介绍':'Description', '友链类型':'Type', '封面地址':'Cover', '运行计时起点':'Launch date', '作品名称':'Title', '原名':'Original title', '创作者':'Creator', '短评':'Summary', '详细记录':'Notes' };
+const fields = { '标题':'Title', '文章网址':'Slug', '分类 ID':'Category ID', '标签':'Tags', '摘要':'Summary', '评分':'Rating', '站点名称':'Site name', '浏览器标题':'Page title', '站点描述':'Description', '站点地址':'Site URL', '首页标语':'Home heading', '首页介绍':'Introduction', '首页眉题':'Home eyebrow', '页脚文字':'Footer text', '页脚标签':'Footer label', 'GitHub 地址':'GitHub URL', '电子邮箱':'Email', '站点 Logo':'Logo', '浏览器图标':'Favicon', '档案副标题':'Archive subtitle', '档案标题':'Archive title', '首页版本文字':'Home bottom text', '导航名称':'Navigation label', '分类名称':'Category name', '分类英文名称':'English category name', '页面标题':'Page title', '网站名称':'Site name', '网站地址':'Website URL', '友链头像':'Avatar', '文字头像':'Initials', '网站介绍':'Description', '友链类型':'Type', '封面地址':'Cover', '运行计时起点':'Launch date', '作品名称':'Title', '原名':'Original title', '创作者':'Creator', '短评':'Summary', '详细记录':'Notes' };
 export function translateError(value) {
   const message = String(value || '');
   if (locale === 'zh') {
@@ -133,7 +132,7 @@ export function translateError(value) {
     if (match) return `删除分类前请先迁移或删除这些条目：${match[1]}。`;
     match = /^Library category ID "(.*)" is reserved for legacy content; use "(.*)" instead\.$/.exec(message);
     if (match) return `分类 ID「${match[1]}」保留用于旧内容，请使用「${match[2]}」。`;
-    return message.replace(/^Library category English name/, 'Library 档案标签').replace(/^Library category name/, 'Library 分类名称').replace(/^Library category ID/, 'Library 分类 ID');
+    return message.replace(/^Library category English name/, '作品志档案标签').replace(/^Library category name/, '作品志分类名称').replace(/^Library category ID/, '作品志分类 ID');
   }
   if (errors[message]) return errors[message];
   const imageError = /^(.+?)：(.+)$/.exec(message);

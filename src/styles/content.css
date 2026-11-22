@@ -2,7 +2,6 @@
 .content-page [hidden] { display: none !important; }
 .content-page { --content-measure: 740px; }
 .content-heading { margin-bottom: 53px; }
-.content-heading > .eyebrow { margin-bottom: 23px; }
 .heading-row { display: flex; justify-content: space-between; gap: 20px; align-items: baseline; }
 .heading-row h1 { font-size: clamp(50px, 7vw, 76px); font-weight: 500; line-height: 1.1; letter-spacing: -4px; }
 .heading-period { color: var(--muted); }
@@ -12,9 +11,9 @@
 .filter-tabs { display: flex; flex-wrap: wrap; gap: 23px; }
 .filter-tab { padding: 5px 0; font-size: 12px; letter-spacing: .3px; color: var(--muted); position: relative; }
 .filter-tab span { font: 9px var(--font-mono); margin-left: 6px; vertical-align: super; opacity: .65; }
-.filter-tab:hover, .filter-tab.is-active { color: var(--fg); }
+.filter-tab:hover, .filter-tab[aria-pressed="true"] { color: var(--fg); }
 .filter-tab::after { content: ''; height: 1px; position: absolute; left: 0; right: 0; bottom: -20px; background: currentColor; transform: scaleX(0); transition: transform .2s; }
-.filter-tab.is-active::after { transform: scaleX(1); }
+.filter-tab[aria-pressed="true"]::after { transform: scaleX(1); }
 .content-search { display: flex; align-items: center; gap: 10px; color: var(--muted); }
 .content-search svg { width: 15px; height: 15px; }
 .content-search input { background: transparent; border: 0; outline-offset: 6px; color: var(--fg); width: 160px; font-size: 11px; padding: 5px 0; }
@@ -115,7 +114,7 @@
 .article-toc nav { display: flex; flex-direction: column; gap: 17px; max-height: calc(100dvh - 340px); overflow-y: auto; scrollbar-width: thin; }
 .article-toc nav a { display: flex; gap: 12px; font-size: 10px; color: var(--muted); line-height: 1.8; }
 .article-toc nav a span { flex: 0 0 auto; font: 8px/2.2 var(--font-mono); opacity: .6; }
-.article-toc nav a.is-active, .article-toc nav a:hover { color: var(--fg); }
+.article-toc nav a[aria-current="location"], .article-toc nav a:hover { color: var(--fg); }
 .article-toc nav a.toc-subheading { padding-left: 15px; }
 .article-reading-progress { display: flex; justify-content: space-between; font: 9px var(--font-mono); color: var(--muted); margin-top: 35px; }
 .reading-track { height: 1px; background: var(--line); margin-top: 12px; overflow: hidden; }
@@ -201,7 +200,6 @@
 }
 @media (max-width: 760px) {
   .content-heading { margin-bottom: 35px; }
-  .content-heading > .eyebrow { font-size: 8px; margin-bottom: 20px; }
   .heading-row h1 { letter-spacing: -2.8px; }
   .collection-count { font-size: 8px; letter-spacing: .6px; }
   .heading-description { font-size: 12px; line-height: 1.9; margin-top: 19px; }

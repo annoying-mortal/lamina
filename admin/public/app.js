@@ -1,11 +1,13 @@
-import { t, getLocale, translateError } from './i18n.js';
+import { t, getDateLocale, translateError } from './i18n.js';
 import { mountSettingsPreview } from './settings-preview.js';
 import { element, imagePreview, safeImageUrl, siteImageUrl, renderMarkdown, markdownImage } from './ui.js';
 import { createMediaTools } from './media.js';
+import { albumEditor } from './album-editor.js';
 import { initAccount } from './account.js';
 import { createBackupTools } from './backup.js';
 const $ = selector => document.querySelector(selector);
-const sectionNames = { blog: ['Blog', '文章'], library: ['Library', '收藏'], friends: ['Friends', '友链'], media: ['Files', '文件'], settings: ['Settings', '站点设置'], backup: ['Backup', '备份'] };
+const sectionNames = { blog: ['Blog', '文章'], library: ['Library', '作品志'], friends: ['Friends', '友链'], media: ['Files', '文件'], settings: ['Settings', '站点设置'], backup: ['Backup', '备份'] };
+const pageIds = ['blog', 'library', 'friends'];
 const sectionLabel = kind => t(...sectionNames[kind]);
 const state = { kind: null, records: { blog: [], library: [], friends: [] }, settings: null, session: null, current: null, dirty: false, busy: false, backupBusy: false, publishBusy: false, refreshing: false, authRedirecting: false };
 const form = $('#editor');
@@ -34,7 +36,7 @@ async function api(path, method = 'GET', data, options = {}) {
   const result = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(result.error || t(`Request failed (${response.status})`, `请求失败（${response.status}）`)); return result;
 }
-const media = createMediaTools({ api, getSession: () => state.session, message, alertError, onUnauthorized: handleUnauthorized });
+const media = createMediaTools({ api, getLibrary: () => state.records.library, getSession: () => state.session, message, alertError, onUnauthorized: handleUnauthorized });
 const backup = createBackupTools({
   api, clearError,
   onBusy: value => {
@@ -97,7 +99,7 @@ function isRecoveryRecord(kind, record) {
   if (record.libraryTypes !== undefined && (!Array.isArray(record.libraryTypes) || record.libraryTypes.length > 30 || !record.libraryTypes.every(item => item && ['id', 'label', 'en'].every(key => typeof item[key] === 'string')))) return false;
   return record.navigation.every(item => item && ['home', 'blog', 'library', 'friends'].includes(item.id) && typeof item.label === 'string' && typeof item.visible === 'boolean')
     && record.categories.every(item => item && ['id', 'label', 'en'].every(key => typeof item[key] === 'string'))
-    && ['blog', 'library', 'friends'].every(id => record.pages[id] && ['title', 'eyebrow', 'description'].every(key => typeof record.pages[id][key] === 'string'));
+    && pageIds.every(id => typeof record.pages[id]?.title === 'string');
 }
 function readRecovery() {
   try {
@@ -126,7 +128,7 @@ function renderList() {
   for (const kind of ['blog', 'library', 'friends']) $(`#${kind}-count`).textContent = state.records[kind].length;
   if (!(state.kind in state.records)) return;
   const query = $('#search').value.trim().toLocaleLowerCase();
-  const records = state.records[state.kind].filter(item => [item.title, item.name, item.summary, item.description, item.creator, item.url, item.sourcePath, ...(item.tags || [])].join(' ').toLocaleLowerCase().includes(query));
+  const records = state.records[state.kind].filter(item => [item.title, item.name, item.summary, item.description, item.creator, item.url, item.sourcePath, ...(item.tags || []), ...(item.tracks ?? []).map(track => track.title)].join(' ').toLocaleLowerCase().includes(query));
   const list = $('#record-list'); list.replaceChildren(); $('#result-count').textContent = records.length;
   if (!records.length) { list.append(element('p', 'no-results', query ? t("No results.", "没有找到匹配内容。") : t("No content yet.", "这里还没有内容，开始一条新记录吧。"))); return; }
   for (const record of records) {
@@ -239,8 +241,9 @@ function edit(record) {
       imageField('cover', t("Cover", "封面地址"), record.cover, t("Local path or HTTP(S) URL. Optional.", "留空使用文字封面；站内路径或 HTTP(S) 外链均可。")),
       field('tags', t("Tags", "标签"), (record.tags || []).join(', '), { wide: true, placeholder: t("Please enter tags", "请填写tag"), hint: t("Comma-separated.", "用逗号分隔。") }),
       field('note', t("Summary", "一句短评"), record.note, { wide: true, multiline: true, rows: 2, max: 1000 }), field('detail', t("Notes", "详细记录"), record.detail, { wide: true, multiline: true, rows: 7, max: 20000 }),
-      field('article', t("Related post", "关联文章"), record.article || '', { wide: true, placeholder: t("Please enter post URL", "请填写关联文章地址"), hint: t("/blog/slug/ · Optional.", "可选，格式为 /blog/文章网址/，将收藏关联到一篇已发布文章。") })
+      field('article', t("Related post", "关联文章"), record.article || '', { wide: true, placeholder: t("Please enter post URL", "请填写关联文章地址"), hint: t("/blog/slug/ · Optional.", "可选，格式为 /blog/文章网址/，将作品关联到一篇已发布文章。") })
     );
+    grid.append(albumEditor({ album: record, category: grid.querySelector('[name=type]'), api, media, report: alertError, message }));
   } else {
     grid.append(
       field('name', t("Site name", "站点名称"), record.name, { wide: true, required: true, max: 200 }),
@@ -306,13 +309,12 @@ function aboutHighlightFields(records) {
       ['description', t('Summary', '成就简介'), { max: 500, multiline: true, rows: 2, wide: true }],
       ['url', t('URL', '链接'), { max: 2000, type: 'url', wide: true }],
     ]) {
-      const control = field(`aboutHighlights.${key}`, label, item[key], options);
-      control.querySelector('input, textarea').dataset.highlightKey = key; row.append(control);
+      row.append(field(`aboutHighlights.${key}`, label, item[key], options));
     }
     rows.append(row); updateOrder(); return row;
   };
   records.forEach(addRow);
-  add.addEventListener('click', () => { if (rows.children.length >= 6) return; const row = addRow({}); markDirty(true); row.querySelector('[data-highlight-key="title"]').focus(); });
+  add.addEventListener('click', () => { if (rows.children.length >= 6) return; const row = addRow({}); markDirty(true); row.querySelector('[name="aboutHighlights.title"]').focus(); });
   section.append(heading, rows, add); updateOrder(); return section;
 }
 function libraryTypeFields(records) {
@@ -341,8 +343,7 @@ function libraryTypeFields(records) {
     remove.setAttribute('aria-label', t(`Remove category ${item.label || ''}`, `移除分类 ${item.label || ''}`));
     remove.addEventListener('click', () => { row.remove(); updateOrder(); markDirty(true); }); actions.append(remove); heading.append(actions); row.append(heading);
     for (const [key, label, max] of [['id', 'ID', 60], ['label', t('Name', '名称'), 60], ['en', t('Archive label', '档案标签'), 100]]) {
-      const control = field(`libraryType.${key}`, label, item[key], { required: key !== 'en', max, ...(key === 'id' ? { readonly: Boolean(item.id), pattern: '[a-z0-9]+(-[a-z0-9]+)*', hint: item.id === 'all' ? t('All entries', '全部内容') : undefined } : {}) });
-      control.querySelector('input').dataset.libraryTypeKey = key; row.append(control);
+      row.append(field(`libraryType.${key}`, label, item[key], { required: key !== 'en', max, ...(key === 'id' ? { readonly: Boolean(item.id), pattern: '[a-z0-9]+(-[a-z0-9]+)*', hint: item.id === 'all' ? t('All entries', '全部内容') : undefined } : {}) }));
     }
     rows.append(row); updateOrder(); return row;
   };
@@ -358,11 +359,9 @@ function aboutMeWorkFields(records) {
     const row = element('div', 'about-me-work-row'); row.dataset.aboutMeWorkRow = '';
     row.append(element('span', 'muted', String(index + 1).padStart(2, '0')));
     const label = field(`aboutMeWorks.${index}.label`, 'Tag', item.label, { max: 80, placeholder: 'tag' });
-    label.querySelector('input').dataset.aboutMeWorkKey = 'label';
     const available = item.libraryId && !choices.some(choice => choice.id === item.libraryId)
       ? [...choices, { id: item.libraryId, label: t('Removed work · empty slot', '作品已移除 · 空槽') }] : choices;
-    const work = field(`aboutMeWorks.${index}.libraryId`, t('Library work', 'Library 作品'), item.libraryId, { choices: available });
-    work.querySelector('select').dataset.aboutMeWorkKey = 'libraryId';
+    const work = field(`aboutMeWorks.${index}.libraryId`, t('Library work', '作品志条目'), item.libraryId, { choices: available });
     row.append(label, work); rows.append(row);
   }
   return rows;
@@ -376,7 +375,7 @@ function editSettings(record) {
   home.grid.append(field('tagline', t("Heading", "首页主标题"), record.tagline, { wide: true, multiline: true, max: 500 }), field('intro', t("Introduction", "首页简介"), record.intro, { wide: true, multiline: true, rows: 3, max: 2000 }), field('eyebrow', t("Eyebrow", "首页上方小字"), record.eyebrow, { wide: true, max: 200 }), field('homeEdition', t("Bottom text", "首页底部文字"), record.homeEdition, { wide: true, max: 300 }), imageField('orbitImage', t('Orbit image', '圆环图片'), record.orbitImage, t('Home & sign-in', '首页与登录页')), field('archiveTitle', t("Archive title", "档案标题"), record.archiveTitle, { max: 100 }), field('archiveSubtitle', t("Archive subtitle", "档案副标题"), record.archiveSubtitle, { max: 200 }));
   const about = settingsSection(t("About", "Home · 个人介绍"), '');
   about.grid.append(field('aboutEyebrow', t("Eyebrow", "上方小字"), record.aboutEyebrow, { wide: true, max: 200 }), field('aboutTitle', t("Heading", "介绍标题"), record.aboutTitle, { wide: true, multiline: true, rows: 2, max: 300 }), field('aboutBody', t("Content", "介绍正文"), record.aboutBody, { wide: true, multiline: true, rows: 3, max: 6000 }), aboutHighlightFields(record.aboutHighlights || state.settings?.aboutHighlights || []));
-  const aboutMe = settingsSection(t('About me · Nine works', 'About me · 九部作品'), t('Choose nine works from Library. Empty slots show +.', '从 Library 选择九部作品，空槽显示 ＋。'));
+  const aboutMe = settingsSection(t('About me · Nine works', 'About me · 九部作品'), t('Choose nine works from Library. Empty slots show +.', '从作品志选择九部作品，空槽显示 ＋。'));
   aboutMe.grid.append(field('aboutMeTitle', t('Heading', '标题'), record.aboutMeTitle ?? state.settings?.aboutMeTitle ?? 'About me', { wide: true, max: 300 }), field('aboutMeSubtitle', t('Subtitle', '副标题'), record.aboutMeSubtitle ?? state.settings?.aboutMeSubtitle ?? '构成我的九部作品', { wide: true, max: 1000 }), aboutMeWorkFields(record.aboutMeWorks || state.settings?.aboutMeWorks || []));
   const contact = settingsSection(t("Contact", "Home · 联系与运行时间"), '');
   contact.grid.append(field('github', t("GitHub URL", "GitHub 地址"), record.github, { type: 'url', max: 2000 }), field('email', t("Email", "联系邮箱"), record.email, { type: 'email', max: 254 }), field('contactEyebrow', t("Eyebrow", "上方小字"), record.contactEyebrow, { wide: true, max: 200 }), field('contactTitle', t("Heading", "联系页标题"), record.contactTitle, { wide: true, multiline: true, rows: 2, max: 300 }), field('contactBody', t("Content", "联系页正文"), record.contactBody, { wide: true, multiline: true, rows: 3, max: 4000 }), field('launchedAt', t("Launched at", "运行计时起点"), record.launchedAt, { wide: true, max: 40, placeholder: t("Please enter launch date", "请填写运行计时起点"), hint: t("YYYY-MM-DDTHH:mm:ss+08:00 · Optional.", "YYYY-MM-DDTHH:mm:ss+08:00，可留空。") }));
@@ -391,14 +390,19 @@ function editSettings(record) {
     row.append(control, visible, moves); rows.append(row);
   }
   navigation.grid.append(rows); updateOrder();
-  const pages = settingsSection(t("Pages", "栏目文案"), '');
-  for (const id of ['blog', 'library', 'friends']) { const group = element('div', 'page-settings-group wide'); group.append(element('h4', '', sectionLabel(id)), field(`pages.${id}.title`, t("Title", "标题"), record.pages?.[id]?.title, { required: true, max: 100 }), field(`pages.${id}.eyebrow`, t("Eyebrow", "上方小字"), record.pages?.[id]?.eyebrow, { max: 200 }), field(`pages.${id}.description`, t("Description", "说明"), record.pages?.[id]?.description, { multiline: true, rows: 2, max: 1000 })); pages.grid.append(group); }
-  const libraryTypes = settingsSection(t('Library categories', 'Library 分类'), t('Move entries before removing a category.', '删除分类前请先迁移条目。'));
+  const pages = settingsSection(t('Page titles', '栏目标题'), '');
+  const titleLabels = { blog: t('Blog title', '博客页标题'), library: t('Library title', '作品志页标题'), friends: t('Friends title', '友链页标题') };
+  for (const id of pageIds) {
+    pages.grid.append(field(`pages.${id}.title`, titleLabels[id], record.pages?.[id]?.title, { required: true, max: 100 }));
+  }
+  const libraryTypes = settingsSection(t('Library categories', '作品志分类'), t('Move entries before removing a category.', '删除分类前请先迁移条目。'));
   libraryTypes.grid.append(libraryTypeFields(record.libraryTypes || state.settings?.libraryTypes || []));
   const categories = settingsSection(t("Categories", "文章分类"), t("Move posts before removing a category.", "删除分类前请先迁移文章。")); const categoryRows = element('div', 'category-rows wide');
   const addCategory = item => {
     const row = element('div', 'category-row'); row.dataset.categoryRow = '';
-    for (const [key, label, max] of [['id', t("ID", "分类 ID"), 80], ['label', t("Name", "名称"), 80], ['en', t("English name", "英文名称"), 100]]) { const control = field(`category.${key}`, label, item[key], { required: true, max, ...(key === 'id' ? { pattern: '[a-z0-9]+(-[a-z0-9]+)*', placeholder: t("Please enter category ID", "请填写分类 ID"), hint: t("Lowercase letters, numbers and hyphens.", "使用小写字母、数字和连字符。") } : {}) }); control.querySelector('input').dataset.categoryKey = key; row.append(control); }
+    for (const [key, label, max] of [['id', t("ID", "分类 ID"), 80], ['label', t("Name", "名称"), 80], ['en', t("English name", "英文名称"), 100]]) {
+      row.append(field(`category.${key}`, label, item[key], { required: true, max, ...(key === 'id' ? { pattern: '[a-z0-9]+(-[a-z0-9]+)*', placeholder: t("Please enter category ID", "请填写分类 ID"), hint: t("Lowercase letters, numbers and hyphens.", "使用小写字母、数字和连字符。") } : {}) }));
+    }
     const remove = element('button', 'text-danger', t("Remove", "移除")); remove.type = 'button'; remove.setAttribute('aria-label', t(`Remove category ${item.label || ''}`, `移除分类 ${item.label || ''}`)); remove.addEventListener('click', () => { row.remove(); markDirty(true); }); row.append(remove); categoryRows.append(row);
   };
   (record.categories || []).forEach(addCategory); const add = element('button', 'button subtle add-category', t("+ Add category", "＋ 新增分类")); add.type = 'button'; add.addEventListener('click', () => { addCategory({ id: '', label: '', en: '' }); markDirty(true); categoryRows.lastElementChild.querySelector('input').focus(); }); categories.grid.append(categoryRows, add);
@@ -429,11 +433,17 @@ function newRecord() {
   let record;
   if (state.kind === 'blog') record = { id: `POST-${suffix}`, slug: '', title: '', summary: '', categoryId: state.session.categories[0]?.id || '', date, tags: [], readTime: 3, demo: false, draft: true, body: '' };
   else if (state.kind === 'library') {
-    if (!state.session.libraryTypes.length) { message(t('Add a Library category in Settings first.', '请先在设置中添加 Library 分类。')); return; }
+    if (!state.session.libraryTypes.length) { message(t('Add a Library category in Settings first.', '请先在设置中添加 作品志分类。')); return; }
     record = { id: `item-${suffix}`, title: '', original: '', type: state.session.libraryTypes[0].id, typeLabel: '', creator: '', date, rating: '', cover: '', note: '', detail: '', article: null, tags: [], demo: false };
   }
   else record = { id: `friend-${crypto.randomUUID()}`, name: '', url: '', avatar: '', initials: '', description: '', label: '', kind: '', order: state.records.friends.length, visible: true, demo: false };
   edit(record); markDirty(true); form.elements.namedItem(state.kind === 'friends' ? 'name' : 'title').focus();
+}
+function readSettingsRows(selector) {
+  return Array.from(form.querySelectorAll(selector), row => {
+    const fields = Array.from(row.querySelectorAll('[name]'), control => [control.name.split('.').at(-1), control.value]);
+    return Object.fromEntries(fields);
+  });
 }
 function formValue() {
   const values = Object.fromEntries(new FormData(form).entries()); let input;
@@ -442,13 +452,17 @@ function formValue() {
     for (const name of ['name', 'title', 'description', 'url', 'tagline', 'intro', 'eyebrow', 'footerNote', 'footerLabel', 'github', 'email', 'logo', 'favicon', 'orbitImage', 'defaultTheme', 'archiveSubtitle', 'archiveTitle', 'homeEdition', 'aboutEyebrow', 'aboutTitle', 'aboutBody', 'aboutMeTitle', 'aboutMeSubtitle', 'contactEyebrow', 'contactTitle', 'contactBody', 'launchedAt']) input[name] = values[name] || '';
     for (const name of ['showRSS', 'demo']) input[name] = form.elements.namedItem(name).checked;
     input.navigation = [...form.querySelectorAll('[data-navigation-id]')].map(row => ({ id: row.dataset.navigationId, label: row.querySelector('[data-navigation-label]').value, visible: row.querySelector('[data-navigation-visible]').checked }));
-    input.pages = Object.fromEntries(['blog', 'library', 'friends'].map(id => [id, Object.fromEntries(['title', 'eyebrow', 'description'].map(key => [key, values[`pages.${id}.${key}`] || '']))]));
-    input.categories = [...form.querySelectorAll('[data-category-row]')].map(row => Object.fromEntries([...row.querySelectorAll('[data-category-key]')].map(control => [control.dataset.categoryKey, control.value])));
-    input.libraryTypes = [...form.querySelectorAll('[data-library-type-row]')].map(row => Object.fromEntries([...row.querySelectorAll('[data-library-type-key]')].map(control => [control.dataset.libraryTypeKey, control.value])));
-    input.aboutHighlights = [...form.querySelectorAll('[data-about-highlight-row]')].map(row => Object.fromEntries([...row.querySelectorAll('[data-highlight-key]')].map(control => [control.dataset.highlightKey, control.value])));
-    input.aboutMeWorks = [...form.querySelectorAll('[data-about-me-work-row]')].map(row => Object.fromEntries([...row.querySelectorAll('[data-about-me-work-key]')].map(control => [control.dataset.aboutMeWorkKey, control.value])));
+    input.pages = Object.fromEntries(pageIds.map(id => [id, { title: values[`pages.${id}.title`] || '' }]));
+    input.categories = readSettingsRows('[data-category-row]');
+    input.libraryTypes = readSettingsRows('[data-library-type-row]');
+    input.aboutHighlights = readSettingsRows('[data-about-highlight-row]');
+    input.aboutMeWorks = readSettingsRows('[data-about-me-work-row]');
   } else {
     input = values; input.demo = form.elements.namedItem('demo').checked;
+    if (state.kind === 'library') {
+      input.type = form.elements.namedItem('type').value;
+      input.tracks = [...form.querySelectorAll('[data-track-id]')].map(row => ({ id: row.dataset.trackId, title: row.querySelector('input').value, src: row.dataset.src }));
+    }
     if (state.kind === 'friends') { input.id = state.current.id; input.order = Number(input.order); input.visible = form.elements.namedItem('visible').checked; }
     else { input.tags = (input.tags || '').split(/[,，]/).map(value => value.trim()).filter(Boolean); if (state.kind === 'blog') { input.readTime = Number(input.readTime); input.draft = form.elements.namedItem('draft').checked; } else input.article = input.article || null; }
   }
@@ -474,6 +488,7 @@ async function refreshList() {
 }
 async function save(event) {
   event?.preventDefault(); if (state.busy || form.hidden || !state.current) return;
+  if (form.querySelector('[data-uploading=true]')) { message(t('Wait for track uploads to finish.', '请等曲目上传完成后再保存。')); return; }
   const markdown = form.elements.namedItem('body');
   if (markdown?.hidden && !markdown.validity.valid) form.querySelector('[data-editor-mode=edit]').click();
   if (!form.reportValidity()) return; clearError(); setBusy(true);
@@ -488,7 +503,7 @@ async function save(event) {
   } catch (error) { alertError(error); } finally { setBusy(false); }
 }
 async function updatePublish() {
-  const status = await api('/api/publish/status'); const messages = { idle: t("Ready", "就绪"), building: t("Building…", "正在构建…"), queued: t("Queued…", "等待发布…"), published: `${t('Published', '已发布')}${status.finishedAt ? ` · ${new Date(status.finishedAt).toLocaleTimeString(getLocale() === 'zh' ? 'zh-CN' : 'en-GB')}` : ''}`, failed: `${t('Publishing failed.', '发布失败。')} ${translateError(status.error || '')}` };
+  const status = await api('/api/publish/status'); const messages = { idle: t("Ready", "就绪"), building: t("Building…", "正在构建…"), queued: t("Queued…", "等待发布…"), published: `${t('Published', '已发布')}${status.finishedAt ? ` · ${new Date(status.finishedAt).toLocaleTimeString(getDateLocale())}` : ''}`, failed: `${t('Publishing failed.', '发布失败。')} ${translateError(status.error || '')}` };
   const lines = element('div', 'publish-lines');
   lines.append(element('span', '', status.enabled ? messages[status.state] || t("Ready", "发布服务就绪") : t("Local preview", "本地预览")));
   const watch = status.watch;
@@ -524,7 +539,7 @@ function renderFriendApplications() {
     const details = element('dl', 'friend-application-details');
     const contact = element('div'); contact.append(element('dt', '', t('Contact', '联系方式')), element('dd', '', record.contact));
     const submitted = element('div');
-    const time = element('time', '', new Date(record.createdAt).toLocaleString(getLocale() === 'zh' ? 'zh-CN' : 'en-GB')); time.dateTime = record.createdAt;
+    const time = element('time', '', new Date(record.createdAt).toLocaleString(getDateLocale())); time.dateTime = record.createdAt;
     const date = element('dd'); date.append(time); submitted.append(element('dt', '', t('Submitted', '提交时间')), date);
     details.append(contact, submitted);
     const remove = element('button', 'text-danger', t('Mark handled & remove', '处理后移除')); remove.type = 'button'; remove.disabled = friendApplicationsBusy;

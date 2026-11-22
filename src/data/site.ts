@@ -5,7 +5,6 @@ import { librarySettings } from '../../lib/library-settings.mjs';
 export type NavigationId = 'home' | 'blog' | 'library' | 'friends';
 export type DefaultTheme = 'system' | 'light' | 'dark';
 export interface SiteCategory { id: string; label: string; en: string; }
-export interface PageSettings { title: string; eyebrow: string; description: string; }
 export interface AboutHighlight { label: string; title: string; description: string; period: string; url: string; }
 export interface AboutMeWork { label: string; libraryId: string; }
 export interface SiteSettings {
@@ -18,7 +17,7 @@ export interface SiteSettings {
   aboutMeTitle: string; aboutMeSubtitle: string; aboutMeWorks: AboutMeWork[];
   contactEyebrow: string; contactTitle: string; contactBody: string; launchedAt: string;
   navigation: Array<{ id: NavigationId; label: string; visible: boolean }>;
-  pages: Record<'blog' | 'library' | 'friends', PageSettings>;
+  pages: Record<'blog' | 'library' | 'friends', { title: string }>;
   categories: SiteCategory[];
   libraryTypes: SiteCategory[];
 }

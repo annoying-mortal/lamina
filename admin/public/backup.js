@@ -1,4 +1,4 @@
-import { t, getLocale, translateError } from './i18n.js';
+import { t, getDateLocale, translateError } from './i18n.js';
 import { element } from './ui.js';
 
 const maxArchiveSize = 256 * 1024 * 1024;
@@ -42,7 +42,7 @@ export function createBackupTools({ api, onBusy, onRestored, clearError }) {
     content.append(element('span', 'eyebrow', t('RESTORE BACKUP', '恢复备份')));
     const title = element('h2', '', t('Replace this site’s content?', '替换当前站点内容？'));
     title.id = 'backup-restore-title';
-    content.append(title, element('p', '', t('This replaces site settings, Blog, Library and Friends with the inspected backup, and restores its files.', '此操作将使用已检查的备份替换站点设置、文章、收藏和友链，并恢复备份中的文件。')));
+    content.append(title, element('p', '', t('This replaces site settings, Blog, Library and Friends with the inspected backup, and restores its files.', '此操作将使用已检查的备份替换站点设置、文章、作品志和友链，并恢复备份中的文件。')));
     content.append(element('p', 'muted', t('A snapshot of the original files is saved on the server for manual recovery. Your administrator account and password stay unchanged.', '替换前会在服务器保存原始文件快照，供手动回滚恢复。管理员账号与密码保持不变。')));
     const actions = element('div', 'dialog-actions');
     actions.append(button('cancel-backup-restore', t('Cancel', '取消'), () => dialog.close()));
@@ -56,9 +56,9 @@ export function createBackupTools({ api, onBusy, onRestored, clearError }) {
     const title = element('h3', '', t('Ready to restore', '可以恢复'));
     title.id = 'backup-preview-title'; title.tabIndex = -1;
     result.append(title);
-    if (preview.createdAt) result.append(element('p', 'backup-meta', t('Created · ', '创建时间 · ') + new Date(preview.createdAt).toLocaleString(getLocale() === 'zh' ? 'zh-CN' : 'en-GB')));
+    if (preview.createdAt) result.append(element('p', 'backup-meta', t('Created · ', '创建时间 · ') + new Date(preview.createdAt).toLocaleString(getDateLocale())));
     const counts = element('dl', 'backup-counts');
-    for (const [key, label] of [['blog', t('Blog', '文章')], ['library', t('Library', '收藏')], ['friends', t('Friends', '友链')], ['images', t('Files', '文件')]]) {
+    for (const [key, label] of [['blog', t('Blog', '文章')], ['library', t('Library', '作品志')], ['friends', t('Friends', '友链')], ['images', t('Files', '文件')]]) {
       const pair = element('div'); pair.append(element('dt', '', label), element('dd', '', String(preview.summary?.[key] ?? 0))); counts.append(pair);
     }
     result.append(counts);
@@ -71,7 +71,7 @@ export function createBackupTools({ api, onBusy, onRestored, clearError }) {
     }
     const expired = isExpired();
     result.append(element('p', 'backup-meta', expired ? t('This preview expired. Inspect the ZIP again before restoring.', '此预览已过期，请重新检查 ZIP 后再恢复。') : t('Inspecting has not changed your site. Restore replaces the current content.', '检查不会修改站点。恢复将替换当前内容。')));
-    if (preview.expiresAt && !expired) result.append(element('p', 'backup-meta', t('Preview expires · ', '预览有效期至 · ') + new Date(preview.expiresAt).toLocaleTimeString(getLocale() === 'zh' ? 'zh-CN' : 'en-GB')));
+    if (preview.expiresAt && !expired) result.append(element('p', 'backup-meta', t('Preview expires · ', '预览有效期至 · ') + new Date(preview.expiresAt).toLocaleTimeString(getDateLocale())));
     const actions = element('div', 'backup-actions');
     const restore = button('backup-restore-button', t('Restore backup →', '恢复备份 →'), () => {
       if (busy || !preview) return;
@@ -88,7 +88,7 @@ export function createBackupTools({ api, onBusy, onRestored, clearError }) {
     const exportHeading = element('div', 'backup-heading');
     exportHeading.append(element('span', 'eyebrow', '01'), element('h2', '', t('Export', '导出备份')));
     const exportBody = element('div', 'backup-body');
-    exportBody.append(element('p', '', t('One ZIP with site settings, Blog (including drafts), Library, Friends and referenced files.', '一个 ZIP 文件，包含站点设置、文章（含草稿）、收藏、友链及引用的文件。')));
+    exportBody.append(element('p', '', t('One ZIP with site settings, Blog (including drafts), Library, Friends and referenced files.', '一个 ZIP 文件，包含站点设置、文章（含草稿）、作品志、友链及引用的文件。')));
     exportBody.append(element('p', 'muted', t('Available remote images are included. If an image cannot be downloaded, its original URL is retained with a warning. Accounts, passwords and fonts are excluded.', '可下载的外链图片会一并打包；无法下载的图片保留原始地址并给出提示。不包含管理员账号、密码或字体。')));
     const exportActions = element('div', 'backup-actions');
     exportActions.append(button('backup-export-button', busy === 'export' ? t('Preparing ZIP…', '正在准备 ZIP…') : t('Download ZIP ↓', '下载 ZIP ↓'), exportBackup));

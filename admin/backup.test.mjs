@@ -214,6 +214,33 @@ test('referenced uploaded documents survive export and restore; legacy image ZIP
 }));
 
 
+test('album backup restores ordered tracks and their uploaded audio', () => fixture(async ({ dataDir, uploads, request }) => {
+  const audio = Buffer.from('ID3 audio fixture');
+  await writeFile(join(uploads, 'concert.mp3'), audio);
+  const encore = Buffer.from('ID3 encore fixture');
+  await writeFile(join(uploads, 'encore.mp3'), encore);
+  const tracks = [
+    { id: 'intro', title: 'Intro', src: '/static/concert.mp3' },
+    { id: 'legacy-repeat', title: 'Intro again', src: '/uploads/concert.mp3' },
+    { id: 'encore', title: 'Encore', src: '/static/encore.mp3' },
+  ];
+  const album = { id: 'concert', title: 'Concert', type: 'albums', date: '2026-10-20', tags: [], tracks };
+  await writeFile(join(dataDir, 'library.json'), JSON.stringify([album]));
+  const exported = await request('/api/backup/export');
+  assert.equal(exported.status, 200, exported.body.error);
+  const preview = await request('/api/backup/inspect', 'POST', exported.body);
+  assert.equal(preview.status, 200, preview.body.error);
+  const restored = await request('/api/backup/restore', 'POST', { token: preview.body.token });
+  assert.equal(restored.status, 200, restored.body.error);
+  const [record] = JSON.parse(await readFile(join(dataDir, 'library.json')));
+  const name = `backup-${sha(audio)}.mp3`;
+  assert.deepEqual(record.tracks, [
+    { ...tracks[0], src: `/static/${name}` },
+    { ...tracks[2], src: `/static/backup-${sha(encore)}.mp3` },
+  ]);
+  assert.deepEqual(await readFile(join(uploads, name)), audio);
+}));
+
 test('local uploaded images above 20 MiB export and restore while remote validation stays capped', () => fixture(async ({ dataDir, uploads, request }) => {
   const image = Buffer.concat([Buffer.from('<svg xmlns="http://www.w3.org/2000/svg">'), Buffer.alloc(IMAGE_LIMIT, 32), Buffer.from('</svg>')]);
   assert.throws(() => validateBackupImage(image), /20 MiB/);
