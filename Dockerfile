@@ -7,7 +7,7 @@ RUN npm ci --no-audit --no-fund
 
 COPY . .
 ARG SITE_URL=http://localhost:8080
-ENV SITE_URL=${SITE_URL}
+ENV SITE_URL=${SITE_URL} ASTRO_TELEMETRY_DISABLED=1
 # Images always start from the distributable examples. Live content is mounted
 # separately, so a developer's local articles never become a new site's defaults.
 RUN mkdir -p src/content && node scripts/initialize-content.mjs && npm run check && npm run build && npm run verify
@@ -20,7 +20,7 @@ COPY --from=production-dependencies /app /app
 ARG ADMIN_UID=1000
 ARG ADMIN_GID=1000
 ARG SITE_URL=http://localhost:8080
-ENV SITE_URL=${SITE_URL}
+ENV SITE_URL=${SITE_URL} ASTRO_TELEMETRY_DISABLED=1
 ENV ADMIN_HOST=0.0.0.0 ADMIN_PORT=4322 ADMIN_AUTO_PUBLISH=1 ADMIN_AUTH_DIR=/app/.admin SITE_PUBLISH_ROOT=/published SITE_UPLOADS_DIR=/app/public/static ASTRO_TELEMETRY_DISABLED=1
 RUN mkdir -p /published/releases /app/public/static /app/.admin && chmod 700 /app/.admin && cp -R /app/dist /published/releases/initial && ln -s releases/initial /published/current && chown -R ${ADMIN_UID}:${ADMIN_GID} /app /published
 USER ${ADMIN_UID}:${ADMIN_GID}

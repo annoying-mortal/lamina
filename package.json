@@ -7,13 +7,14 @@
     "node": ">=24.0.0"
   },
   "scripts": {
-    "dev": "astro dev --host 127.0.0.1 --port 4321",
-    "build": "astro build",
+    "dev": "ASTRO_TELEMETRY_DISABLED=1 astro dev --host 127.0.0.1 --port 4321",
+    "build": "ASTRO_TELEMETRY_DISABLED=1 astro build",
     "publish": "node scripts/publish.mjs",
-    "preview": "node scripts/preview.mjs",
+    "preview": "ASTRO_TELEMETRY_DISABLED=1 node scripts/preview.mjs",
     "admin": "node admin/server.mjs",
-    "check": "astro check",
-    "verify": "node scripts/verify.mjs"
+    "check": "ASTRO_TELEMETRY_DISABLED=1 astro check",
+    "verify": "node scripts/verify.mjs",
+    "test": "node --test tests/*.test.mjs"
   },
   "dependencies": {
     "@astrojs/markdown-satteri": "0.4.4",

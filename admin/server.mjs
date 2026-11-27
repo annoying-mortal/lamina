@@ -9,7 +9,7 @@ import { Buffer } from 'node:buffer';
 import { stringify } from 'yaml';
 import { normalizeImageUrl } from '../lib/image-url.mjs';
 import { parsePostSource, assertUniquePosts, isPostFile } from '../lib/posts.mjs';
-import { homeSettings, ABOUT_HIGHLIGHT_LIMIT, ABOUT_ME_WORK_COUNT } from '../lib/home-settings.mjs';
+import { homeSettings, resolveFriendApplicationsEnabled, ABOUT_HIGHLIGHT_LIMIT, ABOUT_ME_WORK_COUNT } from '../lib/home-settings.mjs';
 import { librarySettings, normalizeLibraryTypeId } from '../lib/library-settings.mjs';
 import { createMediaStore } from './media.mjs';
 import { albumTracks } from '../lib/album-tracks.mjs';
@@ -229,7 +229,6 @@ export function createServer(options = {}) {
   const friendsPath = join(dataDir, 'friends.json');
   const settingsPath = join(dataDir, 'site.json');
   const uploadsDir = resolve(options.mediaDir || process.env.SITE_UPLOADS_DIR || join(projectRoot, 'public/static'));
-  const media = createMediaStore({ projectRoot, mediaDir: uploadsDir, mediaIndexPath: join(dataDir, 'media.json') });
   const siteUrl = options.siteUrl || process.env.ADMIN_SITE_URL || process.env.SITE_URL || 'http://127.0.0.1:4321';
   const friendApplications = createFriendApplications({ directory: authDir, write: atomicWrite });
   const autoPublish = options.autoPublish ?? process.env.ADMIN_AUTO_PUBLISH === '1';
@@ -249,6 +248,43 @@ export function createServer(options = {}) {
     mutationQueue = task.catch(() => {});
     return task;
   };
+  const escapeRegExp = value => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  function matchesMediaReference(value, id) {
+    if (typeof value !== 'string' || !value) return false;
+    const escapedRaw = escapeRegExp(id);
+    const escapedEncoded = escapeRegExp(encodeURIComponent(id));
+    const pattern = new RegExp(`/(?:static|uploads)/(?:${escapedRaw}|${escapedEncoded})(?=$|[?#\\s"')>,])`);
+    return pattern.test(value);
+  }
+  async function checkMediaInUse(id) {
+    const refs = [];
+    const settings = await readSettings();
+    for (const [key, label] of [['logo', '站点 Logo'], ['favicon', '浏览器图标'], ['orbitImage', '圆环图片']]) {
+      if (matchesMediaReference(settings[key], id)) refs.push(label);
+    }
+    for (const item of await readLibrary()) {
+      const used = matchesMediaReference(item.cover, id)
+        || (item.tracks ?? []).some(track => matchesMediaReference(track.src, id))
+        || matchesMediaReference(item.note, id)
+        || matchesMediaReference(item.detail, id);
+      if (used) refs.push(item.title);
+    }
+    for (const friend of await readFriends()) {
+      if (matchesMediaReference(friend.avatar, id)) refs.push(friend.name);
+    }
+    for (const post of await readPosts()) {
+      const raw = await readFile(join(blogDir, post._filename), 'utf8');
+      if (matchesMediaReference(raw, id)) refs.push(post.title);
+    }
+    assert(!refs.length, `无法删除正在使用的文件，请先移除这些内容中的引用：${refs.slice(0, 5).join('、')}${refs.length > 5 ? '…' : ''}。`, 409);
+  }
+  const media = createMediaStore({
+    projectRoot,
+    mediaDir: uploadsDir,
+    mediaIndexPath: join(dataDir, 'media.json'),
+    checkDelete: checkMediaInUse,
+    onDelete: (path, raw) => contentWatch.acknowledge(path, raw),
+  });
   async function readPosts() {
     await mkdir(blogDir, { recursive: true });
     const settings = await readSettings();
@@ -370,6 +406,12 @@ export function createServer(options = {}) {
     try {
       if (req.method === 'POST' && req.url === '/api/friend-applications') {
         validateApplicationOrigin(req, siteUrl);
+        const settings = await readSettings();
+        assert(
+          resolveFriendApplicationsEnabled(settings.friendApplicationsEnabled, process.env.PUBLIC_FRIEND_APPLICATIONS),
+          '已关闭在线友链申请。',
+          403,
+        );
         const trustProxyIp = process.env.ADMIN_TRUST_PROXY_IP === '1';
         const rawRealIp = trustProxyIp ? req.headers['x-real-ip'] : undefined;
         const clientIp = (typeof rawRealIp === 'string' && rawRealIp.trim()) || req.socket?.remoteAddress || '';
@@ -487,7 +529,10 @@ export function createServer(options = {}) {
         fail(405, 'Unsupported backup request.');
       }
       if (req.method === 'GET' && (pathname === '/api/media' || pathname.startsWith('/static/') || pathname.startsWith('/uploads/'))) await mutationQueue;
-      if (await media.handle(req, res, pathname, action => serialize(() => runAuthorized(action)))) return;
+      if (await media.handle(req, res, pathname, action => serialize(() => runAuthorized(action)))) {
+        if (req.method === 'DELETE') requestPublish();
+        return;
+      }
       if (req.method === 'GET' && pathname === '/api/session') { await mutationQueue; const settings = await readSettings(); json(200, { csrf: session.csrf, authEnabled: Boolean(auth), ...(auth ? { username: session.username } : {}), categories: settings.categories, libraryTypes: settings.libraryTypes.filter(item => item.id !== 'all'), siteUrl, publish }); return; }
       if (req.method === 'GET' && pathname === '/api/publish/status') { json(200, publish); return; }
       if (req.method === 'POST' && pathname === '/api/publish') {

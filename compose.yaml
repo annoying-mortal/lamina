@@ -4,7 +4,7 @@ services:
       context: .
       target: runtime
       args:
-        SITE_URL: ${SITE_URL:-http://localhost:8080}
+        SITE_URL: ${SITE_URL:-http://localhost:${PORT:-8080}}
     ports:
       - "127.0.0.1:${PORT:-8080}:8080"
     restart: unless-stopped
@@ -28,7 +28,7 @@ services:
       context: .
       target: admin
       args:
-        SITE_URL: ${SITE_URL:-http://localhost:8080}
+        SITE_URL: ${SITE_URL:-http://localhost:${PORT:-8080}}
     environment:
       ADMIN_HOST: 0.0.0.0
       ADMIN_PORT: 4322
@@ -39,7 +39,7 @@ services:
       ADMIN_ALLOWED_HOSTS: "127.0.0.1:${ADMIN_PORT:-4322},localhost:${ADMIN_PORT:-4322},[::1]:${ADMIN_PORT:-4322}"
       SITE_PUBLISH_ROOT: /published
       SITE_UPLOADS_DIR: /app/public/static
-      SITE_URL: ${SITE_URL:-http://localhost:8080}
+      SITE_URL: ${SITE_URL:-http://localhost:${PORT:-8080}}
     ports:
       - "127.0.0.1:${ADMIN_PORT:-4322}:4322"
     restart: unless-stopped

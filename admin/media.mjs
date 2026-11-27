@@ -1,6 +1,6 @@
 import { constants, createWriteStream } from 'node:fs';
 import { open, readFile, readdir, mkdir, rename, unlink, lstat, realpath } from 'node:fs/promises';
-import { join, resolve, relative, sep, extname } from 'node:path';
+import { join, resolve, relative, sep, extname, dirname } from 'node:path';
 import { atomicWrite } from './atomic-write.mjs';
 import { createHash, randomUUID } from 'node:crypto';
 import { Buffer } from 'node:buffer';
@@ -69,7 +69,13 @@ async function streamUpload(req, uploadsDir) {
 }
 
 /** Caller checks the request, then revalidates authorization when a queued upload writes. */
-export function createMediaStore({ projectRoot, mediaDir = join(projectRoot, 'public/static'), mediaIndexPath = join(projectRoot, 'src/content/media.json') }) {
+export function createMediaStore({
+  projectRoot,
+  mediaDir = join(projectRoot, 'public/static'),
+  mediaIndexPath = join(projectRoot, 'src/content/media.json'),
+  checkDelete = async () => {},
+  onDelete = () => {},
+}) {
   const uploads = resolve(mediaDir);
   const publicRoot = resolve(projectRoot, 'public');
   const legacyUploads = resolve(publicRoot, 'uploads');
@@ -160,10 +166,47 @@ export function createMediaStore({ projectRoot, mediaDir = join(projectRoot, 'pu
     }
     res.writeHead(200, headers); res.end(data);
   }
+  async function remove(id, runAuthorized) {
+    if (!id || id.length > 240 || id.startsWith('.') || /[\u0000-\u001f\u007f/\\]/.test(id)) fail(400, '文件名无效。');
+    return serialize(() => runAuthorized(async () => {
+      await checkDelete(id);
+      let deleted = false;
+      for (const root of new Set([uploads, legacyUploads])) {
+        const target = resolve(root, id);
+        if (!target.startsWith(root + sep)) fail(400, '文件名无效。');
+        let info;
+        try { info = await lstat(target); }
+        catch (error) { if (error.code === 'ENOENT') continue; throw error; }
+        const resolvedRoot = await realpath(root);
+        const resolvedParent = await realpath(dirname(target));
+        if (resolvedParent !== resolvedRoot || !info.isFile() || info.isSymbolicLink()) fail(404, '文件不存在。');
+        await unlink(target);
+        deleted = true;
+        onDelete(target, null);
+      }
+      const records = await metadata();
+      const remaining = records.filter(record => record.id !== id);
+      if (!deleted && remaining.length === records.length) fail(404, '文件不存在。');
+      if (remaining.length !== records.length) {
+        const raw = JSON.stringify(remaining, null, 2) + '\n';
+        await atomicWrite(indexPath, raw, { mode: 0o644 });
+        onDelete(indexPath, raw);
+      }
+      return { deleted: id };
+    }));
+  }
   return {
     checkAlbumAudio,
     async handle(req, res, pathname, runAuthorized = action => action()) {
       if (req.method === 'GET' && (pathname.startsWith('/static/') || pathname.startsWith('/uploads/') || pathname.startsWith('/covers/') || fileMimeType(pathname).startsWith('image/'))) { await serve(res, pathname); return true; }
+      if (pathname.startsWith('/api/media/')) {
+        if (req.method !== 'DELETE') fail(405, '此地址仅支持删除文件。');
+        let id;
+        try { id = decodeURIComponent(pathname.slice('/api/media/'.length)); }
+        catch { fail(400, '文件名称编码不正确。'); }
+        json(res, 200, await remove(id, runAuthorized));
+        return true;
+      }
       if (pathname !== '/api/media') return false;
       if (req.method === 'GET') { await queue; json(res, 200, await list()); return true; }
       if (req.method !== 'POST') fail(405, '文件仅支持浏览和上传。');

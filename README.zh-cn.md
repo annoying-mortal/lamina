@@ -1,20 +1,20 @@
 # Personal Blog (Lamina)
 
-[English](README.md) | 简体中文
+[English](./README.md) | 简体中文
 
-基于 **Astro**、**Three.js** 与 **Node.js** 构建的自托管静态个人博客、三维内容档案、作品志与本地内容工作台（CMS）系统。
+基于 **Astro 7.4**、**TypeScript**、**Three.js** 与 **Node.js（>= 24）** 构建的自托管静态个人博客、三维内容档案、作品志与本地内容工作台（CMS）系统。
 
 项目以 `src/content/` 目录下的 Markdown 和 JSON 文件作为唯一数据源，无需外部数据库，同时内置单管理员 CMS 后台、便携 ZIP 备份恢复以及基于 Nginx 和 Docker Compose 的原子化静态发布流水线。
 
 ## 核心特性
 
-- **五段式首页**：包含首屏轨道视觉、个人介绍与经历亮点（Highlights）、三维内容档案、个人精选“九部作品”（About me）以及联系方式与运行时间统计。
-- **三维交互档案**：基于 Three.js（`src/archive/`）将博客文章、作品志与公开友链聚合到同一个可导航的三维空间中，并支持全站检索（`/archive-search.json`）。
-- **Markdown 博客与 RSS**：直接读取 `src/content/blog/**/*.md`，支持动态分类、标签、阅读时长估算、Shiki 代码高亮、构建期 KaTeX 数学公式渲染以及 `/rss.xml`。
-- **作品志与音频播放器**：支持记录 ACGN、音乐专辑（Albums，支持多曲目音频播放）、书籍（Books）与 Others，支持按类型、标签和曲名检索筛选。
-- **友链目录与访客申请**：提供友链展示、站点信息一键复制以及可选的访客友链申请表单（内置蜜罐字段与按 IP 限流）。在纯静态托管场景下，可通过 `PUBLIC_FRIEND_APPLICATIONS=0` 或 `site.json` 中的 `friendApplicationsEnabled: false` 关闭表单。
-- **本地内容工作台（CMS）**：内置 Node.js 后台服务（`admin/server.mjs`），支持中英双语界面、scrypt 密码哈希鉴权、CSRF/Origin 校验、`revision` 乐观锁并发控制、流式文件上传（`/static/`，单文件上限 256 MiB）以及带回滚快照轮转的 ZIP 便携备份与恢复。
-- **原子化发布**：构建至隔离目录并校验通过后，原子切换 `.published/current` 软链接；若构建或校验失败，线上旧版本保持可用。
+- **五段式首页（`src/pages/index.astro`）**：包含首屏 12 小时机械表盘与轨道视觉（`HomeOrbit`）、个人介绍与经历亮点（Highlights）、三维内容档案、个人精选“九部作品”（About me）以及联系方式与运行时间统计（`launchedAt`）。
+- **三维交互档案（`src/archive/`）**：按需懒加载 Three.js（`archive-cassette.glb`、`InstancedMesh` 网格、SSAO 与景深后处理、明暗主题波浪过渡），将博客文章、作品志与公开友链聚合到同一个可导航的三维空间中，并支持全站检索（`/archive-search.json`）。`/blog/`、`/library/`、`/friends/` 页面完全隔离，不会预加载三维资源。
+- **Markdown 博客与 RSS（`src/pages/blog/`）**：直接读取 `src/content/blog/**/*.md`，支持动态分类、标签、阅读时长估算、Shiki 明暗双主题代码高亮与一键复制、构建期 KaTeX 数学公式渲染、二/三级标题目录、阅读进度条以及 `/rss.xml`。
+- **作品志与全局音乐播放器（`src/pages/library.astro`、`src/components/MusicPlayer.astro`）**：支持记录 ACGN、音乐专辑（Albums，支持悬浮播放器多曲目播放）、书籍（Books）与 Others，支持按类型、标签和曲名检索筛选，弹窗详情与 URL hash 同步。
+- **友链目录与访客申请（`src/pages/friends.astro`）**：提供友链展示、站点信息一键复制以及可选的访客友链申请表单（`POST /api/friend-applications`，内置蜜罐字段、同源校验、后端开关强制拦截与按 IP 限流）。可通过 `PUBLIC_FRIEND_APPLICATIONS=0` 或 `site.json` 中的 `friendApplicationsEnabled: false` 关闭。
+- **本地内容工作台（CMS）（`admin/`）**：内置 Node.js 后台服务（`admin/server.mjs`），支持中英双语界面、`scrypt` 密码哈希鉴权、CSRF/Origin 校验、`revision` 乐观锁并发控制、流式文件上传（`/static/`，单文件上限 256 MiB）、带引用检查的文件删除（`DELETE /api/media/:id`）以及带回滚快照轮转的 ZIP 便携备份与恢复。
+- **原子化发布（`scripts/publish.mjs`）**：构建至隔离目录并运行 `verify.mjs` 校验，保留近两版 `_astro/` 分片以兼容已打开的旧页面，然后原子切换 `.published/current` 软链接；若构建或校验失败，线上旧版本保持可用。
 
 ## 环境要求
 
@@ -46,12 +46,13 @@ npm run admin
 
 首次访问后台页面时，直接在浏览器中设置管理员用户名和密码即可。
 
-### 构建、校验与原子发布
+### 构建、测试、校验与原子发布
 
 ```sh
-npm run check                        # Astro 与 TypeScript 类型检查
+npm run check                        # Astro 与 TypeScript 类型检查（已默认禁用 Telemetry）
+npm test                             # 运行 Node 单元测试与接口边界测试（tests/*.test.mjs）
 npm run build                        # 构建静态产物到 dist/
-npm run preview                      # 本地预览 dist/ 构建结果
+npm run preview                      # 本地预览 dist/ 构建结果（含上传响应头与友链代理）
 npm run verify                       # 对 dist/ 执行全站完整校验
 node scripts/verify.mjs --quick      # 快速校验（核心路由 + 抽样最新文章）
 npm run publish                      # 构建、快速校验并原子切换 .published/current
@@ -77,7 +78,7 @@ docker compose up -d --build
 docker compose -f compose.yaml -f compose.files.yaml up -d --build
 ```
 
-- **前台 Nginx（只读容器）**：<http://127.0.0.1:8080/>
+- **前台 Nginx（只读容器）**：<http://127.0.0.1:8080/>（若自定义了 `PORT` 环境变量，默认 `SITE_URL` 会同步跟随为 `http://localhost:${PORT}`）
 - **后台 CMS**：<http://127.0.0.1:4322/>
 
 在 Docker Compose 模式下首次初始化管理员账号时，需在宿主机终端获取一次性初始化令牌：
@@ -92,13 +93,15 @@ docker compose exec admin cat /app/.admin/setup-token
 
 | 变量 | 默认值 | 说明 |
 | --- | --- | --- |
-| `SITE_URL` | `http://localhost:4321`（Compose 下为 `http://localhost:8080`） | Astro 构建及来源校验使用的站点公开地址。 |
-| `BUILD_OUTPUT_DIR` | `./dist` | `astro build` 与 `verify.mjs` 使用的输出目录。 |
+| `PORT` | `8080` | `compose.yaml` 中宿主机映射给 `blog` Nginx 容器的端口。 |
+| `SITE_URL` | `http://localhost:${PORT:-8080}`（Compose）/ `http://localhost:4321`（Astro） | Astro 构建及来源校验使用的站点公开地址。 |
+| `BUILD_OUTPUT_DIR` | `./dist` | `astro build`、`preview` 与 `verify.mjs` 使用的输出目录。 |
 | `SITE_PUBLISH_ROOT` | `./.published`（Compose 下为 `/published`） | 原子发布 `releases/` 与 `current` 软链接的根目录。 |
 | `SITE_UPLOADS_DIR` | `./public/static`（Compose 下为 `/app/public/static`） | 上传文件存储目录。 |
-| `PUBLIC_FRIEND_APPLICATIONS` | 读取 `site.json`（默认 `true`） | 设为 `0` 或 `false` 时在 `/friends/` 页面隐藏友链申请表单。 |
+| `PUBLIC_FRIEND_APPLICATIONS` | 读取 `site.json`（默认 `true`） | 设为 `0` 或 `false` 时隐藏 `/friends/` 申请表单并拦截 `POST /api/friend-applications`。 |
 | `VERIFY_MODE` | `publish.mjs` 中为 `quick`，`npm run verify` 为 `full` | 在 `npm run publish` 中设为 `full` 可强制执行全量 HTML 校验。 |
 | `VERIFY_SAMPLE_POSTS` | `3` | `quick` 快速校验模式下抽检的最新文章页面数量。 |
+| `BLOG_CONTENT_DIR` / `BLOG_UPLOADS_DIR` | `./src/content` / `./public/static` | `compose.files.yaml` 挂载使用的宿主机路径。 |
 
 ### 后台与代理变量
 
@@ -133,10 +136,11 @@ docker compose exec admin cat /app/.admin/setup-token
 │   ├── content/            # Markdown 文章（blog/）与 JSON 数据（site、library、friends）
 │   ├── data/               # 站点、作品志与友链的类型化数据加载器
 │   ├── layouts/            # 基础 HTML 布局与主题初始化脚本
-│   ├── lib/                # 内容集合与搜索索引辅助模块
+│   ├── lib/                # 内容集合、搜索文本与播放器状态机辅助模块
 │   ├── pages/              # Astro 页面路由（/、/blog/、/library/、/friends/、/rss.xml 等）
 │   ├── scripts/            # 前端交互与水合脚本
 │   └── styles/             # 样式表
+├── tests/                  # Node 单元测试与接口安全边界测试
 ├── astro.config.mjs
 ├── compose.yaml
 ├── compose.files.yaml
@@ -146,5 +150,6 @@ docker compose exec admin cat /app/.admin/setup-token
 ## 相关文档
 
 - [写作与部署指南](docs/writing.md)
-- [后台与 API 说明](admin/README.md)
+- [后台与 API 说明](admin/README.zh-cn.md)（[English](admin/README.md)）
 - [初始示例内容说明](docs/content-examples.md)
+- [字体来源与许可证说明](public/fonts/FONT-SOURCES.md)

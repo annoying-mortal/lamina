@@ -1,5 +1,5 @@
 import settings from '../content/site.json';
-import { homeSettings } from '../../lib/home-settings.mjs';
+import { homeSettings, resolveFriendApplicationsEnabled } from '../../lib/home-settings.mjs';
 import { librarySettings } from '../../lib/library-settings.mjs';
 
 export type NavigationId = 'home' | 'blog' | 'library' | 'friends';
@@ -37,11 +37,7 @@ export const site = {
   ...configured,
   ...home,
   ...librarySettings(configured),
-  friendApplicationsEnabled: envFriendApplications === '0' || envFriendApplications === 'false'
-    ? false
-    : envFriendApplications === '1' || envFriendApplications === 'true'
-      ? true
-      : home.friendApplicationsEnabled,
+  friendApplicationsEnabled: resolveFriendApplicationsEnabled(home.friendApplicationsEnabled, envFriendApplications),
   navigation: configured.navigation
     .filter(item => item.visible && Object.hasOwn(navigationPaths, item.id))
     .map(item => ({ ...item, href: navigationPaths[item.id] })),

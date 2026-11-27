@@ -117,6 +117,9 @@ const errors = {
   '文件路径编码不正确。': 'Invalid file path encoding.',
   '文件不存在。': 'File not found.',
   '文件仅支持浏览和上传。': 'Files support browsing and uploading.',
+  '此地址仅支持删除文件。': 'Only DELETE is supported for this endpoint.',
+  '文件名无效。': 'Invalid filename.',
+  '已关闭在线友链申请。': 'Online friend applications are disabled.',
   '请选择有效的 PNG、JPEG、GIF 或 WebP 图片。': 'Choose a valid PNG, JPEG, GIF or WebP image.',
   '文件内容与声明的图片类型不一致。': 'File contents do not match the image type.',
   '文件名称编码不正确。': 'Invalid filename encoding.',
@@ -155,6 +158,8 @@ export function translateError(value) {
   if (match) return 'This ID is already in use.';
   match = /^无法移除正在使用的分类，请先移动这些文章（含草稿）：(.*)。$/.exec(message);
   if (match) return `Move these posts before deleting their category: ${match[1]}.`;
+  match = /^无法删除正在使用的文件，请先移除这些内容中的引用：(.*)。$/.exec(message);
+  if (match) return `Remove references to this file before deleting it: ${match[1]}.`;
   return message;
 }
 translateDom();

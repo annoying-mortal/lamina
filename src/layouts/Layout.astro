@@ -6,9 +6,8 @@ import FooterCredit from '../components/FooterCredit.astro';
 import { site, siteBaseURL, imageSource } from '../data/site';
 import '../styles/global.css';
 interface Props { title?: string; description?: string; active?: string; }
-const { title = site.title, description: pageDescription, active = 'home' } = Astro.props;
+const { description: pageDescription, active = 'home' } = Astro.props;
 const description = pageDescription?.trim() || site.description;
-const shareTitle = title === site.title ? title : `${title} — ${site.name}`;
 const canonical = new URL(Astro.url.pathname, siteBaseURL(Astro.site ?? Astro.url.origin));
 const logo = imageSource(site.logo) || '/logo.svg';
 ---
@@ -19,7 +18,7 @@ const logo = imageSource(site.logo) || '/logo.svg';
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content={description} />
     <meta name="theme-color" content="#eae5e1" />
-    <meta property="og:title" content={shareTitle} />
+    <meta property="og:title" content={site.title} />
     <meta property="og:description" content={description} />
     <meta property="og:type" content="website" />
     <meta property="og:url" content={canonical} />

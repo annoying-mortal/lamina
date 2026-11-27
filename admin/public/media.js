@@ -19,13 +19,19 @@ function fileGroup(file) {
   return 'other';
 }
 
-export function createMediaTools({ api, getSession, getLibrary, message, alertError, onUnauthorized }) {
+export function createMediaTools({ api, getSession, getLibrary, message, alertError, onUnauthorized, onMutated }) {
   let records = [];
   let callback = null;
   let selected = '';
   let source = 'library';
   let uploadBusy = false;
+  let deleteBusy = false;
   const picker = $('#media-picker');
+  const deleteDialog = element('dialog', 'media-delete-dialog');
+  deleteDialog.id = 'media-delete-dialog';
+  deleteDialog.setAttribute('aria-labelledby', 'media-delete-title');
+  deleteDialog.addEventListener('cancel', event => { if (deleteBusy) event.preventDefault(); });
+  document.body.append(deleteDialog);
 
   function audioTitles(currentAlbum) {
     const titles = new Map();
@@ -97,10 +103,53 @@ export function createMediaTools({ api, getSession, getLibrary, message, alertEr
     const urlButton = element('button', 'button subtle', t('Copy URL', '复制地址')); urlButton.type = 'button'; urlButton.addEventListener('click', () => copy(record.url, t('URL copied.', '地址已复制。')));
     const markdownButton = element('button', 'button subtle', t('Copy Markdown', '复制 Markdown')); markdownButton.type = 'button'; markdownButton.addEventListener('click', () => copy(isImage ? markdownImage(record.url, record.name.replace(/\.[^.]+$/, '')) : markdownLink(record.url, record.name), t('Markdown copied.', 'Markdown 已复制。')));
     const download = element('a', 'button subtle', t('Download', '下载')); download.href = record.url; download.download = record.name;
-    actions.append(urlButton, markdownButton, download); card.append(image, title);
+    const remove = element('button', 'button danger', t('Delete', '删除')); remove.type = 'button'; remove.addEventListener('click', () => confirmRemove(record));
+    actions.append(urlButton, markdownButton, download, remove); card.append(image, title);
     if (titles?.size) card.append(element('p', 'file-track-names', [...titles].join(' · ')));
     card.append(meta, path, actions);
     return card;
+  }
+  function confirmRemove(record) {
+    if (deleteBusy) return;
+    const content = element('div', 'dialog-content');
+    content.append(element('span', 'eyebrow', t('DELETE', '删除')));
+    const heading = element('h2', '', t('Delete file?', '删除这个文件？'));
+    heading.id = 'media-delete-title';
+    content.append(
+      heading,
+      element('p', '', t(`Delete “${record.name}”?`, `删除「${record.name}」？`)),
+      element('p', 'muted', t('This deletes the uploaded file and cannot be undone.', '已上传的文件会被删除，此操作不能在后台撤销。')),
+    );
+    const actions = element('div', 'dialog-actions');
+    const cancel = element('button', 'button subtle', t('Cancel', '取消')); cancel.type = 'button';
+    const confirmButton = element('button', 'button danger', t('Delete', '确认删除')); confirmButton.type = 'button';
+    cancel.addEventListener('click', () => { if (!deleteBusy) deleteDialog.close(); });
+    confirmButton.addEventListener('click', async () => {
+      if (deleteBusy) return;
+      deleteBusy = true;
+      cancel.disabled = true;
+      confirmButton.disabled = true;
+      try {
+        await api(`/api/media/${encodeURIComponent(record.id)}`, 'DELETE', {});
+        deleteDialog.close();
+        if (selected === record.url) choose('');
+        await refresh();
+        message(t('File deleted.', '文件已删除。'));
+        onMutated?.();
+      } catch (error) {
+        deleteDialog.close();
+        alertError(error);
+      } finally {
+        deleteBusy = false;
+        cancel.disabled = false;
+        confirmButton.disabled = false;
+      }
+    });
+    actions.append(cancel, confirmButton);
+    content.append(actions);
+    deleteDialog.replaceChildren(content);
+    deleteDialog.showModal();
+    cancel.focus();
   }
   function renderImages() {
     const choices = $('#picker-media-grid'); choices.replaceChildren();

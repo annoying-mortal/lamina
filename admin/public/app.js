@@ -36,7 +36,15 @@ async function api(path, method = 'GET', data, options = {}) {
   const result = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(result.error || t(`Request failed (${response.status})`, `请求失败（${response.status}）`)); return result;
 }
-const media = createMediaTools({ api, getLibrary: () => state.records.library, getSession: () => state.session, message, alertError, onUnauthorized: handleUnauthorized });
+const media = createMediaTools({
+  api,
+  getLibrary: () => state.records.library,
+  getSession: () => state.session,
+  message,
+  alertError,
+  onUnauthorized: handleUnauthorized,
+  onMutated: () => { if (state.session?.publish?.enabled) void updatePublish(); },
+});
 const backup = createBackupTools({
   api, clearError,
   onBusy: value => {
