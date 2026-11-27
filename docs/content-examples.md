@@ -2,17 +2,17 @@
 
 The first deployment includes these editable, published demo records:
 
-| Section | Example | Blank template |
+| Section | Example | Editable example |
 | --- | --- | --- |
-| Blog | Markdown Guide | Enter Title |
-| Library / ACGN | 安达与岛村 | Enter Title |
-| Library / Albums | To the Moon | Enter Title |
-| Library / Books | 我与地坛 | Enter Title |
-| Friends | Me → `http://localhost:8080/` | Enter Title → `https://example.com/` |
+| Blog | Markdown Guide | First post |
+| Library / ACGN | 安达与岛村 | ACGN 示例 |
+| Library / Albums | To the Moon | 专辑示例 |
+| Library / Books | 我与地坛 | 书籍示例 |
+| Friends | Me → `http://localhost:8080/` | Example Domain → `https://example.com/` |
 
 All entries have `demo: true`. Ratings are empty; sample dates are placeholders, not reading or listening history. Edit the entries in the CMS, or edit the Markdown and JSON files in `src/content/`. Remove the Demo flag after replacing an entry with your own content. `All` aggregates Library categories; `Others` starts empty.
 
-The article source is `src/content/blog/markdown-guide.md`; the blank article is `src/content/blog/enter-title.md`. When copying an article, change its `id` and `slug` so each remains unique. The guide demonstrates this template's Markdown features, including local and remote images, syntax-highlighted code with language labels and copying, tables, tasks, footnotes, and math. Mermaid is intentionally excluded.
+The article source is `src/content/blog/markdown-guide.md`; the starter article is `src/content/blog/enter-title.md`. When copying an article, change its `id` and `slug` so each remains unique. The guide demonstrates this template's Markdown features, including local and remote images, syntax-highlighted code with language labels and copying, tables, tasks, footnotes, and math. Mermaid is intentionally excluded.
 
 ## Image sources
 

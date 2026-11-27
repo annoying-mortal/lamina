@@ -1,5 +1,6 @@
 import { element, siteImageUrl } from './ui.js';
 import { t } from './i18n.js';
+import { footerCredit } from './footer-credit.mjs';
 
 const names = {
   home: ['Home', '首页'], about: ['About', '介绍'], archive: ['Archive', '档案'], aboutMe: ['About me', '九部作品'],
@@ -147,7 +148,7 @@ export function mountSettingsPreview({ form, getValues, siteUrl, library = [], h
           const image = element('img'); image.src = url; image.alt = ''; image.referrerPolicy = 'no-referrer';
           image.addEventListener('error', () => { image.hidden = true; }, { once: true }); cover.append(image);
         }
-        card.append(cover, element('small', '', slot.label || 'tag'));
+        card.append(cover, element('small', '', slot.label));
         if (work) card.append(element('span', '', work.title));
         grid.append(card);
       }
@@ -164,14 +165,15 @@ export function mountSettingsPreview({ form, getValues, siteUrl, library = [], h
     } else if (view === 'contact') {
       body.append(element('small', '', text(settings.contactEyebrow)), element('h2', '', text(settings.contactTitle)), element('p', '', text(settings.contactBody)));
       const links = element('div', 'preview-contact-links');
-      links.append(element('span', '', settings.github ? 'GitHub ↗' : t('Enter GitHub URL', '请填写 GitHub 地址')));
-      links.append(element('span', '', settings.email || t('Enter email', '请填写邮箱')));
+      if (settings.github) links.append(element('span', '', 'GitHub ↗'));
+      if (settings.email) links.append(element('span', '', settings.email));
       if (settings.showRSS) links.append(element('span', '', 'RSS ↗'));
       body.append(links);
       if (settings.launchedAt && Number.isFinite(Date.parse(settings.launchedAt))) {
         const days = Math.max(0, Math.floor((Date.now() - Date.parse(settings.launchedAt)) / 86400000));
         body.append(element('p', 'preview-runtime', `${days} DAYS`));
       }
+      if (settings.footerNote) body.append(element('p', '', settings.footerNote));
     } else {
       const page = settings.pages?.[view] || {};
       body.append(element('h2', '', text(page.title, names[view][0])), element('p', '', names[view][1]));
@@ -188,8 +190,22 @@ export function mountSettingsPreview({ form, getValues, siteUrl, library = [], h
     }
     canvas.append(body);
     const footer = element('div', 'preview-footer');
-    footer.append(element('span', '', text(view === 'home' ? settings.homeEdition : settings.footerNote)), element('span', '', text(settings.footerLabel)));
-    canvas.append(footer);
+    if (view === 'home') footer.append(element('span', '', 'SCROLL TO EXPLORE'), element('span', '', settings.homeEdition));
+    else if (view === 'about') footer.append(element('span', '', `${settings.name} / PERSONAL PROFILE`), element('span', '', 'Archive ↓'));
+    else if (view === 'aboutMe') footer.append(element('span', '', 'LIBRARY / PERSONAL PICKS'), element('span', '', 'Contact ↓'));
+    else if (view !== 'archive') {
+      const { copyright, label, href } = footerCredit(settings);
+      const credit = element('span', 'preview-footer-credit', copyright);
+      if (href) {
+        const link = element('a', '', label);
+        link.href = href; link.target = '_blank'; link.rel = 'noopener noreferrer';
+        credit.append(' ', link);
+      } else if (label) credit.append(' ', label);
+      footer.append(credit);
+      if (view !== 'contact' && settings.footerNote) footer.append(element('span', '', settings.footerNote));
+      footer.append(element('span', '', view === 'contact' ? 'Back to top ↑' : `${settings.pages.blog.title} ↗`));
+    }
+    if (footer.childElementCount) canvas.append(footer);
     metadata.replaceChildren(element('strong', '', text(settings.title, 'Enter browser title')), element('span', 'preview-url', settings.url || siteUrl || ''), element('p', '', text(settings.description)));
   }
   function schedule(event) {
@@ -201,7 +217,7 @@ export function mountSettingsPreview({ form, getValues, siteUrl, library = [], h
     let next;
     if (name.startsWith('aboutMe')) next = 'aboutMe';
     else if (name.startsWith('about')) next = 'about';
-    else if (name.startsWith('contact') || name === 'launchedAt' || ['github', 'email'].includes(name)) next = 'contact';
+    else if (name.startsWith('contact') || name.startsWith('footer') || name === 'launchedAt' || ['github', 'email'].includes(name)) next = 'contact';
     else if (name.startsWith('archive')) next = 'archive';
     else if (name.startsWith('pages.')) next = name.split('.')[1];
     else if (name.startsWith('category.')) next = 'blog';

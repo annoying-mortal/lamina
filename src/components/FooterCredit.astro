@@ -1,0 +1,22 @@
+---
+import { site } from '../data/site';
+import { footerCredit } from '../../lib/footer-credit.mjs';
+const { copyright, label, href } = footerCredit(site);
+---
+<span class="footer-credit">
+  {copyright}{' '}
+  {href
+    ? <a href={href} target="_blank" rel="noopener noreferrer">{label}</a>
+    : label}
+</span>
+
+<style>
+  .footer-credit { font-family: "MiSans", sans-serif; }
+  .footer-credit a {
+    display: inline-block;
+    font: inherit;
+    letter-spacing: inherit;
+    color: inherit;
+  }
+  .footer-credit a:is(:hover, :focus-visible) { text-decoration: underline; }
+</style>

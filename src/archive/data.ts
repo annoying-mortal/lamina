@@ -41,7 +41,7 @@ export function createArchiveCollection(posts: ArchivePost[], categories: readon
     })),
     ...library.map(item => ({
       id: `library:${item.id}`, title: item.title,
-      summary: item.note || item.detail || 'Enter library content',
+      summary: item.note || item.detail || '',
       category: libraryCategories.find(category => category.id === normalizeLibraryTypeId(item.type))?.label || item.typeLabel, categoryId: `library:${normalizeLibraryTypeId(item.type)}`, date: item.date,
       tags: item.tags ?? [], readTime: '', kind: 'library' as const,
       href: `/library/#work-${encodeURIComponent(item.id)}`, cover: item.cover,
@@ -78,10 +78,10 @@ export function archiveRecordPresentation(record: ArchiveRecord) {
   };
   if (record.kind === 'library') return {
     prefix: 'L', kind: 'LIBRARY / COLLECTION',
-    selectionMeta: [record.creator || 'Unknown creator', record.date].filter(Boolean).join(' · '),
+    selectionMeta: [record.creator, record.date].filter(Boolean).join(' · '),
     previewKind: 'COLLECTION PREVIEW', previewLabel: record.demo ? 'Demo' : 'PERSONAL COLLECTION',
     categoryLabel: 'TYPE', categoryValue: record.category, dateLabel: 'ADDED',
-    readingLabel: 'CREATOR', readingValue: record.creator || '—',
+    readingLabel: 'CREATOR', readingValue: record.creator || '',
     summaryLabel: 'NOTE', readLabel: 'VIEW COLLECTION', readAction: 'View entry',
   };
   return {
@@ -97,7 +97,7 @@ export function archiveRecordPresentation(record: ArchiveRecord) {
 export let records: ArchiveRecord[] = [];
 export let categoryRecords: ArchiveLane[] = [];
 export let archiveColumns: string[] = [];
-export let archiveBranding = { title: 'Enter archive title', subtitle: 'Enter archive subtitle' };
+export let archiveBranding = { title: 'Archive', subtitle: '' };
 let filesByLane: number[][] = [];
 /** Common repetition length preserves every column when rebasing an infinite grid. */
 export let rowRebasePeriod = 0;
@@ -105,7 +105,7 @@ const gcd = (a: number, b: number): number => b ? gcd(b, a % b) : a;
 
 export function configureArchive(data: ArchiveData) {
   records = data.posts;
-  archiveBranding = data.branding ?? { title: 'Enter archive title', subtitle: 'Enter archive subtitle' };
+  archiveBranding = data.branding ?? { title: 'Archive', subtitle: '' };
   categoryRecords = data.categories;
   archiveColumns = categoryRecords.map(category => category.id);
   filesByLane = archiveColumns.map(id => records.flatMap((post, index) => post.categoryId === id ? [index] : []));

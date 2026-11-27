@@ -2,14 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { homeSettings } from '../lib/home-settings.mjs';
 
-test('legacy About settings receive independent placeholders while an empty array remains empty', () => {
-  const first = homeSettings({});
-  const second = homeSettings({});
-  assert.equal(first.aboutHighlights.length, 3);
-  first.aboutHighlights[0].title = 'Changed locally';
-  assert.equal(second.aboutHighlights[0].title, 'Enter achievement title');
+test('missing highlights leave the public list empty', () => {
+  assert.deepEqual(homeSettings({}).aboutHighlights, []);
   assert.deepEqual(homeSettings({ aboutHighlights: [] }).aboutHighlights, []);
-  assert.equal(homeSettings({ aboutHighlights: null }).aboutHighlights.length, 3);
+  assert.deepEqual(homeSettings({ aboutHighlights: null }).aboutHighlights, []);
 });
 
 test('hand-edited highlights tolerate malformed values without exposing unsafe links', () => {

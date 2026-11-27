@@ -41,16 +41,16 @@ test('a first deployment contains the canonical examples and templates, not loca
     for (const type of ['acgn', 'albums', 'books']) {
       const items = library.filter(item => item.type === type);
       assert.equal(items.length, 2);
-      assert.equal(items.filter(item => item.title === 'Enter Title').length, 1);
+      assert.equal(items.filter(item => item.id === `template-${type}` && !item.creator && !item.note).length, 1);
       assert.ok(items.every(item => item.demo));
     }
     assert.equal(library.length, 6);
     const friends = JSON.parse(await readFile(join(contentDir, 'friends.json'), 'utf8'));
     assert.equal(friends.length, 2);
     assert.ok(friends.some(friend => friend.name === 'Me' && new URL(friend.url).origin === 'http://localhost:8080'));
-    assert.ok(friends.some(friend => friend.name === 'Enter Title'));
+    assert.ok(friends.some(friend => friend.name === 'Example Domain'));
     assert.equal(JSON.parse(await readFile(join(contentDir, '.content-initialized'), 'utf8')).status, 'complete');
-    assert.equal(JSON.parse(await readFile(join(contentDir, 'site.json'), 'utf8')).name, 'Enter site name');
+    assert.equal(JSON.parse(await readFile(join(contentDir, 'site.json'), 'utf8')).name, 'Personal Blog');
   } finally { await rm(contentDir, { recursive: true, force: true }); }
 });
 

@@ -122,7 +122,7 @@ test('文件与 CMS 共用内容，监听发布更新静态页面且失败保留
     assert.match(interests, /href="\/library\/#work-qa-remote-cover"/);
     assert.equal((interests.match(/<div class="interest-cover"/g) || []).length, 7, 'Empty and removed Library selections render placeholders');
     assert.ok(!interests.includes('work-deleted-library-item'), 'A removed Library item does not create a broken link');
-    assert.match(home.slice(chapterOffsets[4]), /Enter GitHub URL/);
+    assert.doesNotMatch(home.slice(chapterOffsets[4]), /Enter GitHub URL|contact-placeholder/);
     assert.match(home, /认识 集成测试站/); assert.match(home, /从后台编辑的个人介绍/); assert.match(home, /从后台编辑的联系文案/);
     assert.match(home, /data-launched-at="2026-10-20T08:30:00\+08:00"/); assert.match(home, /mailto:hello@example.test/);
     const archiveSource = home.match(/<script\b[^>]*id="archive-data"[^>]*>([\s\S]*?)<\/script>/)?.[1];

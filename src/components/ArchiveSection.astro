@@ -78,10 +78,10 @@ const serialized = JSON.stringify({ ...collection, branding: { title: site.archi
           <div><dt id="archive-preview-category-label">{firstPresentation?.categoryLabel}</dt><dd id="archive-preview-category-value">{firstPresentation?.categoryValue}</dd></div>
           <div id="archive-preview-date-row" hidden={firstIsFriend}><dt id="archive-preview-date-label">{firstPresentation?.dateLabel}</dt><dd id="archive-preview-date">{first?.date || '—'}</dd></div>
           <div><dt>TAGS</dt><dd id="archive-preview-tags">{first?.tags.join(' · ') || '—'}</dd></div>
-          <div id="archive-preview-reading-row" hidden={firstIsFriend}><dt id="archive-preview-reading-label">{firstPresentation?.readingLabel}</dt><dd id="archive-preview-readtime">{firstPresentation?.readingValue}</dd></div>
+          <div id="archive-preview-reading-row" hidden={!firstPresentation?.readingValue}><dt id="archive-preview-reading-label">{firstPresentation?.readingLabel}</dt><dd id="archive-preview-readtime">{firstPresentation?.readingValue}</dd></div>
           <div id="archive-preview-rating-row" hidden={!firstIsLibrary}><dt>RATING</dt><dd id="archive-preview-rating">{first?.rating ? `${first.rating} / 10${first.demo ? ' · Demo rating' : ''}` : 'Unrated'}</dd></div>
         </dl>
-        <div class="archive-abstract"><span id="archive-summary-label">{firstPresentation?.summaryLabel}</span><p id="archive-summary">{first?.summary}</p></div>
+        <div class="archive-abstract" hidden={!first?.summary}><span id="archive-summary-label">{firstPresentation?.summaryLabel}</span><p id="archive-summary">{first?.summary}</p></div>
         <section id="archive-preview-tracks" aria-label="Album tracks" hidden>
           <h3>Tracks</h3>
           {library.filter(item => item.tracks?.length).map(album => <AlbumTrackList album={album} hidden />)}
@@ -92,7 +92,7 @@ const serialized = JSON.stringify({ ...collection, branding: { title: site.archi
     </article>
   </div>
 
-  <div class="archive-empty"><span>BLOG / LIBRARY / FRIENDS</span><h2>Enter blog, library or friend content</h2><a href="/blog/">Blog →</a><a href="/library/">Library →</a><a href="/friends/">Friends →</a></div>
+  <div class="archive-empty"><span>BLOG / LIBRARY / FRIENDS</span><h2>暂无归档内容</h2><a href="/blog/">Blog →</a><a href="/library/">Library →</a><a href="/friends/">Friends →</a></div>
   <div class="archive-footer"><span id="archive-status" role="status" aria-live="polite">{records.length ? 'Loading archive' : 'No entries'}</span><span>{String(posts.length).padStart(2, '0')} BLOG <i>/</i> {String(library.length).padStart(2, '0')} LIBRARY <i>/</i> {String(friends.length).padStart(2, '0')} FRIENDS <i>/</i> {String(records.length).padStart(3, '0')} RECORDS</span></div>
   <noscript><div class="archive-noscript"><p>Enable JavaScript for the 3D archive.</p><a href="/blog/">Blog →</a><a href="/library/">Library →</a><a href="/friends/">Friends →</a></div></noscript>
   <script id="archive-data" type="application/json" set:html={serialized}></script>

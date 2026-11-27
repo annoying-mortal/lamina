@@ -39,7 +39,7 @@ async function fixture(run, options = {}) {
 test('authentication is enabled by default, protects content APIs and only caches versioned fonts', () => fixture(async ({ root, visitor, status, authDir }) => {
   assert.equal(status.status, 200); assert.equal(status.body.configured, false); assert.equal(status.body.authenticated, false);
   assert.equal(status.body.setupTokenRequired, false); assert.equal('username' in status.body, false);
-  assert.match(status.body.csrf, /^[a-f0-9]{64}$/); assert.equal(status.body.name, 'Enter site name');
+  assert.match(status.body.csrf, /^[a-f0-9]{64}$/); assert.equal(status.body.name, 'Personal Blog');
   assert.equal(status.body.siteUrl, 'http://127.0.0.1:4321');
   assert.ok(status.setCookie[0].includes('HttpOnly')); assert.ok(status.setCookie[0].includes('SameSite=Strict'));
   for (const path of ['/api/session', '/api/account', '/api/blog', '/api/library', '/api/friends', '/api/settings', '/api/media', '/api/publish/status', '/uploads/anything.png', '/static/anything.pdf']) assert.equal((await visitor.request(path)).status, 401, path);

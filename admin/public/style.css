@@ -153,6 +153,8 @@ main:has(.settings-mode) > .topbar h1 { position: absolute; width: 1px; height: 
 .library-type-row-heading { display: flex; grid-column: 1 / -1; align-items: center; justify-content: space-between; font-size: 11px; }
 .library-type-row-heading .row-actions { align-items: center; }
 .preview-footer { padding: 14px 18px; margin-top: auto; display: flex; gap: 16px; justify-content: space-between; font-size: 6px; color: var(--preview-muted); overflow-wrap: anywhere; }
+.preview-footer-credit { font-family: "MiSans", sans-serif; }
+.preview-footer-credit a { color: inherit; font: inherit; letter-spacing: inherit; }
 .preview-canvas[data-view='about'] .preview-page h2 { font-size: 20px; letter-spacing: -.4px; margin: 15px 0 10px; }
 .preview-canvas[data-view='about'] .preview-page > p { font-size: 8px; max-width: 90%; }
 .preview-highlights { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,90px),1fr)); gap: 19px 15px; margin-top: 23px; }

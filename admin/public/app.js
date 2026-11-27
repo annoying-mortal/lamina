@@ -406,7 +406,7 @@ function editSettings(record) {
     const remove = element('button', 'text-danger', t("Remove", "移除")); remove.type = 'button'; remove.setAttribute('aria-label', t(`Remove category ${item.label || ''}`, `移除分类 ${item.label || ''}`)); remove.addEventListener('click', () => { row.remove(); markDirty(true); }); row.append(remove); categoryRows.append(row);
   };
   (record.categories || []).forEach(addCategory); const add = element('button', 'button subtle add-category', t("+ Add category", "＋ 新增分类")); add.type = 'button'; add.addEventListener('click', () => { addCategory({ id: '', label: '', en: '' }); markDirty(true); categoryRows.lastElementChild.querySelector('input').focus(); }); categories.grid.append(categoryRows, add);
-  const footer = settingsSection(t("Footer", "页脚")); footer.grid.append(field('footerLabel', t("Label", "英文标识"), record.footerLabel, { max: 100 }), field('footerNote', t("Text", "页脚说明"), record.footerNote, { max: 300 }));
+  const footer = settingsSection(t("Footer", "页脚")); footer.grid.append(field('footerLabel', t("Footer / ICP number", "页脚 / 备案号"), record.footerLabel, { max: 100 }), field('footerNote', t("Text", "页脚说明"), record.footerNote, { max: 300 }));
   const tabs = element('div', 'settings-tabs'); tabs.setAttribute('role', 'group'); tabs.setAttribute('aria-label', t('Settings groups', '设置分组'));
   const groups = [
     ['basic', t('Basics', '基本'), [identity, navigation, footer]],

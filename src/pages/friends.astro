@@ -30,8 +30,8 @@ const ownSiteURL = site.url.trim();
           </li>
         ))}
       </ul>
-    ) : <p class="friend-empty">Enter friend links</p>}
-    <section class="friend-own" aria-labelledby="own-site-title"><div><h2 id="own-site-title">Site information</h2>{site.email && <a class="text-button friend-email" href={`mailto:${site.email}`}>Email <span aria-hidden="true">↗</span></a>}</div><div class="site-information"><dl><div><dt>NAME</dt><dd>{site.name}</dd></div><div><dt>LINK</dt><dd>{ownSiteURL ? <a href={ownSiteURL} id="own-site-url">{ownSiteURL}</a> : <span id="own-site-url">Enter site URL</span>}</dd></div><div><dt>ABOUT</dt><dd>{site.description}</dd></div></dl><button class="text-button" id="copy-site-info">Copy site info <span aria-hidden="true">↗</span></button><p id="copy-site-status" class="copy-site-status" role="status" aria-live="polite"></p></div></section>
+    ) : <p class="friend-empty">暂无友链</p>}
+    <section class="friend-own" aria-labelledby="own-site-title"><div><h2 id="own-site-title">Site information</h2>{site.email && <a class="text-button friend-email" href={`mailto:${site.email}`}>Email <span aria-hidden="true">↗</span></a>}</div><div class="site-information"><dl><div><dt>NAME</dt><dd>{site.name}</dd></div>{ownSiteURL && <div><dt>LINK</dt><dd><a href={ownSiteURL} id="own-site-url">{ownSiteURL}</a></dd></div>}<div><dt>ABOUT</dt><dd>{site.description}</dd></div></dl><button class="text-button" id="copy-site-info">Copy site info <span aria-hidden="true">↗</span></button><p id="copy-site-status" class="copy-site-status" role="status" aria-live="polite"></p></div></section>
     <section class="friend-apply" aria-labelledby="apply-title">
       <div>
         <h2 id="apply-title">Apply for a friend link</h2>
@@ -91,9 +91,12 @@ const ownSiteURL = site.url.trim();
       }
     });
     root.querySelector('#copy-site-info')!.addEventListener('click', async () => {
-      const values = [...root.querySelectorAll('.site-information dd')].map(item => item.textContent?.trim() || '');
+      const values = [...root.querySelectorAll('.site-information dt')].map(term => {
+        const label = term.textContent === 'LINK' ? 'URL' : term.textContent;
+        return `${label}: ${term.nextElementSibling?.textContent?.trim()}`;
+      });
       const status = root.querySelector<HTMLElement>('#copy-site-status')!;
-      try { await navigator.clipboard.writeText(`Name: ${values[0]}\nURL: ${values[1]}\nAbout: ${values[2]}`); status.textContent = 'Copied.'; }
+      try { await navigator.clipboard.writeText(values.join('\n')); status.textContent = 'Copied.'; }
       catch { status.textContent = 'Select the text to copy.'; }
     });
   }

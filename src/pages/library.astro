@@ -41,14 +41,14 @@ const page = site.pages.library;
               {item.demo && <span class="collection-demo-badge">DEMO</span>}
             </div>
             <div class="collection-meta"><span>{item.categoryLabel}</span>{item.rating ? <span class="collection-rating">{item.rating}<small> / 10</small></span> : <span class="collection-unrated">Unrated</span>}</div>
-            <h3>{item.title}</h3><p class="collection-creator">{item.creator || 'Enter creator'}</p><p class="collection-note">{item.note || 'Enter library content'}</p>
+            <h3>{item.title}</h3>{item.creator && <p class="collection-creator">{item.creator}</p>}{item.note && <p class="collection-note">{item.note}</p>}
             <div class="collection-bottom"><span>{(item.tags ?? []).slice(0, 2).map(tag => `#${tag}`).join(' ')}</span>{item.date && <time datetime={item.date}>{displayDate(item.date)}</time>}</div>
           </button>
           {item.tracks?.map(track => <a class="library-track-result" href={libraryTrackHash(item.id, track.id)} hidden>{track.title}</a>)}
         </article>)}
       </section>
       <div class="library-empty" id="library-empty" hidden={library.length > 0}>
-        <span aria-hidden="true">∅</span><h2>{library.length ? 'No matching entries' : 'Enter library content'}</h2>{library.length > 0 && <p>Try another search.</p>}<button type="button" class="button" id="library-reset" hidden={!library.length}>View all <span aria-hidden="true">↗</span></button>
+        <span aria-hidden="true">∅</span><h2>{library.length ? 'No matching entries' : '暂无作品'}</h2>{library.length > 0 && <p>Try another search.</p>}<button type="button" class="button" id="library-reset" hidden={!library.length}>View all <span aria-hidden="true">↗</span></button>
       </div>
       <div class="library-expand-row" id="library-expand-row" hidden={library.length <= previewCount}>
         <span class="library-expand-line" aria-hidden="true"></span><button type="button" id="library-expand" class="library-expand" aria-expanded="false" aria-controls="library-results"><span data-expand-label>Show all</span><small data-expand-count>{String(library.length).padStart(2, '0')}</small><span class="library-expand-arrow" aria-hidden="true">↓</span></button><span class="library-expand-line" aria-hidden="true"></span>
@@ -58,7 +58,7 @@ const page = site.pages.library;
       <button type="button" class="collection-dialog-close" data-close-dialog aria-label="Close details"><span aria-hidden="true">×</span></button>
       <div class="collection-dialog-grid">
         <div class:list={['collection-dialog-cover', 'collection-cover', `collection-cover-${item.type}`]}><div class="collection-cover-fallback" aria-hidden="true"><span>{item.categoryLabel}</span><strong>{item.title.slice(0, 1)}</strong><p>{item.title}</p><small>PERSONAL COLLECTION</small></div>{item.cover && <img data-fallback-image src={item.cover} alt="" width="480" height="640" loading="lazy" />}</div>
-        <div class="collection-dialog-body"><p class="eyebrow">{item.categoryLabel} / COLLECTION</p><h2 id={`title-${item.id}`}>{item.title}</h2>{item.original && <p class="collection-original">{item.original}</p>}<p class="collection-dialog-creator">{item.creator}</p>
+        <div class="collection-dialog-body"><p class="eyebrow">{item.categoryLabel} / COLLECTION</p><h2 id={`title-${item.id}`}>{item.title}</h2>{item.original && <p class="collection-original">{item.original}</p>}{item.creator && <p class="collection-dialog-creator">{item.creator}</p>}
           {item.rating && <div class="collection-dialog-rating">{item.rating}<small>/ 10</small>{item.demo && <span>Demo rating</span>}</div>}
           {item.note && <blockquote>{item.note}</blockquote>}{item.detail && <p class="collection-detail">{item.detail}</p>}
           <AlbumTrackList album={item} />

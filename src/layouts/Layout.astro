@@ -2,12 +2,13 @@
 import { ClientRouter } from 'astro:transitions';
 import SiteControls from '../components/SiteControls.astro';
 import MusicPlayer from '../components/MusicPlayer.astro';
+import FooterCredit from '../components/FooterCredit.astro';
 import { site, siteBaseURL, imageSource } from '../data/site';
 import '../styles/global.css';
 interface Props { title?: string; description?: string; active?: string; }
 const { title = site.title, description: pageDescription, active = 'home' } = Astro.props;
 const description = pageDescription?.trim() || site.description;
-const pageTitle = title === site.title ? title : `${title} — ${site.name}`;
+const shareTitle = title === site.title ? title : `${title} — ${site.name}`;
 const canonical = new URL(Astro.url.pathname, siteBaseURL(Astro.site ?? Astro.url.origin));
 const logo = imageSource(site.logo) || '/logo.svg';
 ---
@@ -18,7 +19,7 @@ const logo = imageSource(site.logo) || '/logo.svg';
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content={description} />
     <meta name="theme-color" content="#eae5e1" />
-    <meta property="og:title" content={pageTitle} />
+    <meta property="og:title" content={shareTitle} />
     <meta property="og:description" content={description} />
     <meta property="og:type" content="website" />
     <meta property="og:url" content={canonical} />
@@ -27,7 +28,7 @@ const logo = imageSource(site.logo) || '/logo.svg';
     <link rel="license" href="/fonts/MiSans-license.pdf" title="MiSans font license" />
     <link rel="icon" href={imageSource(site.favicon) || '/favicon.svg'} />
     {site.showRSS && <link rel="alternate" type="application/rss+xml" title={`${site.name} RSS`} href="/rss.xml" />}
-    <title>{pageTitle}</title>
+    <title>{site.title}</title>
     <script is:inline>
       (() => {
         let theme;
@@ -63,8 +64,8 @@ const logo = imageSource(site.logo) || '/logo.svg';
     <main id="main"><slot /></main>
     <MusicPlayer />
     {active !== 'home' && <footer class="site-footer">
-      <span>© {new Date().getFullYear()} {site.name}{site.footerLabel && <><i> / </i> {site.footerLabel}</>}</span>
-      <span class="footer-note">{site.footerNote}</span>
+      <FooterCredit />
+      {site.footerNote && <span class="footer-note">{site.footerNote}</span>}
       <a href="/blog/">{site.pages.blog.title} <span aria-hidden="true">↗</span></a>
     </footer>}
     <script>import '../scripts/global';</script>

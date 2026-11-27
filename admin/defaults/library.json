@@ -56,57 +56,51 @@
     "type": "books"
   },
   {
-    "original": "Enter original title",
+    "original": "",
     "typeLabel": "ACGN",
-    "creator": "Enter creator",
+    "creator": "",
     "date": "2026-01-01",
     "rating": "",
     "cover": "",
-    "note": "Enter note",
-    "detail": "Enter content",
+    "note": "",
+    "detail": "",
     "article": null,
-    "tags": [
-      "Enter tag"
-    ],
+    "tags": [],
     "demo": true,
     "id": "template-acgn",
-    "title": "Enter Title",
+    "title": "ACGN 示例",
     "type": "acgn"
   },
   {
-    "original": "Enter original title",
+    "original": "",
     "typeLabel": "Albums",
-    "creator": "Enter creator",
+    "creator": "",
     "date": "2026-01-01",
     "rating": "",
     "cover": "",
-    "note": "Enter note",
-    "detail": "Enter content",
+    "note": "",
+    "detail": "",
     "article": null,
-    "tags": [
-      "Enter tag"
-    ],
+    "tags": [],
     "demo": true,
     "id": "template-albums",
-    "title": "Enter Title",
+    "title": "专辑示例",
     "type": "albums"
   },
   {
-    "original": "Enter original title",
+    "original": "",
     "typeLabel": "Books",
-    "creator": "Enter creator",
+    "creator": "",
     "date": "2026-01-01",
     "rating": "",
     "cover": "",
-    "note": "Enter note",
-    "detail": "Enter content",
+    "note": "",
+    "detail": "",
     "article": null,
-    "tags": [
-      "Enter tag"
-    ],
+    "tags": [],
     "demo": true,
     "id": "template-books",
-    "title": "Enter Title",
+    "title": "书籍示例",
     "type": "books"
   }
 ]

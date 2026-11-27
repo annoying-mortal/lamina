@@ -304,8 +304,8 @@ test('home settings preserve old site content, editable copy and custom fields w
   await writeFile(join(dataDir, 'site.json'), JSON.stringify(legacy));
   const loaded = (await request('/api/settings')).body;
   assert.equal(loaded.aboutBody, legacy.intro); assert.equal(loaded.launchedAt, '');
-  assert.equal(loaded.aboutTitle, 'Enter about title');
-  assert.equal(loaded.contactEyebrow, 'Enter contact label');
+  assert.equal(loaded.aboutTitle, 'About');
+  assert.equal(loaded.contactEyebrow, '');
   const edited = { ...loaded, aboutEyebrow: 'ABOUT ME', aboutTitle: '关于 {name}', aboutBody: '第一段。\n\n第二段。', contactEyebrow: 'CONTACT', contactTitle: '来聊聊，\n慢慢说。', contactBody: '你好。\n保持联系。', launchedAt: '2026-10-20T21:28:15+08:00' };
   let saved = await request('/api/settings', 'PUT', edited);
   assert.equal(saved.status, 200);
@@ -340,8 +340,7 @@ test('About highlights migrate older settings, preserve order and survive older 
   const legacy = { ...initial }; delete legacy.aboutHighlights; delete legacy.revision;
   await writeFile(join(dataDir, 'site.json'), JSON.stringify(legacy));
   const loaded = (await request('/api/settings')).body;
-  assert.equal(loaded.aboutHighlights.length, 3);
-  assert.ok(loaded.aboutHighlights.every(item => item.title.startsWith('Enter ') && item.url === ''));
+  assert.deepEqual(loaded.aboutHighlights, []);
   const aboutHighlights = [
     { label: 'TEACHING', title: '教学实践', description: '保留用户输入。\nSecond line.', period: '2025–2026', url: 'https://example.com/实践' },
     { label: '', title: 'Project milestone', description: '', period: '', url: '' },

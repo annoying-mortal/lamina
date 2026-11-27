@@ -398,8 +398,9 @@ export function createServer(options = {}) {
         const content = await readFile(join(here, 'public', file));
         res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' }); res.end(content); return;
       }
-      if (req.method === 'GET' && assetPaths.has(pathname)) {
-        const content = await readFile(join(here, 'public', pathname.slice(1)));
+      if (req.method === 'GET' && (assetPaths.has(pathname) || pathname === '/footer-credit.mjs')) {
+        const path = pathname === '/footer-credit.mjs' ? join(here, '../lib/footer-credit.mjs') : join(here, 'public', pathname.slice(1));
+        const content = await readFile(path);
         const type = pathname.endsWith('.css') ? 'text/css' : 'text/javascript';
         res.writeHead(200, { 'Content-Type': type + '; charset=utf-8' }); res.end(content); return;
       }

@@ -279,4 +279,4 @@ Leave a blank line after the HTML tag to allow **Markdown** within the disclosur
 
 ## Start writing
 
-Duplicate [Enter Title](/blog/enter-title/), then choose a unique `id` and `slug`. Write in the Markdown folder or use the CMS; both edit the same content. Set `demo: false` when the post is yours, and `draft: true` while it is private.
+Duplicate [First post](/blog/enter-title/), then choose a unique `id` and `slug`. Write in the Markdown folder or use the CMS; both edit the same content. Set `demo: false` when the post is yours, and `draft: true` while it is private.

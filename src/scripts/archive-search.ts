@@ -22,7 +22,9 @@ class ArchiveSearchPanel extends HTMLElement {
     const render = () => {
       if (!records) return;
       const query = normalizeSearchText(input.value);
-      const fragment = document.createDocumentFragment();
+      const exact = document.createDocumentFragment();
+      const partial = document.createDocumentFragment();
+      const other = document.createDocumentFragment();
       let hits = 0;
       records.forEach((record, index) => {
         if (record.kind === 'track' && !query) return;
@@ -33,10 +35,13 @@ class ArchiveSearchPanel extends HTMLElement {
         row.querySelector('[data-title]')!.textContent = record.title;
         row.querySelector('[data-summary]')!.textContent = record.summary;
         row.querySelector('[data-category]')!.textContent = record.category;
-        fragment.append(row);
+        const title = normalizeSearchText(record.title);
+        if (query && title === query) exact.append(row);
+        else if (query && title.includes(query)) partial.append(row);
+        else other.append(row);
         hits++;
       });
-      rows.replaceChildren(fragment);
+      rows.replaceChildren(exact, partial, other);
       rows.parentElement!.scrollTop = 0;
       message.hidden = hits > 0;
       message.textContent = records.length ? 'No matching entries. Try another term or category.' : 'No entries yet.';

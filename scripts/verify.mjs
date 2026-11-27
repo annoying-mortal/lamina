@@ -25,7 +25,7 @@ async function filesAt(path) {
   }
   return files;
 }
-const decode = value => value.replaceAll('&amp;', '&').replaceAll('&#39;', "'").replaceAll('&quot;', '"');
+const decode = value => value.replaceAll('&lt;', '<').replaceAll('&gt;', '>').replaceAll('&#39;', "'").replaceAll('&quot;', '"').replaceAll('&amp;', '&');
 function attributes(tag) {
   return Object.fromEntries([...tag.matchAll(/([\w:-]+)\s*=\s*(?:"([^"]*)"|'([^']*)')/g)].map(match => [match[1], decode(match[2] ?? match[3])]));
 }
@@ -87,7 +87,6 @@ try {
     }
   }
 
-  const titles = new Set();
   for (const file of htmlFiles) {
     const html = await readFile(file, 'utf8');
     const route = '/' + file.slice(dist.length + 1).replace(/index\.html$/, '');
@@ -100,8 +99,7 @@ try {
     check((html.match(/<h1\b/gi) ?? []).length === 1, `${label} 应有且只有一个 h1`);
     const title = html.match(/<title>([\s\S]*?)<\/title>/i)?.[1]?.trim();
     check(Boolean(title), `${label} 缺少 title`);
-    check(!titles.has(title), `${label} 页面标题重复`);
-    titles.add(title);
+    check(decode(title ?? '') === settings.title.trim(), `${label} 浏览器标题与站点设置不一致`);
     const meta = tags(html, 'meta');
     check(meta.some(tag => tag.name === 'description' && tag.content?.trim()), `${label} 缺少页面描述`);
     const links = tags(html, 'link');

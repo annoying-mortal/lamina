@@ -14,13 +14,13 @@
   },
   {
     "id": "template-friend",
-    "name": "Enter Title",
+    "name": "Example Domain",
     "url": "https://example.com/",
     "avatar": "",
     "initials": "",
-    "description": "Enter description",
-    "label": "Enter tag",
-    "kind": "Enter type",
+    "description": "",
+    "label": "",
+    "kind": "",
     "order": 1,
     "visible": true,
     "demo": true

@@ -1,6 +1,6 @@
 # First-deployment content
 
-This directory is the distributable starter snapshot. It includes the site placeholders, a Markdown guide and `Enter Title` article, an example and template for each of ACGN / Albums / Books, and two Friends entries.
+This directory is the distributable starter snapshot. It includes the site defaults, a Markdown guide and a short introductory article, an example and template for each of ACGN / Albums / Books, and two Friends entries.
 
 Docker excludes the local `src/content/` directory and initializes its image from this snapshot. This prevents local articles, settings and CMS edits from becoming another site's default content. Existing named volumes and folder mounts remain authoritative.
 

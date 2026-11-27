@@ -121,6 +121,7 @@ function initArchive() {
     trackSection.hidden = !currentTracks;
     text('archive-extract-label', currentTracks ? 'View tracks' : 'Preview');
     text('archive-summary', post.summary);
+    section.querySelector<HTMLElement>('.archive-abstract')!.hidden = !post.summary;
     text('archive-date', presentation.selectionMeta);
     text('archive-kind', presentation.kind);
     text('archive-count', `${number} / ${total}`);
@@ -143,7 +144,7 @@ function initArchive() {
     text('archive-preview-rating', post.rating ? `${post.rating} / 10${post.demo ? ' · Demo rating' : ''}` : 'Unrated');
     ratingRow.hidden = !isLibrary;
     dateRow.hidden = isFriend;
-    readingRow.hidden = isFriend;
+    readingRow.hidden = !presentation.readingValue;
     text('archive-preview-original', post.original || '');
     original.hidden = !isLibrary || !post.original || post.original === post.title;
     cover.hidden = !post.cover;

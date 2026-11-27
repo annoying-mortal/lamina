@@ -1,20 +1,20 @@
 {
-  "name": "Enter site name",
-  "title": "Enter page title",
-  "description": "Enter site description",
+  "name": "Personal Blog",
+  "title": "Personal Blog",
+  "description": "博客、作品志与友链。",
   "url": "",
-  "tagline": "Enter headline",
-  "intro": "Enter introduction",
-  "aboutEyebrow": "Enter about label",
-  "aboutTitle": "Enter about title",
-  "aboutBody": "Enter about content",
-  "contactEyebrow": "Enter contact label",
-  "contactTitle": "Enter contact title",
-  "contactBody": "Enter contact content",
+  "tagline": "Personal Blog",
+  "intro": "",
+  "aboutEyebrow": "",
+  "aboutTitle": "About",
+  "aboutBody": "",
+  "contactEyebrow": "",
+  "contactTitle": "Contact",
+  "contactBody": "",
   "launchedAt": "",
-  "eyebrow": "Enter home label",
-  "footerNote": "Enter footer text",
-  "footerLabel": "Enter footer label",
+  "eyebrow": "",
+  "footerNote": "",
+  "footerLabel": "",
   "github": "",
   "email": "",
   "logo": "",
@@ -22,9 +22,9 @@
   "defaultTheme": "light",
   "showRSS": true,
   "demo": false,
-  "archiveSubtitle": "Enter archive subtitle",
-  "archiveTitle": "Enter archive title",
-  "homeEdition": "Enter home footer text",
+  "archiveSubtitle": "",
+  "archiveTitle": "Archive",
+  "homeEdition": "",
   "navigation": [
     {
       "id": "home",
@@ -75,29 +75,7 @@
       "en": "Category 03"
     }
   ],
-  "aboutHighlights": [
-    {
-      "label": "Enter achievement label",
-      "title": "Enter achievement title",
-      "description": "Enter achievement summary",
-      "period": "Enter period",
-      "url": ""
-    },
-    {
-      "label": "Enter achievement label",
-      "title": "Enter achievement title",
-      "description": "Enter achievement summary",
-      "period": "Enter period",
-      "url": ""
-    },
-    {
-      "label": "Enter achievement label",
-      "title": "Enter achievement title",
-      "description": "Enter achievement summary",
-      "period": "Enter period",
-      "url": ""
-    }
-  ],
+  "aboutHighlights": [],
   "orbitImage": "",
   "libraryTypes": [
     {

@@ -142,13 +142,13 @@ test('the shipped guide renders supported Markdown features and valid linked exa
   assert.match(await readFile(new URL('../public/images/markdown-example.svg', import.meta.url), 'utf8'), /<svg\b/);
 });
 
-test('the blank post is a public, editable Enter Title template', async () => {
+test('the starter post is an editable published example', async () => {
   const source = await readFile(new URL('../admin/defaults/blog/enter-title.md', import.meta.url), 'utf8');
   const { post } = parsePostSource(source, { filename: 'enter-title.md' });
-  assert.equal(post.title, 'Enter Title');
+  assert.equal(post.title, 'First post');
   assert.equal(post.slug, 'enter-title');
   assert.equal(post.demo, true);
   assert.equal(post.draft, false);
-  assert.deepEqual(post.tags, ['Enter tag']);
-  assert.match(post.body, /Enter content/);
+  assert.deepEqual(post.tags, ['Journal']);
+  assert.doesNotMatch(post.body, /Enter (heading|content)/);
 });
