@@ -119,7 +119,7 @@ async function readRegular(root, path, maxSize = BACKUP_LIMITS.file) {
   finally { await handle?.close(); }
 }
 
-export function createBackupStore({ projectRoot, dataDir, uploadsDir, backupDir = join(projectRoot, '.admin/backups'), siteUrl, readSettings, validators, acknowledge = () => {}, beforeWrite, now = Date.now }) {
+export function createBackupStore({ projectRoot, dataDir, uploadsDir, backupDir = join(projectRoot, '.admin/backups'), siteUrl, readSettings, validators, acknowledge = () => {}, beforeWrite, now = Date.now, maxBackups = 5 }) {
   const pending = new Map();
   async function collect() {
     const files = new Map();
@@ -285,6 +285,12 @@ export function createBackupStore({ projectRoot, dataDir, uploadsDir, backupDir 
         recovery['manifest.json'] = jsonBytes({ format: 'personal-blog-recovery', version: 1, createdAt: new Date(now()).toISOString(), absent: changes.filter(change => change.previous === null).map(change => change.root === uploadsDir ? `uploads/${relative(uploadsDir, change.path)}` : `content/${relative(dataDir, change.path)}`), files: Object.entries(recovery).map(([path, bytes]) => ({ path, size: bytes.length, sha256: hash(bytes) })) });
         await mkdir(backups, { recursive: true, mode: 0o700 });
         await safeTarget(backups, join(backups, rollbackId)); await atomicWrite(join(backups, rollbackId), Buffer.from(zipSync(recovery, { level: 6 })), { directoryMode: 0o700 });
+        if (Number.isInteger(maxBackups) && maxBackups > 0) {
+          const snapshots = (await readdir(backups)).filter(name => /^before-restore-.*\.zip$/.test(name)).sort();
+          for (const stale of snapshots.slice(0, Math.max(0, snapshots.length - maxBackups))) {
+            await unlink(join(backups, stale)).catch(() => {});
+          }
+        }
         return await authorize(async () => {
           check(await fingerprint() === prepared.fingerprint, 'Content changed while preparing restore. Upload the backup again.', 409);
           await begin();

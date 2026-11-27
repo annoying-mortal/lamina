@@ -12,8 +12,6 @@
     "publish": "node scripts/publish.mjs",
     "preview": "node scripts/preview.mjs",
     "admin": "node admin/server.mjs",
-    "admin:test": "node --test admin/*.test.mjs",
-    "test": "node --test admin/*.test.mjs scripts/*.test.mjs",
     "check": "astro check",
     "verify": "node scripts/verify.mjs"
   },

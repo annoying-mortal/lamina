@@ -16,6 +16,7 @@ export interface SiteSettings {
   aboutHighlights: AboutHighlight[];
   aboutMeTitle: string; aboutMeSubtitle: string; aboutMeWorks: AboutMeWork[];
   contactEyebrow: string; contactTitle: string; contactBody: string; launchedAt: string;
+  friendApplicationsEnabled?: boolean;
   navigation: Array<{ id: NavigationId; label: string; visible: boolean }>;
   pages: Record<'blog' | 'library' | 'friends', { title: string }>;
   categories: SiteCategory[];
@@ -27,11 +28,20 @@ const navigationPaths: Record<NavigationId, string> = {
 };
 const configured = settings as SiteSettings;
 
+const envFriendApplications = (import.meta.env as Record<string, string | undefined> | undefined)?.PUBLIC_FRIEND_APPLICATIONS
+  ?? (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env?.PUBLIC_FRIEND_APPLICATIONS;
+const home = homeSettings(configured);
+
 /** Editable content stays in JSON; route paths remain under application control. */
 export const site = {
   ...configured,
-  ...homeSettings(configured),
+  ...home,
   ...librarySettings(configured),
+  friendApplicationsEnabled: envFriendApplications === '0' || envFriendApplications === 'false'
+    ? false
+    : envFriendApplications === '1' || envFriendApplications === 'true'
+      ? true
+      : home.friendApplicationsEnabled,
   navigation: configured.navigation
     .filter(item => item.visible && Object.hasOwn(navigationPaths, item.id))
     .map(item => ({ ...item, href: navigationPaths[item.id] })),

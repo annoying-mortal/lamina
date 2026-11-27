@@ -1,217 +1,150 @@
-# Lamina
+# Personal Blog (Lamina)
 
-A personal publishing template built with Astro, a Three.js archive, and a file-based CMS.
+English | [简体中文](README.ZH-CN.md)
 
-Introduce yourself, publish Markdown articles, and collect books, music, and other interests in an interactive glass archive. Content lives in ordinary Markdown and JSON files, editable from your editor or the built-in CMS.
+A self-hosted static personal blog, interactive 3D archive, collection library, and local content workspace built with **Astro**, **Three.js**, and **Node.js**.
+
+It keeps Markdown and JSON files in `src/content/` as the single source of truth—no external database required—while providing a built-in single-admin CMS, portable ZIP backup/restore, and atomic static publishing with Nginx and Docker Compose.
 
 ## Features
 
-- **Home and archive** — personal introduction, a nine-tile About me grid, contact details, and a 3D archive for posts, Library entries, and public friend links, with keyboard, mouse, and touch controls.
-- **Blog** — categories, tags, drafts, search, table of contents, RSS, highlighted code with copy buttons, footnotes, and KaTeX mathematics.
-- **Archive search** — search published articles and Library entries together. Find works by title, original title, creator, category, tags, notes, or detail text and open the matching entry directly.
-- **Library and Friends** — collections with covers, ratings, notes, and related articles; a two-column friend directory with avatars and optional descriptions. Visitors can submit a link for manual review in the CMS.
-- **CMS** — Settings, Blog, Library, Friends, Files, and Backup, with English and Chinese interfaces and a live preview of site settings.
-- **Appearance** — RhineLab-inspired light and dark themes, configurable branding, and separate typography for the site, archive, and articles.
-- **Self-hosting** — a static frontend and single-administrator Node.js service, Docker deployment, and ZIP content migration. No external database.
+- **Five-Section Home Page**: Hero section with orbit animation, personal profile & highlights, interactive 3D archive, a 9-slot *About me* collection showcase, and contact details with a live uptime counter.
+- **Interactive 3D Archive**: Powered by Three.js (`src/archive/`), combining blog posts, library entries, and visible friend links in one navigable 3D scene with full-site search (`/archive-search.json`).
+- **Markdown Blog & RSS**: Reads `src/content/blog/**/*.md` directly with dynamic categories, tags, reading-time estimation, Shiki syntax highlighting, build-time KaTeX math rendering, and `/rss.xml`.
+- **Library & Audio Player**: Tracks ACGN, Albums (with multi-track audio playback), Books, and Others, supporting filtering by type, tag, and track name.
+- **Friends Directory & Applications**: Displays friend links with one-click site-info copying and an optional visitor application form (with honeypot protection and per-IP rate limiting). Can be disabled for pure static hosting via `PUBLIC_FRIEND_APPLICATIONS=0` or `friendApplicationsEnabled: false` in `site.json`.
+- **Local Content Workspace (CMS)**: Built-in Node.js admin server (`admin/server.mjs`) with EN / 中文 UI switching, scrypt authentication, CSRF/Origin checks, optimistic `revision` locking, streaming uploads (`/static/`, up to 256 MiB), and portable ZIP backup/restore with automatic rollback snapshot rotation.
+- **Atomic Publishing**: Builds to an isolated staging directory, runs verification, and atomically flips `.published/current` (keeping the previous live release intact if a build or check fails).
 
-## Quick start
+## Requirements
 
-Local development requires **Node.js 24+** and npm.
+- **Local Mode**: Node.js `>= 24.0.0`
+- **Container Mode**: Docker and Docker Compose
+
+## Quick Start
+
+### Local Development
+
+Install dependencies:
 
 ```sh
-git clone https://github.com/annoying-mortal/lamina.git
-cd lamina
 npm ci
-npm run dev
 ```
 
-In a second terminal, from the same directory:
+Start the frontend and CMS in two terminals:
+
+```sh
+npm run dev
+```
 
 ```sh
 npm run admin
 ```
 
-| Service | Address |
-| --- | --- |
-| Website | <http://127.0.0.1:4321/> |
-| CMS | <http://127.0.0.1:4322/> |
+- **Frontend**: <http://127.0.0.1:4321/>
+- **Admin CMS**: <http://127.0.0.1:4322/>
 
-Open the CMS to create your administrator account. Start in **Settings** to edit the site name, Home text, navigation, archive labels, contact details, and logo. CMS saves and local file edits update the development site.
+On first visit to the admin interface, set up the administrator username and password directly in the browser.
 
-For the header logo, an SVG URL such as `/logo.svg` is recommended; leave **Settings → Logo** empty for a blank header mark.
+### Build, Verify, and Atomic Publish
 
-Settings opens first and groups fields into **Basics**, **Home**, **Nine works**, and **Content**. Expand the section you want to edit; the live preview is optional.
-
-In **Settings → Nine works**, choose Library entries for the nine tiles and give each a **Tag**. Empty tiles show `+`. Contact links appear when their addresses are filled in.
-
-Open an album under **Library → Albums** in the CMS. Upload one or more MP3, M4A, OGG, WAV, or FLAC files, or choose existing uploads. Name the tracks, use **Up** and **Down** to set their order, then save.
-
-The music button beside the theme switch opens the player on every public page. Browsing an album leaves playback alone. Click a track to play through the rest of its album in order. Music continues across site navigation. A reload during playback restores the track and position, with a **继续播放** (Resume) button if the browser blocks playback. A first visit or a reload after pausing picks a random nonempty album and a random track within it, and starts paused.
-
-The starter content includes a Markdown guide, sample Library entries, Friends links, and a short introductory post. Replace or delete these records and clear the Demo flag on your own content. See [starter content and image sources](docs/content-examples.md).
-
-## Writing
-
-Create a `.md` file under `src/content/blog/`, including in a subdirectory:
-
-```md
----
-title: My first post
-date: 2026-01-01
-tags: [notes]
-draft: true
----
-
-## A new beginning
-
-Write your article here.
+```sh
+npm run check                        # Astro & TypeScript diagnostics
+npm run build                        # Build static site into dist/
+npm run preview                      # Preview dist/ locally
+npm run verify                       # Full verification of dist/
+node scripts/verify.mjs --quick      # Quick verification (core routes + sampled posts)
+npm run publish                      # Build, quick-verify, and atomically update .published/current
 ```
 
-Set `draft: false` to publish. Drafts stay out of public pages, the archive, Blog lists, and RSS. New CMS posts start as drafts; handwritten posts without a `draft` field are public.
+For pure static hosting (e.g., GitHub Pages or Cloudflare Pages) where no admin backend is running to receive friend-link applications:
 
-| Optional field | Default |
-| --- | --- |
-| `id`, `slug` | Derived from the relative file path |
-| `summary` | Extracted from the body |
-| `categoryId` | First configured Blog category |
-| `tags` | Empty list |
-| `readTime` | Estimated from the body |
-| `draft`, `demo` | `false` |
+```sh
+PUBLIC_FRIEND_APPLICATIONS=0 npm run build
+```
 
-Use explicit, unique IDs and slugs to keep addresses stable when moving files. `pubDate` and `description` are accepted as aliases for `date` and `summary`.
+### Docker Compose Deployment
 
-Upload images, SVGs, documents, archives, and other files through **Files**, up to **256 MiB each**. Uploads are saved in `public/static/` and linked as `/static/…`. Image fields can select uploaded images or use external HTTP(S) image URLs. Existing `/uploads/…` links continue to work.
-
-The [Markdown Guide](src/content/blog/markdown-guide.md) demonstrates the supported formatting. The CMS provides a lightweight preview; article pages show the final typography and mathematics. See the [writing guide](docs/writing.md) (Chinese) for field rules, file editing, and publishing.
-
-## Docker deployment
-
-Requires Docker with the Compose plugin.
-
-### CMS-managed content
+Default named-volume mode (`blog-content`, `blog-uploads`, `blog-published`, `blog-admin`):
 
 ```sh
 docker compose up -d --build
 ```
 
-The website runs at <http://localhost:8080/> and the CMS at <http://localhost:4322/>. Both ports bind to `127.0.0.1`.
-
-Open the CMS setup page. If it asks for a setup token, retrieve it from the server terminal:
-
-```sh
-docker compose exec admin cat /app/.admin/setup-token
-```
-
-Enter the token and create your account. CMS saves automatically build and publish the site; a failed build keeps the last successful pages available. Uploaded files are served separately from page releases.
-
-| Named volume | Stores |
-| --- | --- |
-| `blog-content` | Articles, settings, Library, Friends, and media index |
-| `blog-uploads` | Uploaded files, served at `/static/` and the legacy `/uploads/` prefix |
-| `blog-published` | Built releases and the active `current` link |
-| `blog-admin` | Administrator credentials, pending friend applications, and recovery snapshots |
-
-Docker seeds articles and settings from [`admin/defaults/`](admin/defaults/README.md). In this mode, the running site uses its volumes rather than the host's `src/content/`.
-
-After updating the source, run `docker compose up -d --build` again. Data volumes persist across rebuilds; `docker compose down -v` deletes them. Publishing logs are available with `docker compose logs -f admin`.
-
-### Shared files with your editor
-
-For a new installation that should use the host's content and uploads:
+Host-directory bind-mount mode (read/write `./src/content/` and `./public/static/` directly on the host):
 
 ```sh
 docker compose -f compose.yaml -f compose.files.yaml up -d --build
 ```
 
-This mounts `./src/content/` and `./public/static/`, so the editor and CMS use the same files. Both kinds of edits trigger publication. Use both Compose files for subsequent commands.
+- **Frontend (read-only Nginx)**: <http://127.0.0.1:8080/>
+- **Admin CMS**: <http://127.0.0.1:4322/>
 
-`BLOG_CONTENT_DIR` and `BLOG_UPLOADS_DIR` can select other existing directories. On Linux, grant the container's default UID/GID `1000:1000` write access to these directories. To move an existing volume-based installation, follow the [folder migration guide](docs/writing.md#已有命名卷先导出再切换).
-
-### Domain and access
-
-Set the public website URL and host ports in a local `.env`:
-
-```dotenv
-SITE_URL=https://blog.example.com
-PORT=8080
-ADMIN_PORT=4322
-```
-
-Rebuild after changing `SITE_URL`. **Settings → Public URL** takes precedence for canonical and RSS URLs; use the same address if you fill it in. Point an HTTPS reverse proxy at the website's loopback port. For friend applications, set `SITE_URL` to the origin visitors use and forward the original `Host` header.
-
-The CMS can remain private, accessed from your computer through an SSH tunnel:
+When initializing the admin account inside Docker Compose, retrieve the one-time setup token from the host terminal:
 
 ```sh
-ssh -N -L 4322:127.0.0.1:4322 user@your-server
+docker compose exec admin cat /app/.admin/setup-token
 ```
 
-Then open <http://localhost:4322/>. Public CMS hosting requires additional Host, HTTPS-cookie, and setup configuration; see [CMS runtime configuration](admin/README.md#运行配置).
+## Configuration
 
-## Backup and restore
+### Site & Build Variables
 
-In **Backup**, **Download ZIP** exports settings, posts (including drafts), Library, Friends, and referenced uploaded files and images. Readable local files and downloadable remote images are bundled and deduplicated. References are rewritten inside the ZIP; unavailable images keep their original URLs with a warning.
-
-To restore, select a backup, choose **Inspect ZIP**, review the contents, then confirm **Restore backup → Replace & restore**. Restoration replaces content and settings, preserves existing uploaded files and the administrator account, and saves a recovery snapshot first.
-
-These are content backups. Unreferenced uploads, credentials, fonts, application code, and generated pages are outside the export. See [CMS backup documentation](admin/README.md#备份与恢复) for size limits and manual recovery.
-
-## Typography
-
-| Area | English | Chinese |
+| Variable | Default | Purpose |
 | --- | --- | --- |
-| Site and CMS interface | Geom | Alimama FangYuan, falling back to MiSans |
-| Archive UI, 3D labels, and archive/login wordmarks | MiSans | MiSans |
-| Articles and CMS Markdown editor/preview | JetBrains Mono Nerd Font Mono | LXGW WenKai |
+| `SITE_URL` | `http://localhost:4321` (or `http://localhost:8080` in Compose) | Canonical site URL used during Astro build and origin checks. |
+| `BUILD_OUTPUT_DIR` | `./dist` | Output directory for `astro build` and `verify.mjs`. |
+| `SITE_PUBLISH_ROOT` | `./.published` (`/published` in Compose) | Root directory for atomic `releases/` and `current` symlink. |
+| `SITE_UPLOADS_DIR` | `./public/static` (`/app/public/static` in Compose) | Upload storage directory. |
+| `PUBLIC_FRIEND_APPLICATIONS` | `site.json` (`true`) | Set to `0` or `false` to hide the friend-link application form on `/friends/`. |
+| `VERIFY_MODE` | `quick` in `publish.mjs`, `full` in `npm run verify` | Set `full` to force full-site HTML checks during `npm run publish`. |
+| `VERIFY_SAMPLE_POSTS` | `3` | Number of latest post pages checked in `quick` verification mode. |
 
-KaTeX uses its own math fonts. Font stacks are defined in [`public/typography.css`](public/typography.css).
+### Admin & Proxy Variables
 
-LXGW WenKai loads from the fixed [lxgw-wenkai-webfont@1.1.0 package on jsDelivr](https://cdn.jsdelivr.net/npm/lxgw-wenkai-webfont@1.1.0/style.css), maintained by Chawye Hsu. The original font by lxgw uses the SIL Open Font License 1.1. Other fonts are served locally.
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `ADMIN_HOST` | `127.0.0.1` (`0.0.0.0` inside container) | Bind address for the CMS server. |
+| `ADMIN_PORT` | `4322` | CMS server port. |
+| `ADMIN_SITE_URL` | `SITE_URL` or `http://127.0.0.1:4321` | Frontend URL linked from the CMS. |
+| `ADMIN_AUTO_PUBLISH` | Unset (`1` in Compose) | Set `1` to automatically run `scripts/publish.mjs` on CMS saves and watched file changes. |
+| `ADMIN_WATCH_CONTENT` | Enabled with auto-publish | Set `0` to disable polling for external file changes. |
+| `ADMIN_ALLOWED_HOSTS` | Loopback hosts for current port | Comma-separated list of additional allowed `Host` headers. |
+| `ADMIN_AUTH_DIR` | `./.admin` (`/app/.admin` in Compose) | Private directory for credentials, backup rollback snapshots, and friend applications. |
+| `ADMIN_LOOPBACK_PUBLISHED` | Unset (`1` in Compose) | Allows initial setup from Docker bridge with a terminal setup token. |
+| `ADMIN_TRUST_PROXY_IP` | Unset (`1` in Compose) | Trusts `X-Real-IP` passed by Nginx for per-IP friend-application rate limiting. |
+| `ADMIN_SECURE_COOKIES` | Unset | Set `1` when serving the CMS behind an HTTPS reverse proxy. |
+| `ADMIN_ALLOW_REMOTE_SETUP` | Unset | Set `1` (with `ADMIN_SECURE_COOKIES=1`) to allow initial setup over HTTPS with a setup token. |
 
-Alimama FangYuan is supplied separately. To use it, obtain the original font from its [recorded source](public/fonts/alimama-fangyuan/SOURCE.json) under the included [terms](public/fonts/alimama-fangyuan/LICENSE.txt) and place the WOFF2 at:
-
-```text
-public/fonts/alimama-fangyuan/alimama-fangyuan.woff2
-```
-
-The binary is excluded from Git and Docker build contexts; Compose mounts the font directory. Without it, Chinese site text uses MiSans. Full font provenance and notices are in [Font sources](public/fonts/FONT-SOURCES.md).
-
-## Development
-
-| Command | Purpose |
-| --- | --- |
-| `npm run dev` | Website development server, port 4321 |
-| `npm run admin` | CMS, port 4322 |
-| `npm run check` | Astro and TypeScript diagnostics |
-| `npm run build` | Generate the static site in `dist/` |
-| `npm run preview` | Serve `dist/` locally |
-| `npm run verify` | Check built pages, links, RSS, and archive asset isolation |
-| `npm test` | Run automated tests |
-| `npm run publish` | Build, verify, and activate a local release in `.published/` |
-
-Run `npm run build` before `npm run verify`. To deploy a standalone static frontend, serve the contents of `dist/`. `npm run publish` instead updates the `.published/current` link for an existing static server.
-
-Local CMS auto-publishing is enabled with `ADMIN_AUTO_PUBLISH=1`; Compose enables it by default. `ADMIN_WATCH_CONTENT=0` turns off external-file watching while retaining publication after CMS saves.
+## Project Structure
 
 ```text
-admin/             CMS server and interface
-  defaults/        Starter content for new Docker installations
-src/
-  archive/         Three.js scene and interaction
-  content/         Markdown posts and JSON settings/collections
-  pages/           Astro routes
-  components/      Site components
-  styles/          Page styles and theme colors
-public/            Models, fonts, images, and uploads
-lib/               Shared content parsing and validation
-scripts/           Initialization, publishing, and checks
-nginx/             Static frontend configuration
-docs/              Writing and starter-content guides
+.
+├── admin/                  # Local CMS server, auth, streaming media, backup & UI assets
+├── docs/                   # Writing guide and starter content documentation
+├── examples/               # Sample post template
+├── lib/                    # Shared Node/Astro content, Markdown, and settings helpers
+├── nginx/                  # Read-only Nginx runtime config
+├── public/                 # Static assets, local fonts, 3D model, and uploads (/static/)
+├── scripts/                # Initialization, atomic publish, verification, preview & dev proxy
+├── src/
+│   ├── archive/            # Three.js 3D archive scene and rendering modules
+│   ├── components/         # Astro UI components (Archive, MusicPlayer, HomeOrbit, etc.)
+│   ├── content/            # Markdown posts (blog/) and JSON data (site, library, friends)
+│   ├── data/               # Typed site, library, and friends data loaders
+│   ├── layouts/            # Base HTML layout and theme bootstrap
+│   ├── lib/                # Content collection & search helpers
+│   ├── pages/              # Astro routes (/, /blog/, /library/, /friends/, /rss.xml, etc.)
+│   ├── scripts/            # Client-side hydration & interactivity
+│   └── styles/             # Stylesheets
+├── astro.config.mjs
+├── compose.yaml
+├── compose.files.yaml
+└── Dockerfile
 ```
 
-Site content in `src/content/` is versioned, except the generated media index. Uploads, credentials, environment files, and generated output are covered by [`.gitignore`](.gitignore). Update `admin/defaults/` when changing the examples supplied to new Docker installations.
+## Documentation
 
-## Credits and license
-
-The archive scene and cassette model are adapted from [LBEILC/RhineLabUI](https://github.com/LBEILC/RhineLabUI); the upstream revision, MIT notice, and model attribution are recorded in [THREE-ATTRIBUTION.md](THREE-ATTRIBUTION.md).
-
-Lamina has no project-wide license declared yet. Fonts and example artwork have their own notices, documented in [Font sources](public/fonts/FONT-SOURCES.md) and [Starter content](docs/content-examples.md).
+- [Writing & Deployment Guide](docs/writing.md)
+- [Admin CMS & API Reference](admin/README.md)
+- [Starter Content & Image Sources](docs/content-examples.md)

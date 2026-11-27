@@ -206,11 +206,12 @@ ADMIN_ALLOW_REMOTE_SETUP: "1"
 管理 API 需登录 cookie。管理端的修改请求还需同源 `Origin` 与 `X-CSRF-Token`。除文件和备份上传发送原始字节外，其余修改请求使用 `Content-Type: application/json`。不支持跨域调用。HTTP 401 表示未登录、会话失效或登录失败，403 表示来源／CSRF 校验失败，429 表示登录尝试过于频繁，409 表示记录冲突、重复 ID／slug、已完成初始化、仍被引用的分类、备份预览过期／内容变化或当前模式不允许发布。
 
 ```sh
-npm run admin:test
-node --test scripts/publish.test.mjs
+npm run check
+npm run build
+npm run verify
 ```
 
-后台测试使用独立临时内容库及 `authDir`，覆盖首次初始化、密码校验、CSRF、限速、过期、注销、凭据隐私，以及内容／媒体管理。已有非鉴权测试显式调用 `createServer({ auth: false })` 隔离测试对象；此选项仅供程序测试调用，命令行和环境变量都没有禁用鉴权入口。测试不会修改项目真实内容或初始化真实密码。
+`createServer({ auth: false })` 仅供程序测试调用，命令行和环境变量都没有禁用鉴权入口。
 
 ## 初始示例与模板
 

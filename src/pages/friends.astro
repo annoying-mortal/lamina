@@ -35,18 +35,29 @@ const ownSiteURL = site.url.trim();
     <section class="friend-apply" aria-labelledby="apply-title">
       <div>
         <h2 id="apply-title">Apply for a friend link</h2>
-        <p>Your contact details are only visible to the site owner.</p>
+        <p>{site.friendApplicationsEnabled
+          ? 'Your contact details are only visible to the site owner.'
+          : site.email
+            ? 'Online applications are disabled in static mode. Please reach out via email.'
+            : 'Online applications are disabled in static mode.'}</p>
       </div>
-      <form id="friend-application" method="post" action="/api/friend-applications">
-        <label>Name<input name="name" autocomplete="name" maxlength="80" required /></label>
-        <label>Website URL<input name="url" type="url" autocomplete="url" placeholder="https://" maxlength="2000" required /></label>
-        <label class="application-contact">Contact (email, QQ, etc.)<input name="contact" maxlength="254" required /></label>
+      {site.friendApplicationsEnabled ? (
+        <form id="friend-application" method="post" action="/api/friend-applications">
+          <label>Name<input name="name" autocomplete="name" maxlength="80" required /></label>
+          <label>Website URL<input name="url" type="url" autocomplete="url" placeholder="https://" maxlength="2000" required /></label>
+          <label class="application-contact">Contact (email, QQ, etc.)<input name="contact" maxlength="254" required /></label>
+          <input type="text" name="website_confirm" value="" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0;pointer-events:none" />
+          <div class="application-submit">
+            <button type="submit" class="button button-solid" disabled>Send application <span aria-hidden="true">↗</span></button>
+            <span class="application-status" role="status"></span>
+            <noscript>Enable JavaScript to send your application.</noscript>
+          </div>
+        </form>
+      ) : (
         <div class="application-submit">
-          <button type="submit" class="button button-solid" disabled>Send application <span aria-hidden="true">↗</span></button>
-          <span class="application-status" role="status"></span>
-          <noscript>Enable JavaScript to send your application.</noscript>
+          {site.email && <a class="button button-solid" href={`mailto:${site.email}`}>Email <span aria-hidden="true">↗</span></a>}
         </div>
-      </form>
+      )}
     </section>
   </div>
 </Layout>
@@ -56,40 +67,42 @@ const ownSiteURL = site.url.trim();
     const root = document.querySelector<HTMLElement>('.friends-page');
     if (!root || root.dataset.initialized) return;
     root.dataset.initialized = 'true';
-    const form = root.querySelector<HTMLFormElement>('#friend-application')!;
-    const submit = form.querySelector('button')!;
-    const status = form.querySelector<HTMLElement>('[role="status"]')!;
-    submit.disabled = false;
-    form.addEventListener('submit', async event => {
-      event.preventDefault();
-      if (submit.disabled) return;
-      submit.disabled = true;
-      status.textContent = 'Sending…';
-      try {
-        const response = await fetch(form.action, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'omit',
-          body: JSON.stringify(Object.fromEntries(new FormData(form))),
-        });
-        if (response.ok && response.headers.get('Content-Type')?.includes('application/json')) {
-          form.reset();
-          status.textContent = 'Application received.';
-        } else if (response.status === 409) {
-          status.textContent = 'An application for this website is already pending.';
-        } else if (response.status === 429) {
-          status.textContent = 'Too many requests. Please try again later.';
-        } else if ([400, 413, 422].includes(response.status)) {
-          status.textContent = 'Check your name, contact details, and HTTP or HTTPS website URL.';
-        } else {
-          status.textContent = 'Could not send your application. Please try again later.';
+    const form = root.querySelector<HTMLFormElement>('#friend-application');
+    if (form) {
+      const submit = form.querySelector('button')!;
+      const status = form.querySelector<HTMLElement>('[role="status"]')!;
+      submit.disabled = false;
+      form.addEventListener('submit', async event => {
+        event.preventDefault();
+        if (submit.disabled) return;
+        submit.disabled = true;
+        status.textContent = 'Sending…';
+        try {
+          const response = await fetch(form.action, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'omit',
+            body: JSON.stringify(Object.fromEntries(new FormData(form))),
+          });
+          if (response.ok && response.headers.get('Content-Type')?.includes('application/json')) {
+            form.reset();
+            status.textContent = 'Application received.';
+          } else if (response.status === 409) {
+            status.textContent = 'An application for this website is already pending.';
+          } else if (response.status === 429) {
+            status.textContent = 'Too many requests. Please try again later.';
+          } else if ([400, 413, 422].includes(response.status)) {
+            status.textContent = 'Check your name, contact details, and HTTP or HTTPS website URL.';
+          } else {
+            status.textContent = 'Could not send your application. Please try again later.';
+          }
+        } catch {
+          status.textContent = 'Could not connect. Please try again.';
+        } finally {
+          submit.disabled = false;
         }
-      } catch {
-        status.textContent = 'Could not connect. Please try again.';
-      } finally {
-        submit.disabled = false;
-      }
-    });
+      });
+    }
     root.querySelector('#copy-site-info')!.addEventListener('click', async () => {
       const values = [...root.querySelectorAll('.site-information dt')].map(term => {
         const label = term.textContent === 'LINK' ? 'URL' : term.textContent;

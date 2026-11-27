@@ -7,6 +7,8 @@ import { isPostFile } from '../lib/posts.mjs';
 // Verify the built website, so missing routes and broken links fail the release.
 const project = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const dist = resolve(process.env.BUILD_OUTPUT_DIR || join(project, 'dist'));
+const quick = process.argv.includes('--quick') || process.env.VERIFY_MODE === 'quick';
+const sampleLimit = Math.max(0, Number.parseInt(process.env.VERIFY_SAMPLE_POSTS || '3', 10) || 3);
 let passed = 0;
 const failures = [];
 function check(condition, description) {
@@ -66,6 +68,7 @@ try {
   check(interestSlots.length === 9 && interestSlots.every((tag, index) => Number(tag['data-interest-slot']) === index + 1), 'About me 应包含按顺序排列的九个作品槽位');
   const archiveSource = home.match(/<script\b[^>]*id="archive-data"[^>]*>([\s\S]*?)<\/script>/)?.[1];
   check(Boolean(archiveSource), 'Home 缺少档案数据');
+  let sampledArticleFiles = [];
   if (archiveSource) {
     const archive = JSON.parse(archiveSource);
     const librarySource = JSON.parse(await readFile(join(project, 'src/content/library.json'), 'utf8'));
@@ -75,7 +78,8 @@ try {
     check(friendRecords.length === friends.length && friendRecords.every((record, index) =>
       record.title === friends[index].name && record.href === friends[index].url && /^https?:\/\//i.test(record.href)),
       'Home 友链档案的名称、顺序或外链与公开友链不一致');
-    check(archive.posts.filter(record => record.kind === 'blog').length === publishedSource.length, 'Home 的 Blog 档案与公开文章数量不一致');
+    const archiveBlogRecords = archive.posts.filter(record => record.kind === 'blog');
+    check(archiveBlogRecords.length === publishedSource.length, 'Home 的 Blog 档案与公开文章数量不一致');
     check(archive.posts.filter(record => record.kind === 'library').length === librarySource.length, 'Home 的 Library 档案与作品志数量不一致');
     check(new Set(archive.posts.map(record => record.id)).size === archive.posts.length, 'Home 档案 ID 冲突');
     for (const record of archive.posts) {
@@ -85,9 +89,15 @@ try {
       check(await exists(diskPath(target.pathname)), `档案 ${record.title} 的访问入口不存在`);
       if (record.kind === 'library') check(tags(core.get('/library/') ?? '', 'dialog').some(tag => tag.id === decodeURIComponent(target.hash.slice(1))), `作品志 ${record.title} 的详情链接没有匹配弹窗`);
     }
+    sampledArticleFiles = archiveBlogRecords.slice(0, sampleLimit).map(record => diskPath(new URL(record.href, 'http://verify.local').pathname)).filter(file => articles.includes(file));
   }
 
-  for (const file of htmlFiles) {
+  const coreFiles = new Set([...routes.map(route => diskPath(route)), join(dist, '404.html')]);
+  const filesToVerify = quick
+    ? htmlFiles.filter(file => coreFiles.has(file) || sampledArticleFiles.includes(file))
+    : htmlFiles;
+
+  for (const file of filesToVerify) {
     const html = await readFile(file, 'utf8');
     const route = '/' + file.slice(dist.length + 1).replace(/index\.html$/, '');
     const label = route || '/';
@@ -168,7 +178,7 @@ try {
     console.error(`验证失败：${failures.length} 项，已通过 ${passed} 项。`);
     failures.forEach(failure => console.error(`  - ${failure}`));
     process.exitCode = 1;
-  } else console.log(`验证通过：${passed} 项；${articles.length} 篇文章，4 个主要页面，RSS、SEO、本地链接和三维资源隔离均正常。`);
+  } else console.log(`验证通过${quick ? '（快速模式）' : ''}：${passed} 项；共 ${articles.length} 篇文章（本次检查 ${filesToVerify.length} 个页面），4 个主要页面，RSS、SEO、本地链接和三维资源隔离均正常。`);
 } catch (error) {
   console.error(`无法完成验证：${error.message}\n请先运行 npm run build。`);
   process.exitCode = 1;

@@ -16,6 +16,7 @@ export function validateApplicationOrigin(req, siteUrl) {
 
 function application(input) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) fail(400, '请填写友链申请。');
+  if (typeof input.website_confirm === 'string' && input.website_confirm.trim().length > 0) fail(400, '请从本站的友链页面提交申请。');
   const text = (key, label, limit) => {
     const value = input[key];
     if (typeof value !== 'string' || !value.trim() || value.length > limit || /[\u0000-\u001f\u007f]/.test(value)) fail(400, `${label}不能为空，且不能超过 ${limit} 字。`);
@@ -30,10 +31,11 @@ function application(input) {
   return { name, url: url.href, contact };
 }
 
-export function createFriendApplications({ directory, write, now = Date.now }) {
+export function createFriendApplications({ directory, write, now = Date.now, windowMs = 10 * 60 * 1000, maxAttempts = 30, maxPerIp = 20 } = {}) {
   const path = join(directory, 'friend-applications.json');
   let queue = Promise.resolve();
   let windowStarted = now(), attempts = 0;
+  const ipWindows = new Map();
   const serialize = action => { const task = queue.then(action); queue = task.catch(() => {}); return task; };
   async function read() {
     try {
@@ -47,9 +49,18 @@ export function createFriendApplications({ directory, write, now = Date.now }) {
     await write(path, JSON.stringify(rows, null, 2) + '\n');
   }
   return {
-    consumeAttempt() {
-      if (now() - windowStarted >= 10 * 60 * 1000) { windowStarted = now(); attempts = 0; }
-      if (++attempts > 30) fail(429, '申请过于频繁，请稍后再试。');
+    consumeAttempt(ipKey = '') {
+      const current = now();
+      if (current - windowStarted >= windowMs) { windowStarted = current; attempts = 0; ipWindows.clear(); }
+      if (ipKey) {
+        let entry = ipWindows.get(ipKey);
+        if (!entry || current - entry.started >= windowMs) entry = { started: current, count: 0 };
+        if (entry.count + 1 > maxPerIp) fail(429, '申请过于频繁，请稍后再试。');
+        if (!ipWindows.has(ipKey) && ipWindows.size >= 1000) ipWindows.delete(ipWindows.keys().next().value);
+        entry.count += 1;
+        ipWindows.set(ipKey, entry);
+      }
+      if (++attempts > maxAttempts) fail(429, '申请过于频繁，请稍后再试。');
     },
     async list() { await queue; return read(); },
     submit(input) {

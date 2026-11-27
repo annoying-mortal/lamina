@@ -35,6 +35,7 @@ services:
       ADMIN_AUTO_PUBLISH: 1
       ADMIN_AUTH_DIR: /app/.admin
       ADMIN_LOOPBACK_PUBLISHED: 1
+      ADMIN_TRUST_PROXY_IP: "1"
       ADMIN_ALLOWED_HOSTS: "127.0.0.1:${ADMIN_PORT:-4322},localhost:${ADMIN_PORT:-4322},[::1]:${ADMIN_PORT:-4322}"
       SITE_PUBLISH_ROOT: /published
       SITE_UPLOADS_DIR: /app/public/static

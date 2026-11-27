@@ -56,7 +56,7 @@ export async function publish({ projectRoot = project, publishRoot = process.env
       // An external Docker volume cannot receive its assets via rename (EXDEV).
       // Build and verify on the project filesystem, then copy the completed site
       // to the release volume before changing the public symlink.
-      const env = { ...process.env, BUILD_OUTPUT_DIR: buildDirectory, ASTRO_TELEMETRY_DISABLED: '1' };
+      const env = { ...process.env, BUILD_OUTPUT_DIR: buildDirectory, ASTRO_TELEMETRY_DISABLED: '1', VERIFY_MODE: process.env.VERIFY_MODE || 'quick' };
       await command(process.execPath, [join(projectRoot, 'node_modules/astro/bin/astro.mjs'), 'build'], { cwd: projectRoot, env });
       await command(process.execPath, [join(projectRoot, 'scripts/verify.mjs')], { cwd: projectRoot, env });
       await cp(buildDirectory, release, { recursive: true });

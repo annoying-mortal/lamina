@@ -1,10 +1,11 @@
-import { constants } from 'node:fs';
-import { open, readFile, readdir, mkdir, unlink, lstat, realpath } from 'node:fs/promises';
+import { constants, createWriteStream } from 'node:fs';
+import { open, readFile, readdir, mkdir, rename, unlink, lstat, realpath } from 'node:fs/promises';
 import { join, resolve, relative, sep, extname } from 'node:path';
 import { atomicWrite } from './atomic-write.mjs';
 import { createHash, randomUUID } from 'node:crypto';
 import { Buffer } from 'node:buffer';
-import { detectRasterImage } from './image-format.mjs';
+import { once } from 'node:events';
+import { detectRasterImageBounds } from './image-format.mjs';
 
 export const FILE_LIMIT = 256 * 1024 * 1024;
 const types = {
@@ -17,21 +18,54 @@ export const fileMimeType = filename => types[extname(filename).toLowerCase()] |
 const isAudioFile = name => fileMimeType(name).startsWith('audio/') || /\.(aac|aif|aiff|opus|m4b|wma|mid|midi|oga|alac)$/i.test(name);
 const rasterTypes = new Set(['image/png', 'image/jpeg', 'image/gif', 'image/webp']);
 function fail(status, message) { throw Object.assign(new Error(message), { status }); }
-async function bytes(req) {
+async function streamUpload(req, uploadsDir) {
   if (Number(req.headers['content-length']) > FILE_LIMIT) fail(413, '文件不能超过 256 MiB。');
-  return new Promise((accept, reject) => {
-    const chunks = []; let size = 0; let settled = false;
-    const error = (status, message) => { if (!settled) { settled = true; reject(Object.assign(new Error(message), { status })); } };
-    req.on('data', chunk => {
-      if (settled) return;
-      size += chunk.length;
-      if (size > FILE_LIMIT) { error(413, '文件不能超过 256 MiB。'); return; }
-      chunks.push(chunk);
-    });
-    req.on('end', () => { if (!settled) { settled = true; accept(Buffer.concat(chunks)); } });
-    req.on('aborted', () => error(400, '文件上传已中断。'));
-    req.on('error', () => error(400, '文件上传失败。'));
-  });
+  await mkdir(uploadsDir, { recursive: true });
+  const tempPath = join(uploadsDir, `.upload-${randomUUID()}.tmp`);
+  const ws = createWriteStream(tempPath, { flags: 'wx', mode: 0o644 });
+  const digest = createHash('sha256');
+  const head = Buffer.alloc(32);
+  let headLen = 0;
+  let tail = Buffer.alloc(0);
+  let size = 0;
+  let aborted = false;
+  const onAbort = () => { aborted = true; req.destroy(); };
+  req.once('aborted', onAbort);
+  const wsError = new Promise((_, reject) => ws.once('error', () => reject(Object.assign(new Error('文件写入失败。'), { status: 500 }))));
+  try {
+    await Promise.race([wsError, (async () => {
+      try {
+        for await (const raw of req) {
+          if (aborted) fail(400, '文件上传已中断。');
+          const chunk = Buffer.isBuffer(raw) ? raw : Buffer.from(raw);
+          size += chunk.length;
+          if (size > FILE_LIMIT) fail(413, '文件不能超过 256 MiB。');
+          digest.update(chunk);
+          if (headLen < head.length) {
+            const copy = Math.min(head.length - headLen, chunk.length);
+            chunk.copy(head, headLen, 0, copy);
+            headLen += copy;
+          }
+          if (chunk.length >= 12) tail = Buffer.from(chunk.subarray(chunk.length - 12));
+          else if (chunk.length > 0) tail = Buffer.concat([tail, chunk]).subarray(-12);
+          if (!ws.write(chunk)) await Promise.race([wsError, once(ws, 'drain')]);
+        }
+        if (aborted) fail(400, '文件上传已中断。');
+      } catch (error) {
+        if (error?.status) throw error;
+        fail(400, aborted ? '文件上传已中断。' : '文件上传失败。');
+      }
+      ws.end();
+      await Promise.race([wsError, once(ws, 'finish')]);
+    })()]);
+    return { tempPath, size, sha256: digest.digest('hex'), head: head.subarray(0, headLen), tail };
+  } catch (error) {
+    ws.destroy();
+    await unlink(tempPath).catch(() => {});
+    throw error;
+  } finally {
+    req.removeListener('aborted', onAbort);
+  }
 }
 
 /** Caller checks the request, then revalidates authorization when a queued upload writes. */
@@ -77,11 +111,10 @@ export function createMediaStore({ projectRoot, mediaDir = join(projectRoot, 'pu
       return digest.digest('hex');
     } finally { await file.close(); }
   }
-  async function existingAudio(data) {
-    const candidates = (await list()).filter(file => file.size === data.length && isAudioFile(file.id));
+  async function existingAudio(size, sha256) {
+    const candidates = (await list()).filter(file => file.size === size && isAudioFile(file.id));
     if (!candidates.length) return;
-    const digest = createHash('sha256').update(data).digest('hex');
-    for (const file of candidates) if (await audioDigest(file) === digest) return file;
+    for (const file of candidates) if (await audioDigest(file) === sha256) return file;
   }
   // Older media libraries may already contain byte-identical files under different IDs.
   async function checkAlbumAudio(tracks = []) {
@@ -138,29 +171,40 @@ export function createMediaStore({ projectRoot, mediaDir = join(projectRoot, 'pu
       let name;
       try { name = decodeURIComponent(req.headers['x-file-name'] || 'file.bin').trim(); } catch { fail(400, '文件名称编码不正确。'); }
       if (!name || name.length > 240 || /[\u0000-\u001f\u007f/\\]/.test(name)) fail(400, '文件名无效或过长。');
-      const data = await bytes(req);
-      const format = detectRasterImage(data);
-      if (rasterTypes.has(contentType) || rasterTypes.has(fileMimeType(name))) {
-        if (!format) fail(415, '请选择有效的 PNG、JPEG、GIF 或 WebP 图片。');
-        if (rasterTypes.has(contentType) && contentType !== format.mime) fail(415, '文件内容与声明的图片类型不一致。');
-      }
-      const extension = extname(name).toLowerCase();
-      const ext = format ? `.${format.ext}` : /^\.[a-z0-9]{1,16}$/.test(extension) ? extension : '.bin';
-      const mime = format?.mime || fileMimeType(`file${ext}`);
-      const record = await serialize(() => runAuthorized(async () => {
-        if (isAudioFile('file' + ext)) {
-          const existing = await existingAudio(data);
-          if (existing) return { ...existing, reused: true };
+      let upload;
+      try {
+        upload = await streamUpload(req, uploads);
+        const format = detectRasterImageBounds(upload.head, upload.tail, upload.size);
+        if (rasterTypes.has(contentType) || rasterTypes.has(fileMimeType(name))) {
+          if (!format) fail(415, '请选择有效的 PNG、JPEG、GIF 或 WebP 图片。');
+          if (rasterTypes.has(contentType) && contentType !== format.mime) fail(415, '文件内容与声明的图片类型不一致。');
         }
-        const id = `${randomUUID()}${ext}`;
-        const record = { id, name: name.trim(), url: `/static/${id}`, mime, size: data.length, createdAt: new Date().toISOString() };
-        const records = await metadata();
-        await atomicWrite(join(uploads, id), data, { mode: 0o644 });
-        try { await atomicWrite(indexPath, JSON.stringify([record, ...records], null, 2) + '\n', { mode: 0o644 }); }
-        catch (error) { await unlink(join(uploads, id)); throw error; }
-        return record;
-      }));
-      json(res, record.reused ? 200 : 201, record); return true;
+        const extension = extname(name).toLowerCase();
+        const ext = format ? `.${format.ext}` : /^\.[a-z0-9]{1,16}$/.test(extension) ? extension : '.bin';
+        const mime = format?.mime || fileMimeType(`file${ext}`);
+        const record = await serialize(() => runAuthorized(async () => {
+          if (isAudioFile('file' + ext)) {
+            const existing = await existingAudio(upload.size, upload.sha256);
+            if (existing) {
+              await unlink(upload.tempPath).catch(() => {});
+              upload.tempPath = null;
+              return { ...existing, reused: true };
+            }
+          }
+          const id = `${randomUUID()}${ext}`;
+          const targetPath = join(uploads, id);
+          const record = { id, name: name.trim(), url: `/static/${id}`, mime, size: upload.size, createdAt: new Date().toISOString() };
+          const records = await metadata();
+          await rename(upload.tempPath, targetPath);
+          upload.tempPath = null;
+          try { await atomicWrite(indexPath, JSON.stringify([record, ...records], null, 2) + '\n', { mode: 0o644 }); }
+          catch (error) { await unlink(targetPath).catch(() => {}); throw error; }
+          return record;
+        }));
+        json(res, record.reused ? 200 : 201, record); return true;
+      } finally {
+        if (upload?.tempPath) await unlink(upload.tempPath).catch(() => {});
+      }
     },
   };
 }

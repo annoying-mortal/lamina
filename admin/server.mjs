@@ -145,6 +145,7 @@ function validSettings(value) {
     aboutMeTitle: string(home.aboutMeTitle, 'About me title', 300, false), aboutMeSubtitle: string(home.aboutMeSubtitle, 'About me subtitle', 1000, false), aboutMeWorks,
     contactEyebrow: string(home.contactEyebrow, '联系页上方小字', 200, false), contactTitle: string(home.contactTitle, '联系页标题', 300, false), contactBody: string(home.contactBody, '联系页正文', 4000, false),
     launchedAt: launchDate(value.launchedAt),
+    friendApplicationsEnabled: boolean(home.friendApplicationsEnabled, true, '友链申请开关'),
   };
 }
 function validFriend(value) {
@@ -369,7 +370,10 @@ export function createServer(options = {}) {
     try {
       if (req.method === 'POST' && req.url === '/api/friend-applications') {
         validateApplicationOrigin(req, siteUrl);
-        friendApplications.consumeAttempt();
+        const trustProxyIp = process.env.ADMIN_TRUST_PROXY_IP === '1';
+        const rawRealIp = trustProxyIp ? req.headers['x-real-ip'] : undefined;
+        const clientIp = (typeof rawRealIp === 'string' && rawRealIp.trim()) || req.socket?.remoteAddress || '';
+        friendApplications.consumeAttempt(clientIp);
         const input = await bodyJson(req, { limit: 8 * 1024, sizeError: '申请内容过大，最多 8 KiB。' });
         json(201, await friendApplications.submit(input)); return;
       }
